@@ -1,0 +1,243 @@
+unit uLBFileUtils;
+
+{$mode ObjFPC}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils;
+
+
+type
+  { TFileInfoRetriever }
+
+  TFileInfoRetriever = class(TObject)
+    strict private
+      FCompanyName : String;
+      FProductName : String;
+      FProductVersion : String;
+      FLegalCopyright : String;
+      FComments : String;
+
+      procedure Clear();
+
+    public
+      function LoadInfo(anExeFilename: String): Boolean;
+
+      property CompanyName: String read FCompanyName;
+      property ProductName: String read FProductName;
+      property ProductVersion: String read FProductVersion;
+      property LegalCopyright: String read FLegalCopyright;
+      property Comments: String read FComments;
+  end;
+
+
+  function getTemporaryFolder(GlobalFolder: Boolean = false): String;
+
+  function FindFilesInFolder(const Path: String; const Mask: String; Recursive: Boolean; Files: TStringList): Boolean; overload;
+  function FindFilesInFolder(Path: String; const Mask: String; aRecursiveLevel: Integer; Files: TStringList): Boolean; overload;
+
+  function getFolderSize(aFolder: String; Recursive: Boolean): Int64;
+
+  function FindSubfolders(Path: String; SubFolders: TStringList): Boolean;
+
+  const
+    cSearchAllFileMask = String({$IFDEF Linux}'*'{$ELSE}'*.*'{$ENDIF});
+
+implementation
+
+uses
+  fileinfo, ULBLogger;
+
+{ TFileInfoRetriever }
+
+procedure TFileInfoRetriever.Clear();
+begin
+  FCompanyName    := '';
+  FLegalCopyright := '';
+  FProductName    := '';
+  FProductVersion := '';
+  FComments       := '';
+end;
+
+function TFileInfoRetriever.LoadInfo(anExeFilename: String): Boolean;
+var
+  _FileVerInfo : TFileVersionInfo = nil;
+
+begin
+  Result := False;
+  Self.Clear();
+
+  if FileExists(anExeFilename) then
+  begin
+
+    try
+      _FileVerInfo := TFileVersionInfo.Create(nil);
+      _FileVerInfo.FileName := anExeFilename;
+      _FileVerInfo.ReadFileInfo;
+
+      FCompanyName    := _FileVerInfo.VersionStrings.Values['CompanyName'];
+      FLegalCopyright := _FileVerInfo.VersionStrings.Values['LegalCopyright'];
+      FProductName    := _FileVerInfo.VersionStrings.Values['ProductName'];
+      FProductVersion := _FileVerInfo.VersionStrings.Values['ProductVersion'];
+      FComments       := _FileVerInfo.VersionStrings.Values['Comments'];
+
+      Result := True;
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'TFileInfoRetriever.LoadInfo', lmt_Error, 'Error reading info from <%s>: <%s>', [anExeFilename, E.Message]);
+    end;
+
+    if _FileVerInfo <> nil then
+      _FileVerInfo.Free;
+
+  end
+  else
+    LBLogger.Write(1, 'TFileInfoRetriever.LoadInfo', lmt_Warning, 'File <%s> not found!', [anExeFilename]);
+end;
+
+function getTemporaryFolder(GlobalFolder: Boolean = false): String;
+begin
+  Result := '';
+
+  if GlobalFolder then
+    Result := GetTempDir(True)
+  else begin
+    Result := GetTempDir(False);
+
+    if Length(Result) = 0 then
+      Result := GetTempDir(True);
+  end;
+
+  {$IFDEF Linux}
+  if Length(Result) = 0 then
+    Result := '/tmp/';
+  {$ENDIF}
+end;
+
+
+function FindSubfolders(Path: String; SubFolders: TStringList): Boolean;
+var
+  _Search : TSearchRec;
+
+begin
+  Result := false;
+
+  if SubFolders <> nil then
+  begin
+
+    SubFolders.Clear;
+
+    if DirectoryExists(Path) then
+    begin
+      Path := IncludeTrailingPathDelimiter(Path);
+      try
+        if FindFirst(Path + '*', faDirectory, _Search) = 0 then
+        begin
+          repeat
+
+            if (_Search.Name <> '.') and
+               (_Search.Name <> '..') and
+               (_Search.Attr and faDirectory > 0) then
+              SubFolders.Add(_Search.Name);
+
+	  until FindNext(_Search) <> 0;
+
+          Result := True;
+        end;
+
+      finally
+        SysUtils.FindClose(_Search);
+      end;
+    end;
+
+  end;
+end;
+
+
+function FindFilesInFolder(const Path: String; const Mask: String; Recursive: Boolean; Files: TStringList): Boolean;
+var
+  _RecursiveLevel: Integer = 0;
+begin
+
+  if Recursive then
+    _RecursiveLevel := High(Integer) - 1;
+
+  Result := FindFilesInFolder(Path, Mask, _RecursiveLevel, Files);
+end;
+
+function FindFilesInFolder(Path: String; const Mask: String; aRecursiveLevel: Integer; Files: TStringList): Boolean;
+var
+  _Search : SysUtils.TSearchRec;
+
+begin
+  Result := False;
+
+  if Length(Path) > 0 then
+  begin
+    Path := IncludeTrailingPathDelimiter(Path);
+
+    if (Files <> nil) and DirectoryExists(Path) then
+    begin
+      try
+        if SysUtils.FindFirst(Path + Mask, faAnyFile, _Search) = 0 then
+        begin
+          Result := True;
+
+          repeat
+
+            if (_Search.Attr and faDirectory > 0) then
+            begin
+              if (aRecursiveLevel > 0) and (_Search.Name <> '.') and (_Search.Name <> '..') and (Length(_Search.Name) > 0) then
+                FindFilesInFolder(Path + _Search.Name, Mask, aRecursiveLevel - 1, Files);
+            end
+            else
+              Files.Add(Path + _Search.Name);
+
+          until SysUtils.FindNext(_Search) <> 0;
+
+        end;
+
+      finally
+        SysUtils.FindClose(_Search);
+      end;
+    end;
+
+  end;
+end;
+
+function getFolderSize(aFolder: String; Recursive: Boolean): Int64;
+var
+  _rec: TSearchRec;
+  _found: Integer;
+  _Size : Int64;
+
+
+const
+  cClusterSize = Int64(2048);
+
+begin
+   Result := 0;
+
+   aFolder := IncludeTrailingPathDelimiter(aFolder);
+
+   _found := FindFirst(aFolder + cSearchAllFileMask, faAnyFile, _rec);
+
+   while _found = 0 do
+   begin
+     _Size := _rec.Size;
+     if _Size mod cClusterSize <> 0 then
+       Inc(Result, ((_Size div cClusterSize) + 1) * cClusterSize)
+     else
+       Inc(Result, _Size);
+
+     if (_rec.Attr and faDirectory > 0) and (_rec.Name[1] <> '.') and (Recursive) then
+       Result += getFolderSize(aFolder + _rec.Name, True);
+
+     _found := FindNext(_rec);
+   end;
+
+   sysUtils.FindClose(_rec);
+end;
+
+end.

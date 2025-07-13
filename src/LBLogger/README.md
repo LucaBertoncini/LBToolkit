@@ -1,16 +1,18 @@
-LBLogger — Lightweight, modular and reactive logging system
-Main features
+# LBLogger — Lightweight, Modular and Reactive Logging System
 
-    Asynchronous logging: messages are queued and processed by a dedicated thread
+## 🚀 Main Features
 
-    Dynamic and extensible subloggers: you can add new loggers to the main module even after the application has been written, without modifying existing code. This enables:
+### 🔄 Asynchronous Logging  
+Messages are queued and processed by a dedicated thread, minimizing impact on the main execution flow.
 
-        alternative storage backends (e.g. TEventLogger for system logs),
+### 🧩 Dynamic and Extensible Subloggers  
+You can attach new loggers to the main module — **even after the application has been written** — without modifying existing code.
 
-        visual output on desktop interfaces (TMemoLogger, TLabelLogger, etc.),
+This enables:
+- 📦 Alternative storage backends (e.g. `TEventLogger` for system logs)
+- 🖥️ Visual output on desktop interfaces (`TMemoLogger`, `TLabelLogger`, etc.)
+- 📤 External notification channels (email, Telegram, MQTT)
 
-        external notification channels (email, Telegram, MQTT),
-
-
-
-    Simple extension via inheritance: just derive from TLBBaseLogger to add new handlers. ➤ This flexibility turns a “simple” logger into a non-invasive alert and monitoring system, adaptable to any context.
+### 🧠 Simple Extension via Inheritance  
+Just derive from `TLBBaseLogger` to add new handlers.  
+➤ This flexibility transforms a **“simple” logger** into a **non-invasive alert and monitoring system**, adaptable to any context.

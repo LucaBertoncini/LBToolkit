@@ -17,6 +17,9 @@ A lifecycle-aware thread class with safe termination, critical section handling,
 ### 🔹 uEventsManager.pas
 An event broadcasting system supporting multiple listeners.
 
+### 🔹 uLBTimers.pas
+Timing tools including interruptable sleep and high-precision delays.
+
 ### 🔹 uLBFileUtils.pas
 Utilities for file operations, folder size calculation and recursive discovery.
 

@@ -142,7 +142,7 @@ var
 begin
   Result := False;
 
-  if (Length(AnEventName) > 0) then
+  if (AnEventName <> '') then
   begin
     if anOwner <> nil then
     begin
@@ -195,7 +195,7 @@ var
 begin
   Result := nil;
 
-  if (Length(AnEvent) > 0) and (FEvents <> nil) then
+  if (AnEvent <> '') and (FEvents <> nil) then
   begin
     _Idx := FEvents.IndexOf(AnEvent);
     if _Idx > -1 then
@@ -354,7 +354,7 @@ var
   _List : TEventListeners;
 
 begin
-  if Length(AnEvent) > 0 then
+  if AnEvent <> '' then
   begin
 
     if FCS.Acquire('TEventsManager.AddEvent') then
@@ -383,7 +383,10 @@ end;
 
 function TEventsManager.AddEventListener(AnEventName: String; AnEventToRaise: TNotifyEvent; AnEventManager: TEventsManager): Boolean;
 begin
-  Result := Self.AddEventListenerInternal(AnEventName, @TMethod(AnEventToRaise), nil, AnEventManager.Owner, anEventManager);
+  Result := False;
+
+  if (FMode = emm_Events) and (AnEventToRaise <> nil) then
+    Result := Self.AddEventListenerInternal(AnEventName, @TMethod(AnEventToRaise), nil, AnEventManager.Owner, anEventManager);
 end;
 
 procedure TEventsManager.RemoveEventListener(AnEventName: String; AnEventManager: TEventsManager);
@@ -394,7 +397,10 @@ end;
 
 function TEventsManager.AddEventListener(AnEventName: PAnsiChar; anOpaquePointer: Pointer; aCallback: TCallbackProcedure): Boolean;
 begin
-  Result := Self.AddEventListenerInternal(AnsiString(AnEventName), nil, aCallback, anOpaquePointer, nil);
+  Result := False;
+
+  if (FMode = emm_Callbacks) and (aCallback <> nil) then
+    Result := Self.AddEventListenerInternal(AnsiString(AnEventName), nil, aCallback, anOpaquePointer, nil);
 end;
 
 function TEventsManager.AddSingleCallbackListener(AnEventToRaise: TSingleCallbackEvent; AnEventManager: TEventsManager): Boolean;
@@ -404,19 +410,22 @@ var
 begin
   Result := False;
 
-  if FCS.Acquire('TEventsManager.AddSingleCallbackListener') then
+  if FMode = emm_EventsSingleCallback then
   begin
-    try
+    if FCS.Acquire('TEventsManager.AddSingleCallbackListener') then
+    begin
+      try
 
-      Result := True;
-      for i := 0 to FEvents.Count - 1 do
-        Result := Result and Self.AddEventListenerInternal(FEvents.Strings[i], @TMethod(AnEventToRaise), nil, AnEventManager.Owner, AnEventManager);
+        Result := True;
+        for i := 0 to FEvents.Count - 1 do
+          Result := Result and Self.AddEventListenerInternal(FEvents.Strings[i], @TMethod(AnEventToRaise), nil, AnEventManager.Owner, AnEventManager);
 
-    except
-      on E: Exception do
-        LBLogger.Write(1, 'TEventsManager.AddSingleCallbackListener', lmt_Error, E.Message);
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'TEventsManager.AddSingleCallbackListener', lmt_Error, E.Message);
+      end;
+      FCS.Release();
     end;
-    FCS.Release();
   end;
 end;
 
@@ -553,11 +562,10 @@ begin
 
     end;
 
+    FRaisingEvents := False;
+    if FFreeOnTerminate then
+      Self.Destroy;
   end;
-
-  FRaisingEvents := False;
-  if FFreeOnTerminate then
-    Self.Destroy;
 end;
 
 { TEventsManager.TEventInfo }

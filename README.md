@@ -10,6 +10,7 @@ Reusable components that power multiple projects:
 - `uEventsManager.pas`: event dispatching system with flexible signatures
 - `uLBBaseThread.pas`: lifecycle-aware thread class with auto-nulling references
 - `uLBFileUtils.pas`: advanced file operations, size estimation, search
+- `uLBTimers.pas`: timing tools including interruptable sleep and high-precision delays
 - `uTimedOutCriticalSection.pas`: thread-safe access with timeout protection
 
 These utilities form a "Swiss army knife" of functionality across all LBToolkit projects.

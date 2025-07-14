@@ -1,0 +1,36 @@
+object frmmain: Tfrmmain
+  Left = 342
+  Height = 357
+  Top = 250
+  Width = 532
+  BorderIcons = [biSystemMenu, biMinimize]
+  BorderStyle = bsSingle
+  Caption = 'event manager example'
+  ClientHeight = 357
+  ClientWidth = 532
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  object eddata: TEdit
+    Left = 24
+    Height = 28
+    Top = 32
+    Width = 255
+    TabOrder = 0
+  end
+  object btnraiseevent: TButton
+    Left = 320
+    Height = 25
+    Top = 32
+    Width = 128
+    Caption = 'raise event'
+    TabOrder = 1
+    OnClick = btnraiseeventClick
+  end
+  object memolog: TMemo
+    Left = 29
+    Height = 208
+    Top = 96
+    Width = 475
+    TabOrder = 2
+  end
+end

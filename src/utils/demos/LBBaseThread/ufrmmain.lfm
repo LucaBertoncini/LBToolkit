@@ -1,0 +1,22 @@
+object frmMain: TfrmMain
+  Left = 1520
+  Height = 205
+  Top = 250
+  Width = 320
+  BorderIcons = [biSystemMenu, biMinimize]
+  BorderStyle = bsSingle
+  Caption = 'frmMain'
+  ClientHeight = 205
+  ClientWidth = 320
+  Position = poScreenCenter
+  OnDestroy = FormDestroy
+  object btnThreads: TButton
+    Left = 80
+    Height = 40
+    Top = 72
+    Width = 147
+    Caption = 'Create threads'
+    TabOrder = 0
+    OnClick = btnThreadsClick
+  end
+end

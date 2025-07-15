@@ -88,6 +88,7 @@ type
         FDestroyingState : Boolean;       // Flag per evitare RaiseEvent in fase di distruzione
 
       function AddEventListenerInternal(AnEventName: String; anEventToRaise: PMethod; aCallback: Pointer; anOwner: Pointer; anEventsManager: TEventsManager): Boolean;
+      function getEventListenersCount(anEvent: String): Integer;
 
       function getListeners(AnEvent: String): TEventListeners;
 
@@ -125,6 +126,8 @@ type
       property Enabled: Boolean write FEnabled;
       property Owner: TObject read FOwner;
 
+      property EventListenersCount[anEvent: String]: Integer read getEventListenersCount;
+
   end;
 
 implementation
@@ -144,48 +147,59 @@ begin
 
   if (AnEventName <> '') then
   begin
-    if anOwner <> nil then
-    begin
 
-      if FCS.Acquire('TEventsManager.AddEventListener') then
-      begin
-        try
-          _EventsList := Self.getListeners(AnEventName);
-          if _EventsList <> nil then
-          begin
+    if FCS.Acquire('TEventsManager.AddEventListener') then
+    begin
+      try
+        _EventsList := Self.getListeners(AnEventName);
+        if _EventsList <> nil then
+        begin
+          if anOwner <> nil then
             Result := _EventsList.ListenerAlreadyIn(anOwner);
 
-            if not Result then
-            begin
-              _EventInfo := TEventInfo.Create(anOwner);
+          if not Result then
+          begin
+            _EventInfo := TEventInfo.Create(anOwner);
 
-              if aCallback <> nil then
-                _EventInfo.setCallback(aCallBack)
-              else
-                _EventInfo.setEvent(anEventToRaise);
+            if aCallback <> nil then
+              _EventInfo.setCallback(aCallBack)
+            else
+              _EventInfo.setEvent(anEventToRaise);
 
-              _EventsList.Add(_EventInfo as IEventInfo);
+            _EventsList.Add(_EventInfo as IEventInfo);
 
 
-              if anEventsManager <> nil then // I due EventsManager si registrano sui reciproci destroy
-                AnEventsManager.AddEventListener(TEventsManager.cDestroyEvent, @Self.RemoveListenerFromDestroyEvent, Self);
+            if anEventsManager <> nil then // I due EventsManager si registrano sui reciproci destroy
+              AnEventsManager.AddEventListener(TEventsManager.cDestroyEvent, @Self.RemoveListenerFromDestroyEvent, Self);
 
-              Result := True;
-            end;
+            Result := True;
           end;
-
-        except
-          on E: Exception do
-            LBLogger.Write(1, 'TEventsManager.AddEventListenerInternal', lmt_Error, E.Message);
         end;
 
-        FCS.Release();
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'TEventsManager.AddEventListenerInternal', lmt_Error, E.Message);
       end;
 
-    end
-    else
-      LBLogger.Write(1, 'TEventsManager.AddEventListener', lmt_Warning, 'Event: <%s>  -  No owner set!', [AnEventName]);
+      FCS.Release();
+    end;
+
+//    end
+//    else
+//      LBLogger.Write(1, 'TEventsManager.AddEventListener', lmt_Warning, 'Event: <%s>  -  No owner set!', [AnEventName]);
   end;
+end;
+
+function TEventsManager.getEventListenersCount(anEvent: String): Integer;
+var
+  _Listeners : TEventListeners;
+
+begin
+  Result := 0;
+
+  _Listeners := Self.getListeners(anEvent);
+  if _Listeners <> nil then
+    Result := _Listeners.Count;
 end;
 
 function TEventsManager.getListeners(AnEvent: String): TEventListeners;
@@ -382,11 +396,21 @@ begin
 end;
 
 function TEventsManager.AddEventListener(AnEventName: String; AnEventToRaise: TNotifyEvent; AnEventManager: TEventsManager): Boolean;
+var
+  _Owner : TObject;
+
 begin
   Result := False;
 
   if (FMode = emm_Events) and (AnEventToRaise <> nil) then
-    Result := Self.AddEventListenerInternal(AnEventName, @TMethod(AnEventToRaise), nil, AnEventManager.Owner, anEventManager);
+  begin
+    if AnEventManager = nil then
+      _Owner := nil
+    else
+      _Owner := AnEventManager.Owner;
+
+    Result := Self.AddEventListenerInternal(AnEventName, @TMethod(AnEventToRaise), nil, _Owner, anEventManager);
+  end;
 end;
 
 procedure TEventsManager.RemoveEventListener(AnEventName: String; AnEventManager: TEventsManager);
@@ -406,19 +430,25 @@ end;
 function TEventsManager.AddSingleCallbackListener(AnEventToRaise: TSingleCallbackEvent; AnEventManager: TEventsManager): Boolean;
 var
   i : Integer;
+  _Owner : TObject;
 
 begin
   Result := False;
 
   if FMode = emm_EventsSingleCallback then
   begin
+    if AnEventManager <> nil then
+      _Owner := AnEventManager.Owner
+    else
+      _Owner := nil;
+
     if FCS.Acquire('TEventsManager.AddSingleCallbackListener') then
     begin
       try
 
         Result := True;
         for i := 0 to FEvents.Count - 1 do
-          Result := Result and Self.AddEventListenerInternal(FEvents.Strings[i], @TMethod(AnEventToRaise), nil, AnEventManager.Owner, AnEventManager);
+          Result := Result and Self.AddEventListenerInternal(FEvents.Strings[i], @TMethod(AnEventToRaise), nil, _Owner, AnEventManager);
 
       except
         on E: Exception do

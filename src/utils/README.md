@@ -17,6 +17,16 @@ A lifecycle-aware thread class with safe termination, critical section handling,
 ### 🔹 uEventsManager.pas
 An event broadcasting system supporting multiple listeners.
 
+### 🔹 uLBCalendar.pas
+Module for converting between UTC and local time with full support for historical Daylight Saving Time (DST) rules. It includes:
+
+- Accurate bidirectional conversions: `UTC ↔ LocalTime`
+- Year-specific DST activation based on official Italian transitions (1940 onward)
+- ISO 8601 formatting for timestamps
+- Linux and Windows compatibility
+- Extensible architecture for supporting multiple regions
+
+
 ### 🔹 uLBTimers.pas
 Timing tools including interruptable sleep and high-precision delays.
 

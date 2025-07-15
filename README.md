@@ -30,7 +30,6 @@ A reactive, asynchronous and customizable logging platform:
 
 ### ✅ Architecture Highlights
 
-- **No code modification required** — compatible with legacy software
 - **Incremental extension of features**
 - **Granular control over message handling**
 - **Extreme maintainability and runtime configurability**

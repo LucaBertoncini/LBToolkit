@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="EventsManager_UnitTest.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <CursorPos X="70" Y="6"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../uEventsManager.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="116"/>
+        <CursorPos X="35" Y="129"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBLogger/ULBLogger.pas"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="295"/>
+        <CursorPos Y="304"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uEventsManagerTest.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="2"/>
+        <CursorPos Y="65"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="21"/>
+        <CursorPos X="23" Y="37"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/classes/classesh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1782"/>
+        <CursorPos Y="1793"/>
+        <UsageCount Value="10"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="113" Column="25" TopLine="98"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="210" Column="22" TopLine="201"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="19" Column="27" TopLine="18"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="29" Column="29" TopLine="21"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="115" Column="8" TopLine="40"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="129" Column="82" TopLine="109"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="195" Column="32" TopLine="185"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="200" Column="8" TopLine="183"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="203" Column="37" TopLine="188"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="216" Column="53" TopLine="193"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="269" Column="34" TopLine="258"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="417" Column="86" TopLine="394"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="496" Column="73" TopLine="473"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="552" Column="39" TopLine="539"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="93" Column="28" TopLine="81"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uEventsManager.pas"/>
+        <Caret Line="154" Column="41" TopLine="144"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="29" Column="24" TopLine="20"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="55" TopLine="116"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="143" Column="14" TopLine="116"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="96" TopLine="83"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="22" Column="17" TopLine="8"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="72" Column="3" TopLine="61"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="29" Column="32" TopLine="14"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="92" Column="3" TopLine="86"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="42" Column="21" TopLine="26"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="30" Column="41" TopLine="17"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="159" Column="29" TopLine="135"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="125" Column="3" TopLine="114"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="138" Column="97" TopLine="125"/>
+      </Position>
+      <Position>
+        <Filename Value="uEventsManagerLifecycleTest.pas"/>
+        <Caret Line="157" Column="9" TopLine="144"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

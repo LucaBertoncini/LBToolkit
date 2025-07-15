@@ -25,6 +25,7 @@ Utilities for file operations, folder size calculation and recursive discovery.
 
 ### 🔹 uSharedMemoryManagement.pas
 A shared memory manager for fast IPC communication with external processes (e.g., Python, other native apps).
+
 **Basic SysV usage:**
 ```pascal
 var

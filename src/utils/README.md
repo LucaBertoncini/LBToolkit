@@ -29,19 +29,17 @@ A shared memory manager for fast IPC communication with external processes (e.g.
 **Basic SysV usage:**
 ```pascal
 var
-  Shared: TSharedMemory;
+  Shared: pSharedMemory;
 begin
-  Shared.key := 1234;            // Unique key for IPC
-  Shared.size := 4096;           // Required memory size
+  Shared := AllocateSharedMemory(1234, 4096);
 
-  if createSharedMemory(@Shared) and Assigned(Shared.mem) then
+  if Assigned(Shared) then
   begin
-    // Access memory at Shared.mem
-    // Communicate with external process (e.g., Python mmap)
-
+    // Use Shared^.mem to exchange data with external process
     // ...
 
-    closeSharedMemory(@Shared);
+    closeSharedMemory(Shared);
+    Dispose(Shared);
   end;
 end;
 ```

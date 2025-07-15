@@ -9,6 +9,7 @@ It includes:
 Reusable components that power multiple projects:
 - `uEventsManager.pas`: event dispatching system with flexible signatures
 - `uLBBaseThread.pas`: lifecycle-aware thread class with auto-nulling references
+- `uLBCalendar.pas`: Module for converting between UTC and local time with full support for historical Daylight Saving Time (DST) rules
 - `uLBFileUtils.pas`: advanced file operations, size estimation, search
 - `uLBTimers.pas`: timing tools including interruptable sleep and high-precision delays
 - `uSharedMemoryManagement.pas`: shared memory manager for fast IPC communication with external processes

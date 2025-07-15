@@ -43,7 +43,7 @@ begin
     closeSharedMemory(@Shared);
   end;
 end;
-
+```
 
 ---
 

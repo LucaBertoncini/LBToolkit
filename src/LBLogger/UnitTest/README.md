@@ -53,11 +53,3 @@ These tests aim to:
 - Simulate realistic usage scenarios including rotation and interception
 
 ---
-
-## ▶️ How to Run
-
-Compile and run the test using Lazarus or command line:
-
-```bash
-./LBLoggerTestRunner --format=plain --all
-

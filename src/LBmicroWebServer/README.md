@@ -93,6 +93,5 @@ WebSocket tests are in progress and planned for the next release.
 - Free Pascal Compiler ≥ 3.2.x
 - [Ararat Synapse](https://github.com/ararat/Synapse) library
 - Lazarus IDE (optional, recommended)
-- Socket access to loopback interface (`127.0.0.1`)
 
 

@@ -19,6 +19,16 @@ These utilities form a "Swiss army knife" of functionality across all LBToolkit 
 
 ---
 
+### 🌐 LBmicroWebServer (`src/LBmicroWebServer/`)
+Minimalistic HTTP server with embedded control hooks and dynamic routing support. Designed for fast integration into services and automation pipelines.
+
+- Lightweight HTTP 1.1 engine — zero external dependencies  
+- Customizable request handler via `OnRequest` event  
+- POST/GET routing with structured URI parsing  
+- Ideal for service endpoints, webhooks, remote scripting, or embedded dashboards
+
+---
+
 ### 📝 LBLogger System (`src/LBLogger/`)
 A reactive, asynchronous and customizable logging platform:
 - Queue-based logging with background thread dispatch

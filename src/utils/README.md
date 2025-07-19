@@ -4,6 +4,24 @@ This folder contains reusable system-level units that support multiple projects 
 
 ## 📦 Included Units
 
+### 🔹 uEventsManager.pas
+An event broadcasting system supporting multiple listeners.
+
+
+### 🔹 TLBApplicationBootstrap
+
+`TLBApplicationBootstrap` is a foundational class designed to orchestrate the initialization of Pascal applications.  
+It provides a structured approach for loading configuration settings from `.ini` or `.xml` files, setting up the logging system, and activating the integrated web server component (`TLBmicroWebServer`).
+This class acts as an extensible entry point for any project, allowing developers to derive custom application managers with specialized logic and behaviors.
+
+#### ✨ Key Features
+- 🛠 Configuration loading from INI or XML format  
+- 📄 Automatic logger setup with support for file path resolution and size limits  
+- 🌐 Optional web server activation with document root configuration  
+- 📦 Clean separation of bootstrap logic from application-specific features  
+- 🔁 Designed for inheritance and modular expansion  
+
+
 ### 🔹 uLBBaseThread.pas
 A lifecycle-aware thread class with safe termination, critical section handling, and multi-reference cleanup.
 
@@ -14,8 +32,6 @@ A lifecycle-aware thread class with safe termination, critical section handling,
 > **Note for inheritance:**  
 > Classes deriving from `TLBBaseThread` should call `inherited Destroy` **before** releasing their local resources to ensure safe thread finalization.
 
-### 🔹 uEventsManager.pas
-An event broadcasting system supporting multiple listeners.
 
 ### 🔹 uLBCalendar.pas
 Module for converting between UTC and local time with full support for historical Daylight Saving Time (DST) rules. It includes:

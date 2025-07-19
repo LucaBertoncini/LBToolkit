@@ -59,7 +59,7 @@ The main engine of the framework: bootstraps and orchestrates listeners, thread 
 - TCP listener per port (`TLBmWsListener`)
 - Configurable threading and critical sections
 - Built-in `THTTPRequestManager` to parse and respond to requests
-- Event dispatch for `OnGETRequest`, `OnPOSTRequest`, `OnWSUpgradeRequest`
+- Event dispatch for `OnGETRequest`, `OnPOSTRequest`, `OnWebSocketConnectionEstablished`, `OnElaborateWebSocketMessage`
 - XML-based server configuration
 
 ---

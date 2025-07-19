@@ -5,7 +5,7 @@ unit uLBFileUtils;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, Laz2_DOM;
 
 
 type
@@ -34,6 +34,8 @@ type
 
   function getTemporaryFolder(GlobalFolder: Boolean = false): String;
 
+  function ResolvePath(const aPath: String): String;
+
   function FindFilesInFolder(const Path: String; const Mask: String; Recursive: Boolean; Files: TStringList): Boolean; overload;
   function FindFilesInFolder(Path: String; const Mask: String; aRecursiveLevel: Integer; Files: TStringList): Boolean; overload;
 
@@ -41,13 +43,15 @@ type
 
   function FindSubfolders(Path: String; SubFolders: TStringList): Boolean;
 
+  function OpenXMLFile(const aFilename: String; out aDocument: TXMLDocument): Boolean;
+
   const
     cSearchAllFileMask = String({$IFDEF Linux}'*'{$ELSE}'*.*'{$ENDIF});
 
 implementation
 
 uses
-  fileinfo, ULBLogger;
+  fileinfo, ULBLogger, Laz2_XMLRead;
 
 { TFileInfoRetriever }
 
@@ -154,6 +158,62 @@ begin
   end;
 end;
 
+function OpenXMLFile(const aFilename: String; out aDocument: TXMLDocument): Boolean;
+begin
+  Result := False;
+  aDocument := nil;
+
+  try
+
+    if FileExists(aFilename) then
+    begin
+
+      ReadXMLFile(aDocument, aFilename);
+      Result := aDocument <> nil;
+
+    end
+    else
+      LBLogger.Write(1, 'OpenXMLFile', lmt_Warning, 'File <%s> not found!', [aFilename]);
+
+  except
+    on E: Exception do
+    begin
+      LBLogger.Write(1, 'OpenXMLFile', lmt_Error, E.Message);
+      if aDocument <> nil then
+        FreeAndNil(aDocument);
+    end;
+  end;
+end;
+
+
+function ResolvePath(const aPath: String): String;
+begin
+  Result := '';
+
+  if aPath <> '' then
+  begin
+    {$IFDEF Windows}
+    // C:\..., D:\...
+    if (Length(aPath) >= 3) and (aPath[2] = ':') then
+      Exit(ExpandFileName(aPath));
+
+    // \\server\share\... (UNC)
+    if (Copy(aPath, 1, 2) = '\\') then
+      Exit(ExpandFileName(aPath));
+    {$ELSE}
+    // Unix/Linux/macOS: /...
+    if aPath[1] = '/' then
+      Exit(ExpandFileName(aPath));
+    {$ENDIF}
+
+    // Relativo: ../..., ./..., logs/...
+    if (Pos('..', aPath) > 0) or (Pos('./', aPath) = 1) or (Pos('/', aPath) > 0) then
+      Exit(ExpandFileName(ExtractFilePath(ParamStr(0)) + aPath));
+
+    // Solo nome (es. pippo.log) → cartella temporanea
+    Result := ExpandFileName(getTemporaryFolder(False) + aPath);
+  end;
+end;
 
 function FindFilesInFolder(const Path: String; const Mask: String; Recursive: Boolean; Files: TStringList): Boolean;
 var
@@ -240,4 +300,6 @@ begin
    sysUtils.FindClose(_rec);
 end;
 
+
 end.
+

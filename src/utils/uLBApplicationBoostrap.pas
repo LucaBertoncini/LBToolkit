@@ -5,7 +5,7 @@ unit uLBApplicationBoostrap;
 interface
 
 uses
-  Classes, SysUtils, uLBmicroWebServer, Laz2_DOM;
+  Classes, SysUtils, uLBmicroWebServer, Laz2_DOM, IniFiles;
 
 type
 
@@ -28,20 +28,24 @@ type
         pWebServerConfig = ^TWebServerConfig;
 
     strict private
-      FWebServer : TLBmicroWebServer;
+      procedure setUpLogger(aConfiguration: pLoggerConfig);
+      procedure setUpWebServer(aConfiguration: pWebServerConfig);
 
       const
         cBootstrapApplicationDescription = String('BootApp');
 
     strict protected
-      function LoadConfigurationFromXMLNode(aNode: TDOMNode; out anErrorMsg: String): Boolean; virtual;
-      function LoadConfigurationFromXMLFile(const aFilename: String; out anErrorMsg: String): Boolean;
-      function LoadConfigurationFromINIFile(const aFilename: String; out anErrorMsg: String): Boolean; virtual;
+      FWebServer : TLBmicroWebServer;
 
-      procedure setUpLogger(aConfiguration: pLoggerConfig);
-      procedure setUpWebServer(aConfiguration: pWebServerConfig);
+      function LoadConfigurationFromXMLNode(aNode: TDOMNode; out anErrorMsg: String): Boolean; virtual;
+      function LoadConfigurationFromINIFileInternal(aFile: TIniFile; out anErrorMsg: String): Boolean; virtual;
+      function LoadConfigurationFromXMLFile(const aFilename: String; out anErrorMsg: String): Boolean;
+      function LoadConfigurationFromINIFile(const aFilename: String; out anErrorMsg: String): Boolean;
 
       function getApplicationDescription(): String; virtual;
+
+      {:Used to set Web-Server callbacks before it starts}
+      procedure startingWebServer(); virtual;
 
     public
       destructor Destroy; override;
@@ -82,7 +86,7 @@ type
 implementation
 
 uses
-  ULBLogger, IniFiles, FileUtil, uLBFileUtils;
+  ULBLogger, FileUtil, uLBFileUtils;
 
 { TLBApplicationBoostrap }
 
@@ -133,6 +137,11 @@ begin
     anErrorMsg := 'Node not set!';
 end;
 
+function TLBApplicationBoostrap.LoadConfigurationFromINIFileInternal(aFile: TIniFile; out anErrorMsg: String): Boolean;
+begin
+  Result := True;
+end;
+
 function TLBApplicationBoostrap.LoadConfigurationFromXMLFile(const aFilename: String; out anErrorMsg: String): Boolean;
 var
   _Doc : TXMLDocument = nil;
@@ -165,20 +174,25 @@ begin
       _IniF := TIniFile.Create(aFilename);
 
       // LBLogger
-      _LogCfg.LogFile := _IniF.ReadString(cINI_CFG_SEC_LOGGER, cINI_CFG_KEY_LOGFILE, '');
-      _LogCfg.LogLevel := _IniF.ReadInteger(cINI_CFG_SEC_LOGGER, cINI_CFG_KEY_LOGLEVEL, 1);
-      _LogCfg.MaxFileSize := _IniF.ReadInt64(cINI_CFG_SEC_LOGGER, cINI_CFG_KEY_LOGFILESIZE, cDefaultLogFileSize);
+      if _IniF.SectionExists(cINI_CFG_SEC_LOGGER) then
+      begin
+        _LogCfg.LogFile := _IniF.ReadString(cINI_CFG_SEC_LOGGER, cINI_CFG_KEY_LOGFILE, '');
+        _LogCfg.LogLevel := _IniF.ReadInteger(cINI_CFG_SEC_LOGGER, cINI_CFG_KEY_LOGLEVEL, 1);
+        _LogCfg.MaxFileSize := _IniF.ReadInt64(cINI_CFG_SEC_LOGGER, cINI_CFG_KEY_LOGFILESIZE, cDefaultLogFileSize);
 
-      Self.setUpLogger(@_LogCfg);
-
+        Self.setUpLogger(@_LogCfg);
+      end;
 
       // LBmicroWebServer
-      _WebCfg.Port := _IniF.ReadInteger(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_PORT, 0);
-      _WebCfg.DocumentRoot := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_DOCUMENTROOT, '');
+      if _IniF.SectionExists(cINI_CFG_SEC_WEBSERVER) then
+      begin
+        _WebCfg.Port := _IniF.ReadInteger(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_PORT, 0);
+        _WebCfg.DocumentRoot := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_DOCUMENTROOT, '');
 
-      Self.setUpWebServer(@_WebCfg);
+        Self.setUpWebServer(@_WebCfg);
+      end;
 
-      Result := True;
+      Result := Self.LoadConfigurationFromINIFileInternal(_IniF, anErrorMsg);
 
     except
       on E: Exception do
@@ -239,6 +253,7 @@ begin
         if _DocRoot <> '' then
           FWebServer.DocumentsFolder.DocumentFolder := _DocRoot;
       end;
+      Self.startingWebServer();
       FWebServer.Activate(aConfiguration^.Port, nil);
     end;
   end;
@@ -247,6 +262,11 @@ end;
 function TLBApplicationBoostrap.getApplicationDescription(): String;
 begin
   Result := cBootstrapApplicationDescription;
+end;
+
+procedure TLBApplicationBoostrap.startingWebServer();
+begin
+  //
 end;
 
 destructor TLBApplicationBoostrap.Destroy;

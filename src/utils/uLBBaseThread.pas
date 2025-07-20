@@ -52,7 +52,7 @@ type
       constructor Create(); virtual;
       {
         Attenzione: le classi derivate devono chiamare inherited Destroy PRIMA
-        della distruzione delle risorse locali, perché solo dopo WaitFor
+        della distruzione delle risorse locali, perché solo dopo
         è garantita la terminazione completa del thread.
       }
       destructor Destroy(); override;

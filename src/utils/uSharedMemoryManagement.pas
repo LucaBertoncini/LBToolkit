@@ -5,42 +5,147 @@ unit uSharedMemoryManagement;
 interface
 
 uses
-  Classes, SysUtils, {$IFDEF shmPOSIX}BaseUnix,{$ENDIF} Unix, ipc;
+  Classes, SysUtils, {$IFDEF shmPOSIX}BaseUnix,{$ENDIF}{$IFDEF Windows} Windows{$ELSE} Unix{$ENDIF}, ipc;
 
 type
+  {$IFDEF Windows}
   TSharedMemory = record
-    shmHandle: Integer;
-    mem : Pointer;
-    size : Integer;
-    {$IFDEF shmPOSIX}
-    name : String;
-    {$ELSE}
-    key : TKey;
-    {$ENDIF}
+    shmHandle: THandle;       // Windows handle from CreateFileMapping
+    mem       : Pointer;
+    size      : Integer;
+    name      : String;       // identifier passed to CreateFileMapping
   end;
+  {$ELSE}
+    {$IFDEF shmPOSIX}
+    TSharedMemory = record
+      shmHandle: Integer;       // file descriptor o ID segment
+      mem       : Pointer;
+      size      : Integer;
+      name      : String;       // /dev/shm/<name>
+    end;
+    {$ELSE}
+    TSharedMemory = record      // SysV
+      shmHandle: Integer;       // file descriptor o ID segment
+      mem       : Pointer;
+      size      : Integer;
+      key       : TKey;         // IPC SysV key
+    end;
+    {$ENDIF}
+  {$ENDIF}
+
   pSharedMemory = ^TSharedMemory;
 
 
-{$IFDEF shmPOSIX}
+{$IFDEF Windows}
 function createSharedMemory(aShmInfo: pSharedMemory): boolean;
 function closeSharedMemory(aShmInfo: pSharedMemory): Boolean;
+function AllocateSharedMemory(aName: String; aSize: Integer): pSharedMemory;
 {$ELSE}
-function createSharedMemory(aShmInfo: pSharedMemory): Boolean;
-function closeSharedMemory(aShmInfo: pSharedMemory): Boolean;
-function AllocateSharedMemory(aKey: TKey; aSize: Integer): pSharedMemory;
+  {$IFDEF shmPOSIX}
+  function createSharedMemory(aShmInfo: pSharedMemory): boolean;
+  function closeSharedMemory(aShmInfo: pSharedMemory): Boolean;
+  {$ELSE}
+  function createSharedMemory(aShmInfo: pSharedMemory): Boolean;
+  function closeSharedMemory(aShmInfo: pSharedMemory): Boolean;
+  function AllocateSharedMemory(aKey: TKey; aSize: Integer): pSharedMemory;
+  {$ENDIF}
 {$ENDIF}
-
 
 implementation
 
 uses
-  ULBLogger, LazFileUtils;
+  {$IFDEF Windows}Windows,{$ENDIF}ULBLogger, LazFileUtils;
 
+{$IFDEF Windows}
+function createSharedMemory(aShmInfo: pSharedMemory): Boolean;
+begin
+  Result := False;
+  aShmInfo^.mem := nil;
 
+  if Length(aShmInfo^.name) = 0 then
+  begin
+    LBLogger.Write(1, 'createSharedMemory', lmt_Warning, 'Shared memory name is empty!');
+    Exit;
+  end;
+
+  // Create named file mapping
+  aShmInfo^.shmHandle := Windows.CreateFileMapping(
+    INVALID_HANDLE_VALUE, nil,
+    PAGE_READWRITE, 0,
+    aShmInfo^.size,
+    PChar(aShmInfo^.name)
+  );
+
+  if aShmInfo^.shmHandle = 0 then
+  begin
+    LBLogger.Write(1, 'createSharedMemory', lmt_Warning, 'CreateFileMapping failed.');
+    Exit;
+  end;
+
+  // Map the memory
+  aShmInfo^.mem := Windows.MapViewOfFile(
+    aShmInfo^.shmHandle,
+    FILE_MAP_ALL_ACCESS,
+    0, 0, aShmInfo^.size
+  );
+
+  if aShmInfo^.mem = nil then
+  begin
+    LBLogger.Write(1, 'createSharedMemory', lmt_Warning, 'MapViewOfFile failed.');
+    Windows.CloseHandle(aShmInfo^.shmHandle);
+    aShmInfo^.shmHandle := 0;
+    Exit;
+  end;
+
+  Result := True;
+end;
+
+function AllocateSharedMemory(aName: String; aSize: Integer): pSharedMemory;
+var
+  _shm: pSharedMemory;
+begin
+  Result := nil;
+
+  if aName <> '' then
+  begin
+    New(_shm);
+    _shm^.name := aName;
+    _shm^.size := aSize;
+
+    if createSharedMemory(_shm) then
+      Result := _shm
+    else
+    begin
+      Dispose(_shm);
+      Result := nil;
+    end;
+  end
+  else
+    LBLogger.Write(1, 'AllocateSharedMemory', lmt_Warning, 'Shared memory name cannot be empty');
+end;
+
+function closeSharedMemory(aShmInfo: pSharedMemory): Boolean;
+begin
+  Result := False;
+
+  if aShmInfo^.mem <> nil then
+  begin
+    Windows.UnmapViewOfFile(aShmInfo^.mem);
+    aShmInfo^.mem := nil;
+  end;
+
+  if aShmInfo^.shmHandle <> 0 then
+  begin
+    Windows.CloseHandle(aShmInfo^.shmHandle);
+    aShmInfo^.shmHandle := 0;
+  end;
+
+  Result := True;
+end;
+{$ELSE}
+
+{$IFDEF shmPOSIX}
 const
-  SHM_MODE = &666; // S_IRUSR or S_IWUSR; // Permessi di lettura e scrittura
-
-  {$IFDEF shmPOSIX}
   shmFolder = String('/dev/shm/');
 
   rtlib = 'rt';
@@ -49,6 +154,9 @@ const
   function shm_open(name: PChar; oflag: LongInt; mode: mode_t): cint; cdecl; external rtlib name 'shm_open';
   function shm_unlink(name: PChar): cint; cdecl; external rtlib name 'shm_unlink';
   function ftruncate(fd: cint; length: off_t): cint; cdecl; external clib name 'ftruncate';
+{$ELSE}
+const
+  SHM_MODE = &666; // S_IRUSR or S_IWUSR; // Permessi di lettura e scrittura
 {$ENDIF}
 
 
@@ -167,7 +275,7 @@ begin
 
   if aShmInfo^.shmHandle <> -1 then
   begin
-    // Rimozione della memoria condivisa (facoltativo, dipende dai requisiti)
+    // Rimozione della memoria condivisa
     if shmctl(aShmInfo^.shmHandle, IPC_RMID, nil) = -1 then
       LBLogger.Write(1, 'closeSharedMemory', lmt_Warning, 'Error removing shared memory!');
     aShmInfo^.shmHandle := -1;
@@ -193,6 +301,7 @@ begin
   end;
 end;
 
+{$ENDIF}
 {$ENDIF}
 
 end.

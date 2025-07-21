@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="LBWebPyBridgeTests.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <CursorPos Y="7"/>
+        <UsageCount Value="51"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="278"/>
+        <CursorPos X="63" Y="287"/>
+        <UsageCount Value="51"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uLBWebPyBridgeTestRunner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="11"/>
+        <TopLine Value="18"/>
+        <CursorPos X="4" Y="42"/>
+        <UsageCount Value="51"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../pyScripts/worker.py"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="10"/>
+        <CursorPos X="19" Y="35"/>
+        <UsageCount Value="33"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Python"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../pyScripts/tests/echo_test.py"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="6"/>
+        <CursorPos X="24" Y="3"/>
+        <UsageCount Value="28"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Python"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../pyScripts/LBBridge/bridge_sysv.py"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="44"/>
+        <CursorPos X="31" Y="65"/>
+        <UsageCount Value="28"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Python"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../pyScripts/tests/sum_test.py"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="7"/>
+        <CursorPos X="25" Y="4"/>
+        <UsageCount Value="24"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Python"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../pyScripts/tests/AppHello/main.py"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="2"/>
+        <CursorPos X="74" Y="2"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+        <DefaultSyntaxHighlighter Value="Python"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ulbwebpybridgetestrunner.pas"/>
+        <UnitName Value="uLBWebPyBridgeTestRunner"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="3" Y="36"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-fpcunit/src/consoletestrunner.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="56"/>
+        <CursorPos Y="80"/>
+        <UsageCount Value="6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="70"/>
+        <CursorPos X="33" Y="85"/>
+        <UsageCount Value="26"/>
+        <Bookmarks Count="1">
+          <Item0 X="3" Y="214" Left="1" Top="182" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../uLBApplicationBoostrap.pas"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="14"/>
+        <CursorPos X="3" Y="14"/>
+        <UsageCount Value="25"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../uPyBridge.pas"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="154"/>
+        <CursorPos X="22" Y="174"/>
+        <UsageCount Value="26"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/inc/systemh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="781"/>
+        <CursorPos X="11" Y="795"/>
+        <UsageCount Value="6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/root/.lazarus/onlinepackagemanager/packages/synapse40.1/httpsend.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="139"/>
+        <UsageCount Value="13"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/sysutils/filutilh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="186"/>
+        <CursorPos X="10" Y="200"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../uLBBaseThread.pas"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="212"/>
+        <CursorPos Y="229"/>
+        <UsageCount Value="17"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="644"/>
+        <CursorPos X="36" Y="754"/>
+        <UsageCount Value="19"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/sysutils/syshelph.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="88"/>
+        <CursorPos X="16" Y="101"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/sysutils/syshelp.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="487"/>
+        <CursorPos X="3" Y="489"/>
+        <UsageCount Value="10"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="140" Column="3" TopLine="125"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="50" Column="29" TopLine="32"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="63" Column="28" TopLine="52"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="21" Column="40" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="31" Column="22" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="180" Column="129" TopLine="156"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="50" Column="30" TopLine="37"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="192" Column="16" TopLine="172"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="171" Column="31" TopLine="171"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="50" Column="18" TopLine="38"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="188" Column="3" TopLine="182"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="50" Column="16" TopLine="37"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPyBridge.pas"/>
+        <Caret Line="63" Column="24" TopLine="53"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="88" Column="23" TopLine="4"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="26" Column="30" TopLine="11"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="88" Column="23" TopLine="86"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPyBridge.pas"/>
+        <Caret Line="103" Column="19" TopLine="91"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="32" Column="28" TopLine="13"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="223" Column="70" TopLine="202"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="225" TopLine="209"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="33" Column="21" TopLine="13"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPyBridge.pas"/>
+        <Caret Line="41" Column="35" TopLine="33"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPyBridge.pas"/>
+        <Caret Line="165" Column="81" TopLine="157"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPyBridge.pas"/>
+        <Caret Line="109" Column="3" TopLine="96"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="52" Column="22" TopLine="38"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="34" Column="25" TopLine="25"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPyBridge.pas"/>
+        <Caret Line="70" Column="26" TopLine="53"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPyBridge.pas"/>
+        <Caret Line="21" Column="40" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPyBridge.pas"/>
+        <Caret Line="174" Column="22" TopLine="167"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPyBridge.pas"/>
+        <Caret Line="178" Column="52" TopLine="167"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

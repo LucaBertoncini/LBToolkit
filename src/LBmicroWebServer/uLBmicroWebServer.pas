@@ -5,9 +5,9 @@ unit uLBmicroWebServer;
 interface
 
 uses
-  Classes, SysUtils, uLBUtils, blcksock, synsock, contnrs, Laz2_DOM,
+  Classes, SysUtils, blcksock, synsock, contnrs, Laz2_DOM,
   uWebSocketManagement, uLBBaseThread, uTimedoutCriticalSection, uLBTimers,
-  fpjson, jsonparser, uLBmWsFileManager, uLBmWsDocumentsFolder;
+  fpjson, jsonparser, uLBmWsFileManager, uLBmWsDocumentsFolder, uLBSSLConfig;
 
 type
 

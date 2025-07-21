@@ -53,10 +53,3 @@ Modular bridge between Pascal and Python, enabling script-driven microservices w
 
 Ideal for extending Pascal-based applications with Python logic — from AI modules to complex computation — without recompiling the server or introducing overhead.
 
----
-
-### ✅ Architecture Highlights
-
-- **Incremental extension of features**
-- **Granular control over message handling**
-- **Extreme maintainability and runtime configurability**

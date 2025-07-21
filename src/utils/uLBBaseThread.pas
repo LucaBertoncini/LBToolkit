@@ -225,11 +225,10 @@ begin
   begin
 
     try
+      FreeOnTerminate := False;
 
       if Assigned(FOnAsyncTerminate) then
         FOnAsyncTerminate(Self);
-
-      FreeOnTerminate := False;
 
       if (not Self.Suspended) and (not Self.Terminated) then
       begin

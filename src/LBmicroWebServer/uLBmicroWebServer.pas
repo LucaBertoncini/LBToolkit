@@ -21,7 +21,7 @@ type
   ): Boolean of object;
 
   TOnPOSTRequest = function(
-    const URI: String;
+    const Resource: String;
     const Headers: TStringList;
     const Payload: AnsiString;
     var ResponseHeaders: TStringList;
@@ -742,7 +742,7 @@ begin
 
   if Assigned(gv_WebServer.OnPOSTRequest) then
   begin
-    if gv_WebServer.OnPOSTRequest(FURI, FInputHeaders, FInputData, FOutputHeaders, FOutputData, Result) then
+    if gv_WebServer.OnPOSTRequest(FURI_Resource, FInputHeaders, FInputData, FOutputHeaders, FOutputData, Result) then
     begin
       NextState := rms_SendHTTPAnswer;
 
@@ -751,7 +751,7 @@ begin
       begin
         // LBLogger.Write(1, 'THTTPRequestManager.ProcessPOSTRequest', lmt_Debug, '%s', [FInputHeaders.Text]);
         FInputHeaders.NameValueSeparator := ':';
-        KeepConnection := LowerCase(Trim(FInputHeaders.Values[cHTTPHeader_Connection])) <> cHTTPValue_ConnectionClose;
+        KeepConnection := False; // LowerCase(Trim(FInputHeaders.Values[cHTTPHeader_Connection])) <> cHTTPValue_ConnectionClose;
       end;
     end;
   end;

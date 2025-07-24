@@ -37,7 +37,8 @@ type
 implementation
 
 uses
-  Process, FileUtil, LazFileUtils, uLBWebPyBridgeTestRunner, httpsend, fpjson, jsonparser, uLBWebPyBridgeApplication;
+  Process, FileUtil, LazFileUtils, uLBWebPyBridgeTestRunner, httpsend, fpjson, jsonparser,
+  uLBWebPyBridgeApplication, uPyBridgeChainModule;
 
 procedure TLBWebPyBridgeTests.CreateFakeWorkerPy;
 var

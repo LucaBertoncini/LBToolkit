@@ -14,7 +14,7 @@
       <Unit>
         <Filename Value="uLBCalendarTests.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="3"/>
         <CursorPos X="5" Y="7"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
@@ -22,7 +22,6 @@
       <Unit>
         <Filename Value="../../uLBCalendar.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
         <TopLine Value="70"/>
         <CursorPos X="16" Y="92"/>
@@ -57,17 +56,30 @@
         <CursorPos Y="26"/>
         <UsageCount Value="10"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="122"/>
+        <CursorPos Y="132"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
     </Units>
     <OtherDefines Count="1">
       <Define0 Value="Lazarus"/>
     </OtherDefines>
-    <JumpHistory HistoryIndex="1">
+    <JumpHistory HistoryIndex="2">
       <Position>
         <Filename Value="LBCalendar_TestUnit.lpr"/>
       </Position>
       <Position>
         <Filename Value="LBCalendar_TestUnit.lpr"/>
         <Caret Line="6" Column="12"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="56" Column="43" TopLine="38"/>
       </Position>
     </JumpHistory>
     <RunParams>

@@ -6,7 +6,7 @@ unit ULBLogger;
 interface
 
 uses
-  Classes, SysUtils, contnrs, uTimedoutCriticalSection, uLBFileUtils, eventlog;
+  Classes, SysUtils, contnrs, uTimedoutCriticalSection, uLBFileUtils;
 
 type
   TLBLoggerMessageType = (lmt_Unknown  = 0,

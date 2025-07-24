@@ -67,6 +67,10 @@
         <Filename Value="../pyScripts/tests/AppHello/main.py"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../uPyBridgeChainModule.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

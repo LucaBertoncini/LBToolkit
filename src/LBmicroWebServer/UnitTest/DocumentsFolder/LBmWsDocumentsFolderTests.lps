@@ -7,8 +7,7 @@
       <Unit>
         <Filename Value="LBmWsDocumentsFolderTests.lpr"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <CursorPos X="72" Y="6"/>
+        <CursorPos Y="11"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit>
@@ -30,8 +29,21 @@
         <CursorPos X="-1" Y="-1"/>
         <UsageCount Value="20"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../../LBLogger/ULBLogger.pas"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <CursorPos Y="7"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
     </Units>
-    <JumpHistory HistoryIndex="-1"/>
+    <JumpHistory>
+      <Position>
+        <Filename Value="LBmWsDocumentsFolderTests.lpr"/>
+        <Caret Line="11" Column="69"/>
+      </Position>
+    </JumpHistory>
     <RunParams>
       <FormatVersion Value="2"/>
       <Modes ActiveMode=""/>

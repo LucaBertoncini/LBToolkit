@@ -32,13 +32,12 @@
         <Filename Value="../../../LBLogger/ULBLogger.pas"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="289"/>
-        <CursorPos X="18" Y="303"/>
+        <CursorPos X="10" Y="6"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="1">
+    <JumpHistory HistoryIndex="2">
       <Position>
         <Filename Value="LBmWsFileManagerTests.lpr"/>
         <Caret Line="6" Column="11"/>
@@ -46,6 +45,10 @@
       <Position>
         <Filename Value="../../uLBmWsFileManager.pas"/>
         <Caret Line="8" Column="22"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../LBLogger/ULBLogger.pas"/>
+        <Caret Line="303" Column="18" TopLine="289"/>
       </Position>
     </JumpHistory>
     <RunParams>

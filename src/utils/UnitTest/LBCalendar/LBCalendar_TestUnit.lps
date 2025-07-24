@@ -7,7 +7,6 @@
       <Unit>
         <Filename Value="LBCalendar_TestUnit.lpr"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <CursorPos X="12" Y="6"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
@@ -15,8 +14,18 @@
       <Unit>
         <Filename Value="uLBCalendarTests.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="2"/>
         <CursorPos X="5" Y="7"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../uLBCalendar.pas"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="70"/>
+        <CursorPos X="16" Y="92"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit>
@@ -47,15 +56,6 @@
         <TopLine Value="4"/>
         <CursorPos Y="26"/>
         <UsageCount Value="10"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../uLBCalendar.pas"/>
-        <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="-1"/>
-        <TopLine Value="-1"/>
-        <CursorPos X="-1" Y="-1"/>
-        <UsageCount Value="20"/>
       </Unit>
     </Units>
     <OtherDefines Count="1">

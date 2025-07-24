@@ -16,15 +16,15 @@
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="278"/>
-        <CursorPos X="63" Y="287"/>
+        <TopLine Value="179"/>
+        <CursorPos X="35" Y="200"/>
         <UsageCount Value="51"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uLBWebPyBridgeTestRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="11"/>
+        <EditorIndex Value="9"/>
         <TopLine Value="18"/>
         <CursorPos X="4" Y="42"/>
         <UsageCount Value="51"/>
@@ -33,7 +33,7 @@
       <Unit>
         <Filename Value="../pyScripts/worker.py"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="9"/>
+        <EditorIndex Value="8"/>
         <TopLine Value="10"/>
         <CursorPos X="19" Y="35"/>
         <UsageCount Value="33"/>
@@ -43,7 +43,7 @@
       <Unit>
         <Filename Value="../pyScripts/tests/echo_test.py"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="5"/>
         <CursorPos X="24" Y="3"/>
         <UsageCount Value="28"/>
         <Loaded Value="True"/>
@@ -52,7 +52,7 @@
       <Unit>
         <Filename Value="../pyScripts/LBBridge/bridge_sysv.py"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="7"/>
         <TopLine Value="44"/>
         <CursorPos X="31" Y="65"/>
         <UsageCount Value="28"/>
@@ -62,7 +62,7 @@
       <Unit>
         <Filename Value="../pyScripts/tests/sum_test.py"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="7"/>
+        <EditorIndex Value="6"/>
         <CursorPos X="25" Y="4"/>
         <UsageCount Value="24"/>
         <Loaded Value="True"/>
@@ -72,7 +72,7 @@
         <Filename Value="../pyScripts/tests/AppHello/main.py"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="2"/>
-        <CursorPos X="74" Y="2"/>
+        <CursorPos Y="2"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
         <DefaultSyntaxHighlighter Value="Python"/>
@@ -104,15 +104,14 @@
       </Unit>
       <Unit>
         <Filename Value="../../uLBApplicationBoostrap.pas"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="14"/>
         <CursorPos X="3" Y="14"/>
         <UsageCount Value="25"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../uPyBridge.pas"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="4"/>
         <TopLine Value="154"/>
         <CursorPos X="22" Y="174"/>
         <UsageCount Value="26"/>
@@ -140,11 +139,10 @@
       </Unit>
       <Unit>
         <Filename Value="../../uLBBaseThread.pas"/>
-        <EditorIndex Value="10"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="212"/>
         <CursorPos Y="229"/>
         <UsageCount Value="17"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>

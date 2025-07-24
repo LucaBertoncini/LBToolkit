@@ -89,7 +89,7 @@ var
 implementation
 
 uses
-  strutils, ULBLogger, uTimedoutCriticalSection, {$IFDEF WINDOWS}Windows{$ELSE}Unix{$ENDIF};
+  LazSysUtils, strutils, ULBLogger, uTimedoutCriticalSection, {$IFDEF WINDOWS}Windows{$ELSE}Unix{$ENDIF};
 
 {$IFDEF Linux}
 type

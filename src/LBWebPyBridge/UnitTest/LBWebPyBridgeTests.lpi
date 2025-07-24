@@ -76,7 +76,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="..;../..;../../LBLogger;../../LBmicroWebServer"/>
+      <OtherUnitFiles Value="..;../../utils;../../LBLogger;../../LBmicroWebServer"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Other>

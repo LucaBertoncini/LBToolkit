@@ -17,8 +17,8 @@
         <UnitName Value="uHTTPRequestManagerTests"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="268"/>
-        <CursorPos X="42" Y="279"/>
+        <TopLine Value="252"/>
+        <CursorPos X="34" Y="279"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit>
@@ -27,7 +27,16 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="3"/>
         <TopLine Value="263"/>
-        <CursorPos X="49" Y="229"/>
+        <CursorPos X="11" Y="229"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="utestrunner.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uTestRunner"/>
+        <EditorIndex Value="1"/>
+        <CursorPos X="81" Y="8"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit>
@@ -40,15 +49,14 @@
       </Unit>
       <Unit>
         <Filename Value="../../../uTimedoutCriticalSection.pas"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="20"/>
         <CursorPos X="13" Y="31"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../uWebSocketManagement.pas"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="4"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
@@ -67,15 +75,6 @@
         <UsageCount Value="10"/>
       </Unit>
       <Unit>
-        <Filename Value="utestrunner.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="uTestRunner"/>
-        <EditorIndex Value="1"/>
-        <CursorPos X="81" Y="8"/>
-        <UsageCount Value="20"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-json/src/fpjson.pp"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="360"/>
@@ -84,13 +83,13 @@
       </Unit>
       <Unit>
         <Filename Value="../../uHTTPConsts.pas"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="5"/>
         <CursorPos X="29" Y="20"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="29">
+    <JumpHistory HistoryIndex="28">
       <Position>
         <Filename Value="../../uLBmicroWebServer.pas"/>
         <Caret Line="708" Column="38" TopLine="692"/>
@@ -130,10 +129,6 @@
       <Position>
         <Filename Value="uhttprequestmanagertests.pas"/>
         <Caret Line="29" Column="16" TopLine="26"/>
-      </Position>
-      <Position>
-        <Filename Value="uhttprequestmanagertests.pas"/>
-        <Caret Line="142" Column="24" TopLine="242"/>
       </Position>
       <Position>
         <Filename Value="uhttprequestmanagertests.pas"/>

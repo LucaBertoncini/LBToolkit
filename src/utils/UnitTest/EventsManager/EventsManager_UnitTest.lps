@@ -21,14 +21,6 @@
         <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../../LBLogger/ULBLogger.pas"/>
-        <EditorIndex Value="4"/>
-        <TopLine Value="295"/>
-        <CursorPos Y="304"/>
-        <UsageCount Value="10"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="uEventsManagerTest.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="2"/>
@@ -41,10 +33,16 @@
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="21"/>
         <CursorPos X="23" Y="37"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBLogger/ULBLogger.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="295"/>
+        <CursorPos Y="304"/>
+        <UsageCount Value="10"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/classes/classesh.inc"/>
@@ -54,7 +52,7 @@
         <UsageCount Value="10"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="29">
+    <JumpHistory HistoryIndex="28">
       <Position>
         <Filename Value="../../uEventsManager.pas"/>
         <Caret Line="113" Column="25" TopLine="98"/>
@@ -122,10 +120,6 @@
       <Position>
         <Filename Value="uEventsManagerLifecycleTest.pas"/>
         <Caret Line="29" Column="24" TopLine="20"/>
-      </Position>
-      <Position>
-        <Filename Value="uEventsManagerLifecycleTest.pas"/>
-        <Caret Line="55" TopLine="116"/>
       </Position>
       <Position>
         <Filename Value="uEventsManagerLifecycleTest.pas"/>

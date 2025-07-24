@@ -1,6 +1,7 @@
 import sys
 import runpy
 import os
+import gc
 from LBBridge import LBBridge
 
 def main():
@@ -22,29 +23,30 @@ def main():
                 request = bridge.read_request()
                 script_rel = request.filename.strip()
 
-                # Calcolo path assoluto rispetto al file worker.py
                 base_dir = os.path.dirname(__file__)
                 script_path = os.path.join(base_dir, script_rel)
 
                 if not os.path.isfile(script_path):
                     raise FileNotFoundError(f"Script file non trovato: {script_path}")
 
-                # Aggiorna current directory e sys.path per gli import locali
-                os.chdir(os.path.dirname(script_path))
-                if os.path.dirname(script_path) not in sys.path:
-                  sys.path.insert(0, os.path.dirname(script_path))
+                script_dir = os.path.dirname(script_path)
+                os.chdir(script_dir)
+                if script_dir not in sys.path:
+                    sys.path.insert(0, script_dir)
 
                 runpy.run_path(script_path, init_globals={
                     "bridge": bridge,
-                    "request": request})
+                    "request": request
+                })
 
             except Exception as e:
-                print(f"[Worker] Exception: {e}")
                 bridge.write_error(f"Execution failed: {str(e)}")
+
+            finally:
+                gc.collect()
 
     except Exception as outer:
         print(f"[Worker] Startup error: {outer}")
 
 if __name__ == '__main__':
     main()
-

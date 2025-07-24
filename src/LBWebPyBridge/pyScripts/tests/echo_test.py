@@ -1,4 +1,8 @@
 # echo_test.py
-params = bridge.get_params_as_json(request)
-bridge.write_json(True, {"echo":params})
+def main(bridge, request):
+    params = request.get_json()
+    bridge.write_json(True, {"echo":params})
+
+# ⚠️ Needed for LBWebPyBridge    
+main(bridge, request)
 

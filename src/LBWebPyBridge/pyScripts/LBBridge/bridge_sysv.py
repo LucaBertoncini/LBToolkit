@@ -9,6 +9,13 @@ class Request:
         self.filename = filename
         self.params_raw = params_raw
 
+    def get_json(self):
+        try:
+            return json.loads(self.params_raw.decode('utf-8'))
+        except Exception:
+            return {}
+
+
 class LBBridge:
     def __init__(self, shm, shm_size):
         self.shm = shm
@@ -32,11 +39,6 @@ class LBBridge:
         filename = filename_bytes.decode('utf-8', errors='replace').strip()
         return Request(filename, params_raw)
 
-    def get_params_as_json(self, request):
-        try:
-            return json.loads(request.params_raw.decode('utf-8'))
-        except Exception:
-            return {}
 
     def write_response(self, success, data: bytes):
         status = STATUS_SUCCESS if success else STATUS_FAILURE

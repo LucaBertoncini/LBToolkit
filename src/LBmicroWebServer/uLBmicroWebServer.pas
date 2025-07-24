@@ -130,6 +130,47 @@ type
 
   end;
 
+{
+  TRequestChainProcessor is an abstract class designed to build
+  a chain of modules that process HTTP requests (GET or POST).
+  Each module can:
+    - fully handle the request and stop the chain
+    - modify the request parameters and pass it to the next module
+
+  The method ProcessGETRequest or ProcessPOSTRequest must return True
+  if the request was fully handled, or False if it should be passed
+  to the next module in the chain (FNext).
+
+  This approach allows for building flexible processing pipelines,
+  where each component can transform or filter the request before the response.
+}
+
+  TRequestChainProcessor = class(TObject)
+    strict protected
+      FNext: TRequestChainProcessor;
+
+    public
+      function ProcessGETRequest(
+        const Resource: String;
+        const Headers: TStringList;
+        const URIParams: TStringList;
+        var ResponseHeaders: TStringList;
+        var ResponseData: TMemoryStream;
+        out ResponseCode: Integer
+      ): Boolean; virtual; abstract;
+
+      function ProcessPOSTRequest(
+        const Resource: String;
+        const Headers: TStringList;
+        const Payload: AnsiString;
+        var ResponseHeaders: TStringList;
+        var ResponseData: TMemoryStream;
+        out ResponseCode: Integer
+      ): Boolean; virtual; abstract;
+
+      property NextStep: TRequestChainProcessor write FNext;
+  end;
+
 
   TNewConnectionRequestEvent = function (aSocket : TSocket): Boolean of Object;
 
@@ -428,7 +469,6 @@ var
   _HeaderLine: String;
   _ContentLength: Integer = 0;
   _PayloadRead: Integer;
-//  _HeaderName, _HeaderValue: String;
 
 const
   cLongTimeout    = 60000;
@@ -537,8 +577,6 @@ begin
         FSendingFile.addResponseHeaders(FOutputHeaders)
       else if FOutputData <> nil then
         FOutputHeaders.Add('Content-length: ' + IntTostr(FOutputData.Size));
-
-      // LBLogger.Write(1, 'THTTPRequestManager.SendHeaders', lmt_Debug, 'Headers to send: <%s>', [FOutputHeaders.Text]);
 
       FOutputHeaders.Add('');
 
@@ -745,14 +783,7 @@ begin
     if gv_WebServer.OnPOSTRequest(FURI_Resource, FInputHeaders, FInputData, FOutputHeaders, FOutputData, Result) then
     begin
       NextState := rms_SendHTTPAnswer;
-
-      // Mantieni la connessione se il client non chiede chiusura
-      if LeftStr(FProtocol, 7) = 'HTTP/1.' then
-      begin
-        // LBLogger.Write(1, 'THTTPRequestManager.ProcessPOSTRequest', lmt_Debug, '%s', [FInputHeaders.Text]);
-        FInputHeaders.NameValueSeparator := ':';
-        KeepConnection := False; // LowerCase(Trim(FInputHeaders.Values[cHTTPHeader_Connection])) <> cHTTPValue_ConnectionClose;
-      end;
+      KeepConnection := False;
     end;
   end;
 end;
@@ -1355,3 +1386,4 @@ finalization
     FreeAndNil(gv_WebServer);
 
 end.
+

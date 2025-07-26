@@ -138,8 +138,6 @@ type
       procedure WaitFor(mSecs: Integer);
       function OpenLogFile(): TFileStream;
       function WriteMessages: Boolean;
-      function LockFile(var aFileHandle: THandle): Boolean;
-      procedure UnlockFile(var aFileHandle: THandle);
 
     protected
       procedure Execute; override;
@@ -274,7 +272,6 @@ const
   // Costanti di default
   cDefaultDateTimeFormat = 'dd/mm/yy hh.nn.ss.zzz';
   cDefaultSourceMaxLength = 42;
-//  cDefaultLogMessage = '%s - #%s# - %06d - %06d - %-42s - %s';
   cDefaultLogMessage = '%s | %s | %06u | %06u | %-42s | %s';
 
 var
@@ -287,10 +284,7 @@ var
 
 implementation
 uses
-  uThreadsUtils, LazFileUtils, StrUtils, types;
-
-const
-  cLockFileNameSuffix = String('.lck');
+  uThreadsUtils, LazFileUtils, StrUtils;
 
 procedure PrintSplashInfo(const anExeName: string; anApplicationDescription: string);
 var
@@ -944,7 +938,7 @@ var
   _AMessage : TLBLoggerMessage;
   _sMessage : AnsiString;
   _List : TList;
-  i : Integer;
+
 begin
   Result := False;
   Self.ChangeLogFileName();
@@ -974,61 +968,17 @@ begin
           Break;
       until False;
       Result := True;
-    end
-    else begin
-      // Impossibile scrivere nel file
-      // Rimozione dei messaggi
-      try
-        _List := FMessageList.LockList;
-        if (_List <> nil) then
-        begin
-          for i := 0 to _List.Count - 1 do
-          begin
-            _AMessage := TLBLoggerMessage(_List.Extract(_List.Items[0]));
-            writeln(_AMessage.Message);
-            _AMessage.Free;
-          end;
-        end;
-      finally
-        FMessageList.UnlockList;
-      end;
-    end;
+    end;  // Impossibile aprire il file, impegnato da altro processo?
   except
-    on E: Exception do
-      writeln('TLBLoggerWriter.WriteMessages  -  Error: ', E.Message);
   end;
+
   if _txtFile <> nil then
     _txtFile.Free;
 end;
 
-function TLBLoggerWriter.LockFile(var aFileHandle: THandle): Boolean;
-var
-  _tmpHandle : THandle;
-begin
-  if aFileHandle = 0 then
-  begin
-    if not FileExists(FFilePath + FFileName + cLockFileNameSuffix) then
-    begin
-      _tmpHandle := FileCreate(FFilePath + FFileName + cLockFileNameSuffix);
-      FileClose(_tmpHandle);
-    end;
-    aFileHandle := FileOpen(FFilePath + FFileName + cLockFileNameSuffix, fmOpenWrite or fmShareExclusive);
-  end;
-  Result := aFileHandle <> 0;
-end;
-
-procedure TLBLoggerWriter.UnlockFile(var aFileHandle: THandle);
-begin
-  if aFileHandle <> 0 then
-  begin
-    FileClose(aFileHandle);
-    aFileHandle := 0;
-  end;
-end;
 
 procedure TLBLoggerWriter.Execute;
 var
-  _LockFileHandle : THandle = 0;
   _List : TList = nil;
   _nMsgs : Integer = 0;
   _InternalState : TLBLoggerWriterState;
@@ -1042,7 +992,6 @@ begin
       case _InternalState of
         lw_WaitFileName:
           begin
-            // Self.CloseLogFile();
             if (FFileName <> '') and
                (FFilePath <> '') then
             begin
@@ -1053,9 +1002,9 @@ begin
             else
               RTLeventWaitFor(FCanStartEvent);
           end;
+
         lw_VerifyMessages:
             begin
-              Self.UnlockFile(_LockFileHandle);
               _nMsgs := 0;
               try
                 _List := FMessageList.LockList;
@@ -1069,28 +1018,20 @@ begin
               else
                 RTLEventWaitFor(FNewMessageEvent);
             end;
+
         lw_WriteMessages:
            begin
-             if Self.LockFile(_LockFileHandle) then
-             begin
-               Self.UnlockFile(_LockFileHandle);
-               Self.WriteMessages();
+             if Self.WriteMessages() then
                _InternalState := lw_VerifyMessages
-             end
              else
                Self.WaitFor(cWaitTime);
            end;
       end;
     except
-      on E: Exception do
-        writeln('Error: ', E.Message);
     end;
   end;   // while not terminated
-  if Self.LockFile(_LockFileHandle) then
-  begin
-    Self.WriteMessages();
-    Self.UnlockFile(_LockFileHandle);
-  end;
+
+  Self.WriteMessages();
 end;
 
 constructor TLBLoggerWriter.Create(const aThreadName: String);

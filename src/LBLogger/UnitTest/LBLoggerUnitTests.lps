@@ -9,16 +9,16 @@
         <IsPartOfProject Value="True"/>
         <TopLine Value="3"/>
         <CursorPos X="12" Y="6"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uLBLoggerTest.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="199"/>
-        <CursorPos X="119" Y="210"/>
-        <UsageCount Value="20"/>
+        <TopLine Value="166"/>
+        <CursorPos X="128" Y="143"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -26,20 +26,23 @@
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="1124"/>
-        <CursorPos X="64" Y="1140"/>
-        <UsageCount Value="20"/>
+        <TopLine Value="97"/>
+        <CursorPos X="3" Y="107"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../utils/uTimedoutCriticalSection.pas"/>
+        <EditorIndex Value="3"/>
+        <CursorPos X="20" Y="8"/>
+        <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="3">
+    <JumpHistory HistoryIndex="28">
       <Position>
         <Filename Value="LBLoggerUnitTests.lpr"/>
         <Caret Line="6" Column="12" TopLine="3"/>
-      </Position>
-      <Position>
-        <Filename Value="uLBLoggerTest.pas"/>
-        <Caret TopLine="115"/>
       </Position>
       <Position>
         <Filename Value="../ULBLogger.pas"/>
@@ -48,6 +51,110 @@
       <Position>
         <Filename Value="../ULBLogger.pas"/>
         <Caret Line="1186" Column="65" TopLine="1171"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="1140" Column="64"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uTimedoutCriticalSection.pas"/>
+        <Caret Line="58" Column="86" TopLine="52"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uTimedoutCriticalSection.pas"/>
+        <Caret Line="26" Column="18" TopLine="13"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="5" Column="42"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="988" Column="20" TopLine="971"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="998" Column="14" TopLine="978"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="1086" Column="16" TopLine="1066"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="997" Column="3" TopLine="982"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="273" Column="45" TopLine="256"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="940" Column="39" TopLine="937"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="139" Column="18" TopLine="128"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="995" Column="7" TopLine="930"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="145" Column="20" TopLine="125"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="1085" Column="39" TopLine="1074"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uTimedoutCriticalSection.pas"/>
+        <Caret Line="82" Column="42" TopLine="57"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="1075" Column="32" TopLine="1065"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="292" Column="3" TopLine="272"/>
+      </Position>
+      <Position>
+        <Filename Value="LBLoggerUnitTests.lpr"/>
+        <Caret Line="6" Column="12" TopLine="3"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBLoggerTest.pas"/>
+        <Caret Line="29" Column="29" TopLine="17"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="140" Column="24" TopLine="132"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="943" Column="3" TopLine="933"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="970" TopLine="928"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="143" Column="19" TopLine="134"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="1034" Column="3" TopLine="565"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="212" Column="7" TopLine="199"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="119" Column="3" TopLine="106"/>
       </Position>
     </JumpHistory>
     <RunParams>

@@ -19,13 +19,23 @@ type
     chkCreateLabelLogger: TCheckBox;
     edLog: TEdit;
     lblLog: TLabel;
+    lblLog1: TLabel;
+    lblLog2: TLabel;
+    lblLog3: TLabel;
+    ListBox1: TListBox;
     memoLog: TMemo;
+    RadioButton1: TRadioButton;
+    RadioButton2: TRadioButton;
+    RadioButton3: TRadioButton;
     Shape1: TShape;
+    Shape2: TShape;
     procedure btnCreateLBLoggerClick(Sender: TObject);
     procedure btnInsertLogClick(Sender: TObject);
     procedure chkCreateLabelLoggerChange(Sender: TObject);
     procedure chkCreateMemoLoggerChange(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure ListBox1Click(Sender: TObject);
+    procedure RadioButton1Click(Sender: TObject);
   private
     FMemoLogger : TMemoLogger;
     FLabelLogger : TLabelLogger;
@@ -117,6 +127,54 @@ end;
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
   Self.DestroyLoggers();
+end;
+
+procedure TfrmMain.ListBox1Click(Sender: TObject);
+var
+  _Idx : Integer;
+  _Fields : TLBLoggerFieldArray;
+
+begin
+  if LBLogger <> nil then
+  begin
+    _Idx := ListBox1.ItemIndex;
+    if _Idx > -1 then
+    begin
+      LBLogger.MessageFormat := ListBox1.Items[_Idx];
+      case _Idx of
+        0, 1: begin
+                SetLength(_Fields, 6);
+                _Fields[0] := lfDateTime;
+                _Fields[1] := lfMessagetype;
+                _Fields[2] := lfPID;
+                _Fields[3] := lfThread;
+                _Fields[4] := lfSource;
+                _Fields[5] := lfMessage;
+              end;
+        2 :   begin
+                SetLength(_Fields, 5);
+                _Fields[0] := lfDateTime;
+                _Fields[1] := lfMessagetype;
+                _Fields[2] := lfPID;
+                _Fields[3] := lfSource;
+                _Fields[4] := lfMessage;
+              end;
+        3 :   begin
+                SetLength(_Fields, 3);
+                _Fields[0] := lfDateTime;
+                _Fields[1] := lfMessagetype;
+                _Fields[2] := lfMessage;
+              end;
+      end;
+      LBLogger.MessageFields := _Fields;
+    end;
+  end;
+end;
+
+procedure TfrmMain.RadioButton1Click(Sender: TObject);
+begin
+  if LBLogger <> nil then
+    LBLogger.DateTimeFormat := TRadioButton(Sender).Caption;
 end;
 
 procedure TfrmMain.DestroyLoggers();

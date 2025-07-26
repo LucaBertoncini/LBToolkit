@@ -11,7 +11,7 @@
         <WindowIndex Value="-1"/>
         <TopLine Value="-1"/>
         <CursorPos X="-1" Y="-1"/>
-        <UsageCount Value="20"/>
+        <UsageCount Value="24"/>
       </Unit>
       <Unit>
         <Filename Value="ufrmmain.pas"/>
@@ -20,68 +20,172 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ufrmMain"/>
-        <TopLine Value="73"/>
-        <CursorPos X="26" Y="15"/>
-        <UsageCount Value="20"/>
+        <TopLine Value="167"/>
+        <CursorPos X="13" Y="171"/>
+        <UsageCount Value="24"/>
+        <Bookmarks Count="1">
+          <Item0 X="61" Y="152" Left="1" Top="124" ID="1"/>
+        </Bookmarks>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../uLBLoggerEx.pas"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="5"/>
         <TopLine Value="205"/>
         <CursorPos X="18" Y="207"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="12"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../ULBLogger.pas"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <CursorPos X="69" Y="9"/>
+        <TopLine Value="1182"/>
+        <CursorPos X="49" Y="1210"/>
+        <UsageCount Value="12"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/inc/objpash.inc"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="419"/>
+        <CursorPos X="7" Y="418"/>
+        <UsageCount Value="12"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/inc/systemh.inc"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="1401"/>
+        <CursorPos X="10" Y="1414"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/linux/sysosh.inc"/>
+        <EditorIndex Value="3"/>
+        <CursorPos X="3" Y="24"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="9">
+    <JumpHistory HistoryIndex="28">
       <Position>
-        <Filename Value="ufrmmain.pas"/>
-      </Position>
-      <Position>
-        <Filename Value="ufrmmain.pas"/>
-        <Caret Line="36" Column="42" TopLine="17"/>
-      </Position>
-      <Position>
-        <Filename Value="ufrmmain.pas"/>
-        <Caret Line="22" Column="30" TopLine="8"/>
-      </Position>
-      <Position>
-        <Filename Value="ufrmmain.pas"/>
-        <Caret Line="31" Column="37" TopLine="17"/>
-      </Position>
-      <Position>
-        <Filename Value="ufrmmain.pas"/>
-        <Caret Line="107" Column="45" TopLine="87"/>
-      </Position>
-      <Position>
-        <Filename Value="ufrmmain.pas"/>
-        <Caret Line="91" Column="26" TopLine="87"/>
-      </Position>
-      <Position>
-        <Filename Value="ufrmmain.pas"/>
-        <Caret Line="114" Column="34" TopLine="96"/>
-      </Position>
-      <Position>
-        <Filename Value="ufrmmain.pas"/>
-        <Caret Line="33" Column="21" TopLine="21"/>
-      </Position>
-      <Position>
-        <Filename Value="ufrmmain.pas"/>
-        <Caret Line="15" Column="29" TopLine="73"/>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="98" Column="80" TopLine="76"/>
       </Position>
       <Position>
         <Filename Value="../ULBLogger.pas"/>
-        <Caret Line="9" Column="31"/>
+        <Caret Line="1195" TopLine="1187"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="23" Column="57" TopLine="17"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="173" Column="3" TopLine="150"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="204" Column="3" TopLine="190"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="368" Column="3" TopLine="356"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="463" Column="3" TopLine="451"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="20" Column="7" TopLine="35"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="126" Column="3" TopLine="116"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="127" Column="3" TopLine="117"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="128" Column="3" TopLine="118"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="130" Column="3" TopLine="119"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="141" Column="21" TopLine="119"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="185" Column="22" TopLine="172"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="452" TopLine="432"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="105" Column="26" TopLine="96"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="184" Column="20" TopLine="167"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="278" Column="56" TopLine="260"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="161" Column="26" TopLine="28"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="162" Column="26" TopLine="29"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="163" Column="26" TopLine="30"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="164" Column="26" TopLine="31"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="166" Column="26" TopLine="142"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="211" Column="61" TopLine="203"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="757" Column="25" TopLine="749"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="803" Column="18" TopLine="793"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="81" Column="23" TopLine="78"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="1142" Column="3" TopLine="934"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="92" Column="23" TopLine="79"/>
       </Position>
     </JumpHistory>
     <RunParams>

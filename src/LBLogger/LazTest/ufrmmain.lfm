@@ -1,18 +1,18 @@
 object frmMain: TfrmMain
   Left = 191
-  Height = 453
+  Height = 476
   Top = 250
   Width = 544
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   Caption = 'Test LBLogger'
-  ClientHeight = 453
+  ClientHeight = 476
   ClientWidth = 544
   OnDestroy = FormDestroy
   object btnCreateLBLogger: TButton
     Left = 16
     Height = 54
-    Top = 16
+    Top = 8
     Width = 155
     Caption = 'Create LBLogger'
     TabOrder = 0
@@ -21,7 +21,7 @@ object frmMain: TfrmMain
   object chkCreateMemoLogger: TCheckBox
     Left = 213
     Height = 23
-    Top = 20
+    Top = 12
     Width = 135
     Caption = 'Add Memo logger'
     Enabled = False
@@ -31,7 +31,7 @@ object frmMain: TfrmMain
   object chkCreateLabelLogger: TCheckBox
     Left = 213
     Height = 23
-    Top = 47
+    Top = 39
     Width = 128
     Caption = 'Add Label logger'
     Enabled = False
@@ -39,40 +39,111 @@ object frmMain: TfrmMain
     OnChange = chkCreateLabelLoggerChange
   end
   object edLog: TEdit
-    Left = 16
+    Left = 20
     Height = 28
-    Top = 112
+    Top = 230
     Width = 366
     TabOrder = 3
   end
   object btnInsertLog: TButton
-    Left = 416
+    Left = 420
     Height = 25
-    Top = 115
+    Top = 232
     Width = 112
     Caption = '>> insert log'
     TabOrder = 4
     OnClick = btnInsertLogClick
   end
   object lblLog: TLabel
-    Left = 20
+    Left = 112
     Height = 16
-    Top = 199
+    Top = 280
     Width = 37
     Caption = 'lblLog'
   end
   object Shape1: TShape
     Left = 19
     Height = 3
-    Top = 162
-    Width = 505
+    Top = 264
+    Width = 512
   end
   object memoLog: TMemo
-    Left = 22
-    Height = 191
-    Top = 233
+    Left = 16
+    Height = 136
+    Top = 328
     Width = 506
     ScrollBars = ssVertical
     TabOrder = 5
+  end
+  object ListBox1: TListBox
+    Left = 19
+    Height = 112
+    Top = 96
+    Width = 309
+    Items.Strings = (
+      '%s - #%s# - %06d - %06d - %-42s - %s'
+      '%s | %s | PID:%d | THR:%d | %s | %s'
+      '%s | %s | PID:%d | %s | %s'
+      '{"timestamp":"%s","Type":"%s","message":"%s"}'
+    )
+    ItemHeight = 22
+    TabOrder = 6
+    OnClick = ListBox1Click
+  end
+  object lblLog1: TLabel
+    Left = 20
+    Height = 16
+    Top = 280
+    Width = 78
+    Caption = 'Message log:'
+  end
+  object Shape2: TShape
+    Left = 20
+    Height = 3
+    Top = 216
+    Width = 512
+  end
+  object lblLog2: TLabel
+    Left = 20
+    Height = 16
+    Top = 72
+    Width = 90
+    Caption = 'File log format:'
+  end
+  object RadioButton1: TRadioButton
+    Left = 359
+    Height = 23
+    Top = 96
+    Width = 163
+    Caption = 'dd/mm/yy hh:nn:ss.zzz'
+    Checked = True
+    TabOrder = 9
+    TabStop = True
+    OnClick = RadioButton1Click
+  end
+  object RadioButton2: TRadioButton
+    Left = 359
+    Height = 23
+    Top = 128
+    Width = 163
+    Caption = 'yy/mm/dd hh:nn:ss.zzz'
+    TabOrder = 7
+    OnClick = RadioButton1Click
+  end
+  object RadioButton3: TRadioButton
+    Left = 360
+    Height = 23
+    Top = 160
+    Width = 145
+    Caption = 'mm/dd hh:nn:ss.zzz'
+    TabOrder = 8
+    OnClick = RadioButton1Click
+  end
+  object lblLog3: TLabel
+    Left = 352
+    Height = 16
+    Top = 72
+    Width = 76
+    Caption = 'Date format:'
   end
 end

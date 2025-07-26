@@ -5,7 +5,7 @@ unit uTimedoutCriticalSection;
 interface
 
 uses
-  Classes, SysUtils, types;
+  Classes, SysUtils;
 
 type
 
@@ -23,7 +23,7 @@ type
       constructor Create;
       destructor Destroy; override;
 
-      function Acquire(const aFunctionName: String; aTimeout: Integer = 3000): Boolean;
+      function Acquire(const aFunctionName: String; aMaxWaitTimeMs: Integer = 3000): Boolean;
       procedure Release();
   end;
 
@@ -55,9 +55,9 @@ begin
   inherited Destroy;
 end;
 
-function TTimedOutCriticalSection.Acquire(const aFunctionName: String; aTimeout: Integer = 3000): Boolean;
+function TTimedOutCriticalSection.Acquire(const aFunctionName: String; aMaxWaitTimeMs: Integer = 3000): Boolean;
 var
-  _Counter : Integer = 0;
+  _WaitedTimeMs : Integer = 0;
 
 const
   cSleepTimeout = Integer(10); // intervallo di attesa in millisecondi tra i tentativi
@@ -77,13 +77,13 @@ begin
       else
       begin
         Sleep(cSleepTimeout);
-        _Counter += cSleepTimeout;
+        Inc(_WaitedTimeMs, cSleepTimeout);
       end;
-    until _Counter >= aTimeout;
+    until _WaitedTimeMs >= aMaxWaitTimeMs;
 
     // log in caso di timeout
     if not Result then
-      LBLogger.Write(1, 'TTimedOutCriticalSection.Acquire', lmt_Warning, 'Critical section not acquired by <%s> after %d msecs! Last owner: <%s>', [aFunctionName, _Counter, FLastOwner]);
+      LBLogger.Write(1, 'TTimedOutCriticalSection.Acquire', lmt_Warning, 'Critical section not acquired by <%s> after %d msecs! Last owner: <%s>', [aFunctionName, _WaitedTimeMs, FLastOwner]);
   end
   else
     LBLogger.Write(1, 'TTimedOutCriticalSection.Acquire', lmt_Warning, 'I am nil, <%s> !!! Why are you calling me !?', [aFunctionName]);

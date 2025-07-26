@@ -1134,7 +1134,10 @@ end;
 
 procedure TLBLoggerMessage.set_CallingRoutine(AValue: AnsiString);
 begin
-  FCallingRoutine := LeftStr(AValue, FOwner.SourceMaxLength);
+  if FOwner <> nil then
+    FCallingRoutine := LeftStr(AValue, FOwner.SourceMaxLength)
+  else
+    FCallingRoutine := LeftStr(AValue, cDefaultSourceMaxLength);
 end;
 
 procedure TLBLoggerMessage.set_ThreadId(AValue: QWord);
@@ -1180,53 +1183,65 @@ var
 begin
   // Formatta i componenti base
 
-  SetLength(_Params, Length(FOwner.FMessageFields));
-
-  for i := 0 to High(_Params) do
+  if FOwner <> nil then
   begin
-    case FOwner.FMessageFields[i] of
-      lfDateTime : begin
-                     _Date := FormatDateTime(FOwner.DateTimeFormat, FTime);
-                     _Params[i].VPChar := PChar(_Date);
-                     _Params[i].VType := vtPChar;
-                   end;
+    SetLength(_Params, Length(FOwner.FMessageFields));
 
-      lfMessagetype : begin
-                        if FMsgType <= High(cLBLoggerMessagePrefix) then
-                          _sMessageType := cLBLoggerMessagePrefix[FMsgType]
-                        else
-                          _sMessageType := '???';
-                        _Params[i].VAnsiString := PChar(_sMessageType);
-                        _Params[i].VType := vtPChar;
-                      end;
+    for i := 0 to High(_Params) do
+    begin
+      case FOwner.FMessageFields[i] of
+        lfDateTime : begin
+                       _Date := FormatDateTime(FOwner.DateTimeFormat, FTime);
+                       _Params[i].VPChar := PChar(_Date);
+                       _Params[i].VType := vtPChar;
+                     end;
 
-      lfPID      : begin
-                     _Params[i].VInt64 := @FPID;
-                     _Params[i].VType := vtQWord;
-                   end;
+        lfMessagetype : begin
+                          if FMsgType <= High(cLBLoggerMessagePrefix) then
+                            _sMessageType := cLBLoggerMessagePrefix[FMsgType]
+                          else
+                            _sMessageType := '???';
+                          _Params[i].VAnsiString := PChar(_sMessageType);
+                          _Params[i].VType := vtPChar;
+                        end;
 
-      lfThread   : begin
-                     _Params[i].VInt64 := @FThreadId;
-                     _Params[i].VType := vtQWord;
-                   end;
+        lfPID      : begin
+                       _Params[i].VInt64 := @FPID;
+                       _Params[i].VType := vtQWord;
+                     end;
 
-      lfSource   : begin
-                     _Params[i].VAnsiString := PChar(FCallingRoutine);
-                     _Params[i].VType := vtPChar;
-                   end;
+        lfThread   : begin
+                       _Params[i].VInt64 := @FThreadId;
+                       _Params[i].VType := vtQWord;
+                     end;
 
-      lfMessage  : begin
-                     _Params[i].VAnsiString := PChar(FMessage);
-                     _Params[i].VType := vtPChar;
-                   end;
+        lfSource   : begin
+                       _Params[i].VAnsiString := PChar(FCallingRoutine);
+                       _Params[i].VType := vtPChar;
+                     end;
+
+        lfMessage  : begin
+                       _Params[i].VAnsiString := PChar(FMessage);
+                       _Params[i].VType := vtPChar;
+                     end;
+      end;
     end;
-  end;
 
-  try
-    Result := Format(FOwner.FMessageFormat, _Params);
-  except
-    on E: Exception do
-      Result := FormatDateTime(cDefaultDateTimeFormat, FTime) + 'Error creating message <' + FOwner.FMessageFormat + '>: ' + E.Message;
+    try
+      Result := Format(FOwner.FMessageFormat, _Params);
+    except
+      on E: Exception do
+        Result := FormatDateTime(cDefaultDateTimeFormat, FTime) + 'Error creating message <' + FOwner.FMessageFormat + '>: ' + E.Message;
+    end;
+
+  end
+  else begin
+    Result := Format(cDefaultLogMessage, [FormatDateTime(cDefaultDateTimeFormat, FTime),
+                                          cLBLoggerMessagePrefix[FMsgType],
+                                          FPID,
+                                          FThreadId,
+                                          FCallingRoutine,
+                                          FMessage]);
   end;
 end;
 

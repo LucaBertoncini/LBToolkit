@@ -7,6 +7,7 @@
       <Unit>
         <Filename Value="LBLoggerUnitTests.lpr"/>
         <IsPartOfProject Value="True"/>
+        <TopLine Value="3"/>
         <CursorPos X="12" Y="6"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
@@ -14,26 +15,39 @@
       <Unit>
         <Filename Value="uLBLoggerTest.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="-1"/>
-        <TopLine Value="-1"/>
-        <CursorPos X="-1" Y="-1"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="199"/>
+        <CursorPos X="119" Y="210"/>
         <UsageCount Value="20"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../ULBLogger.pas"/>
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
-        <EditorIndex Value="1"/>
-        <CursorPos X="46" Y="9"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="1124"/>
+        <CursorPos X="64" Y="1140"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory>
+    <JumpHistory HistoryIndex="3">
       <Position>
         <Filename Value="LBLoggerUnitTests.lpr"/>
-        <Caret Line="6" Column="12"/>
+        <Caret Line="6" Column="12" TopLine="3"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBLoggerTest.pas"/>
+        <Caret TopLine="115"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="92" Column="31" TopLine="80"/>
+      </Position>
+      <Position>
+        <Filename Value="../ULBLogger.pas"/>
+        <Caret Line="1186" Column="65" TopLine="1171"/>
       </Position>
     </JumpHistory>
     <RunParams>

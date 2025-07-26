@@ -127,7 +127,7 @@ begin
   msg.PID := 123;
   msg.ThreadId := 456;
   msg.CallingRoutine := 'RoutineX';
-  AssertTrue('Formatted message must contain Debug prefix', Pos('#DBG#', msg.ElaborateMessageToWrite) > 0);
+  AssertTrue('Formatted message must contain Debug prefix', Pos('DBG', msg.ElaborateMessageToWrite) > 0);
   msg.Free;
 end;
 

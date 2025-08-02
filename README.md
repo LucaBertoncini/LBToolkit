@@ -53,3 +53,15 @@ Modular bridge between Pascal and Python, enabling script-driven microservices w
 
 Ideal for extending Pascal-based applications with Python logic — from AI modules to complex computation — without recompiling the server or introducing overhead.
 
+---
+
+### ⌨️ LBVirtualKeyboard (`src/LBVirtualKeyboard/`)
+Modular and extensible virtual keyboard system for GUI applications, designed for industrial touchscreens and embedded interfaces.
+
+- Fully customizable layouts via XML: define keys, pages, and behavior  
+- Dynamic key rendering with modifier support (e.g. Shift)  
+- OS-agnostic architecture with native input handlers for Windows and X11  
+- Graphical customization via PNG bitmaps and experimental theme engine  
+- Ideal for kiosk systems, control panels, and context-specific input interfaces
+
+

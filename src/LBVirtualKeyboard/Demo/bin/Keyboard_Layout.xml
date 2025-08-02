@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<KeyBoard>
+	<Pages>
+		<Page>
+			<Row>
+				<Key>
+					<Values Default="q" Shift="Q" />
+				</Key>
+				<Key>
+					<Values Default="w" Shift="W" />
+				</Key>
+				<Key>
+					<Values Default="e" Shift="E" />
+				</Key>
+				<Key>
+					<Values Default="r" Shift="R" />
+				</Key>
+				<Key>
+					<Values Default="t" Shift="T" />
+				</Key>
+				<Key>
+					<Values Default="y" Shift="Y" />
+				</Key>
+				<Key>
+					<Values Default="u" Shift="U" />
+				</Key>
+				<Key>
+					<Values Default="i" Shift="I" />
+				</Key>
+				<Key>
+					<Values Default="o" Shift="O" />
+				</Key>
+				<Key>
+					<Values Default="p" Shift="P" />
+				</Key>
+				<Key kType ="BackSpace" />
+				<Key kType="Switcher" />
+			</Row>
+			<Row>
+				<Key>
+					<Values Default="a" Shift="A" />
+				</Key>
+				<Key>
+					<Values Default="s" Shift="S" />
+				</Key>
+				<Key>
+					<Values Default="d" Shift="D" />
+				</Key>
+				<Key>
+					<Values Default="f" Shift="F" />
+				</Key>
+				<Key>
+					<Values Default="g" Shift="G" />
+				</Key>
+				<Key>
+					<Values Default="h" Shift="H" />
+				</Key>
+				<Key>
+					<Values Default="j" Shift="J" />
+				</Key>
+				<Key>
+					<Values Default="k" Shift="K" />
+				</Key>
+				<Key>
+					<Values Default="l" Shift="L" />
+				</Key>
+				<Key kType="Up" />
+				<Key kType="Canc" />
+				<Key kType="Return" />
+			</Row>
+			<Row>
+				<Key>
+					<Values Default="z" Shift="Z" />
+				</Key>
+				<Key>
+					<Values Default="x" Shift="X" />
+				</Key>
+				<Key>
+					<Values Default="c" Shift="C" />
+				</Key>
+				<Key>
+					<Values Default="v" Shift="V" />
+				</Key>
+				<Key>
+					<Values Default="b" Shift="B" />
+				</Key>
+				<Key>
+					<Values Default="n" Shift="N" />
+				</Key>
+				<Key>
+					<Values Default="m" Shift="M" />
+				</Key>
+				<Key kType="Space" />
+				<Key kType="Left" />
+				<Key kType="Down" />
+				<Key kType="Right" />				
+				<Key kType="Shift" />
+			</Row>			
+		</Page>
+		<Page>
+			<Row>
+				<Key>
+					<Values Default="1" Shift="!" />
+				</Key>
+				<Key>
+					<Values Default="2" Shift='"' />
+				</Key>
+				<Key>
+					<Values Default="3" Shift="£" />
+				</Key>
+				<Key>
+					<Values Default="4" Shift="$" />
+				</Key>
+				<Key>
+					<Values Default="5" Shift="%" />
+				</Key>
+				<Key>
+					<Values Default="6" Shift="&amp;" />
+				</Key>
+				<Key>
+					<Values Default="7" Shift="/" />
+				</Key>
+				<Key>
+					<Values Default="8" Shift="(" />
+				</Key>
+				<Key>
+					<Values Default="9" Shift=")" />
+				</Key>
+				<Key>
+					<Values Default="0" Shift="=" />
+				</Key>
+				<Key kType ="BackSpace" />
+				<Key kType="Switcher" />
+			</Row>
+			<Row>
+				<Key>
+					<Values Default="," Shift=";" />
+				</Key>
+				<Key>
+					<Values Default="." Shift=':' />
+				</Key>
+				<Key>
+					<Values Default="-" Shift="_" />
+				</Key>
+				<Key>
+					<Values Default="+" />
+				</Key>
+				<Key>
+				</Key>
+				<Key>
+				</Key>
+				<Key>
+				</Key>
+				<Key>
+				</Key>
+				<Key />
+				<Key kType="Up" />
+				<Key kType="Canc" />
+				<Key kType="Return" />
+			</Row>
+			<Row>
+				<Key>
+				</Key>
+				<Key>
+				</Key>
+				<Key>
+				</Key>
+				<Key>
+				</Key>
+				<Key>
+				</Key>
+				<Key>
+				</Key>
+				<Key>
+				</Key>
+				<Key kType="Space" />
+				<Key kType="Left" />
+				<Key kType="Down" />
+				<Key kType="Right" />				
+				<Key kType="Shift" />
+			</Row>			
+		</Page>
+	</Pages>
+</KeyBoard>

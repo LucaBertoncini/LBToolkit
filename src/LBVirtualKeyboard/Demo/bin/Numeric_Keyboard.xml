@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<KeyBoard>
+	<Pages>
+		<Page>
+			<Row>
+				<Key>
+					<Values Default="1" />
+				</Key>
+				<Key>
+					<Values Default="2" />
+				</Key>
+				<Key>
+					<Values Default="3" />
+				</Key>
+                <Key kType="BackSpace" />
+			</Row>
+			<Row>
+				<Key>
+					<Values Default="4" />
+				</Key>
+				<Key>
+					<Values Default="5" />
+				</Key>
+				<Key>
+					<Values Default="6" />
+				</Key>
+				<Key>
+					<Values Default="." />
+				</Key>
+			</Row>
+			<Row>
+				<Key>
+					<Values Default="7" />
+				</Key>
+				<Key>
+					<Values Default="8" />
+				</Key>
+				<Key>
+					<Values Default="9" />
+				</Key>
+				<Key kType="Return" />
+			</Row>			
+			<Row>
+				<Key>
+					<Values Default="0" />
+				</Key>
+				<Key />
+				<Key />
+				<Key />
+			</Row>			
+		</Page>
+	</Pages>
+</KeyBoard>

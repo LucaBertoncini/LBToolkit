@@ -66,11 +66,17 @@ type
     function SendWebSocketMessages(): Boolean;
 
     const
+      WS_BASE_HANDSHAKE_RESPONSE = WS_HANDSHAKE_STATUS_LINE + #13#10 +
+                                   WS_HANDSHAKE_UPGRADE_HEADER + #13#10 +
+                                   WS_HANDSHAKE_CONNECTION_HEADER + #13#10;
+
+  (*
+    const
       cBaseWebsocketHeader = cWebSocket_HandshakeStatus +
                              cWebSocket_HandshakeUpgrade +
                              cWebSocket_HandshakeConnect;
+*)
 
-    function EncodeAcceptKey(const Key: AnsiString): AnsiString;
     function ReadByte(out Value: Byte; Timeout: Integer): Boolean;
 
     function SendFrame(const Payload: TBytes; Opcode: TWebSocketDataType = wsd_FrameText; Final: Boolean = True): Boolean;
@@ -94,7 +100,7 @@ type
 implementation
 
 uses
-  ULBLogger, sha1, base64, synsock, TypInfo;
+  ULBLogger, sha1, uBase64Util, synsock, TypInfo;
 
 constructor TLBWebSocketSession.Create(aSocket: TTCPBlockSocket; aTerminateRequest: pBoolean);
 begin
@@ -266,36 +272,6 @@ begin
 
     _List.Free;
   end;
-
-end;
-
-function TLBWebSocketSession.EncodeAcceptKey(const Key: AnsiString): AnsiString;
-var
-  _Digest: TSHA1Digest;
-  _Outstream : TStringStream = nil;
-  _Encoder : TBase64EncodingStream = nil;
-
-begin
-  Result := '';
-  try
-    _Digest := SHA1String(Key + cWebSocket_GUID);
-
-    _Outstream := TStringStream.Create('');
-    _Encoder := TBase64EncodingStream.Create(_Outstream);
-    _Encoder.Write(_Digest[0], Length(_Digest));
-
-    Result := _Outstream.DataString;
-
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'TLBWebSocketSession.EncodeAcceptKey', lmt_Error, E.Message);
-  end;
-
-  if _Encoder <> nil then
-    _Encoder.Free;
-
-  if _OutStream <> nil then
-    _Outstream.Free;
 end;
 
 
@@ -304,31 +280,33 @@ var
   _RawKey, _EncodedKey, _RawProtocol: AnsiString;
   _Protocols: TStringArray;
   _ErrorOccurred: Boolean;
+  _Base64 : TBase64Util = nil;
+  _Digest: TSHA1Digest;
 
 begin
   Result := False;
   _ErrorOccurred := False;
 
   try
-    _RawKey := Trim(InputHeaders.Values[cWebSocketHeader_SecKey]);
+    _RawKey := Trim(InputHeaders.Values[WS_HEADER_SEC_KEY]);
     if _RawKey <> '' then
     begin
 
       // Invio status line e header base
-      FSocket.SendString(cBaseWebsocketHeader);
+      FSocket.SendString(WS_BASE_HANDSHAKE_RESPONSE);
 
       if FSocket.LastError = 0 then
       begin
         _ErrorOccurred := False;
 
         // Subprotocol (se richiesto dal client)
-        _RawProtocol := Trim(InputHeaders.Values[cWebSocketHeader_Protocol]);
+        _RawProtocol := Trim(InputHeaders.Values[WS_HEADER_SEC_PROTOCOL]);
         if _RawProtocol <> '' then
         begin
           _Protocols := _RawProtocol.Split([',']);
           if Length(_Protocols) > 0 then
           begin
-            FSocket.SendString(cWebSocketHeader_Protocol + ': ' + Trim(_Protocols[0]) + CRLF);
+            FSocket.SendString(WS_HEADER_SEC_PROTOCOL + ': ' + Trim(_Protocols[0]) + CRLF);
             _ErrorOccurred := FSocket.LastError <> 0;
             if _ErrorOccurred then
               LBLogger.Write(1, 'TLBWebSocketSession.PerformHandshake', lmt_Warning, 'Error sending subprotocol <%s>: %s', [Trim(_Protocols[0]), FSocket.LastErrorDesc]);
@@ -337,12 +315,17 @@ begin
 
         if not _ErrorOccurred then
         begin
-          // Invio chiave accettazione handshake
-          _EncodedKey := Self.EncodeAcceptKey(_RawKey);
-          FSocket.SendString(cWebSocketHeader_Accept + ': ' + _EncodedKey + CRLF + CRLF);
-          Result := FSocket.LastError = 0;
-          if not Result then
-            LBLogger.Write(1, 'TLBWebSocketSession.PerformHandshake', lmt_Warning, 'Error sending <%s>: %s', [cWebSocketHeader_Accept, FSocket.LastErrorDesc]);
+          _RawKey := _RawKey + WS_GUID;
+          _Digest := SHA1Buffer(_RawKey[1], Length(_RawKey));
+          _Base64 := TBase64Util.Create;
+          if _Base64.EncodeBuffer(@_Digest[0], Length(_Digest), _EncodedKey) then
+          begin
+            // Invio chiave accettazione handshake
+            FSocket.SendString(WS_HEADER_SEC_ACCEPT + ': ' + _EncodedKey + CRLF + CRLF);
+            Result := FSocket.LastError = 0;
+            if not Result then
+              LBLogger.Write(1, 'TLBWebSocketSession.PerformHandshake', lmt_Warning, 'Error sending <%s>: %s', [WS_HEADER_SEC_ACCEPT, FSocket.LastErrorDesc]);
+          end;
         end;
 
       end
@@ -358,6 +341,8 @@ begin
       LBLogger.Write(1, 'TLBWebSocketSession.PerformHandshake', lmt_Error, E.Message);
   end;
 
+  if _Base64 <> nil then
+    _Base64.Free;
 end;
 
 function TLBWebSocketSession.ReadByte(out Value: Byte; Timeout: Integer): Boolean;
@@ -400,7 +385,7 @@ begin
 
         wsrs_StartByte:
           begin
-            FSocket.RecvBufferEx(@StartByte, SizeOf(StartByte), cWebSocket_Timeout_ReadByte);
+            FSocket.RecvBufferEx(@StartByte, SizeOf(StartByte), WS_TIMEOUT_READ_BYTE);
             if FSocket.LastError = 0 then
             begin
               FinalFrame := (StartByte and $80) <> 0;
@@ -433,16 +418,16 @@ begin
 
         wsrs_LenByte:
           begin
-            FSocket.RecvBufferEx(@LenByte, SizeOf(LenByte), cWebSocket_Timeout_ReadByte);
+            FSocket.RecvBufferEx(@LenByte, SizeOf(LenByte), WS_TIMEOUT_READ_BYTE);
             if FSocket.LastError = 0 then
             begin
               Masked := (LenByte and $80) > 0;
               PayloadLen := LenByte and $7F;
 
               case PayloadLen of
-                cWebSocket_LenGreaterThan125  : State := wsrs_ExtendedLenWord;
-                cWebSocket_LenGreaterThanWord : State := wsrs_ExtendedLen64;
-                else                            State := wsrs_MaskKey;
+                WS_LEN_EXTENDED_16BIT : State := wsrs_ExtendedLenWord;
+                WS_LEN_EXTENDED_64BIT : State := wsrs_ExtendedLen64;
+                else                    State := wsrs_MaskKey;
               end;
             end
             else begin
@@ -454,7 +439,7 @@ begin
 
         wsrs_ExtendedLenWord:
           begin
-            FSocket.RecvBufferEx(@_PayloadWordLen, SizeOf(_PayloadWordLen), cWebSocket_Timeout_ReadByte);
+            FSocket.RecvBufferEx(@_PayloadWordLen, SizeOf(_PayloadWordLen), WS_TIMEOUT_READ_BYTE);
             if FSocket.LastError = 0 then
             begin
               PayloadLen := BEtoN(_PayloadWordLen);
@@ -469,7 +454,7 @@ begin
 
         wsrs_ExtendedLen64:
           begin
-            FSocket.RecvBufferEx(@PayloadLen, SizeOf(PayloadLen), cWebSocket_Timeout_ReadByte);
+            FSocket.RecvBufferEx(@PayloadLen, SizeOf(PayloadLen), WS_TIMEOUT_READ_BYTE);
             if FSocket.LastError = 0 then
             begin
               PayloadLen := BEtoN(PayloadLen);
@@ -486,7 +471,7 @@ begin
           begin
             if Masked then
             begin
-              FSocket.RecvBufferEx(@MaskingKey[0], Length(MaskingKey), cWebSocket_Timeout_ReadByte);
+              FSocket.RecvBufferEx(@MaskingKey[0], Length(MaskingKey), WS_TIMEOUT_READ_BYTE);
               if FSocket.LastError <> 0 then
               begin
                 FConnectionError := True;
@@ -502,7 +487,7 @@ begin
             if PayloadLen > 0 then
             begin
               SetLength(PayloadPart, PayloadLen);
-              FSocket.RecvBufferEx(@PayloadPart[0], PayloadLen, cWebSocket_Timeout_ReadPayload);
+              FSocket.RecvBufferEx(@PayloadPart[0], PayloadLen, WS_TIMEOUT_READ_PAYLOAD);
               if FSocket.LastError = 0 then
               begin
 
@@ -575,23 +560,23 @@ begin
     // Byte 0: FIN + OPCODE
     FFrameHeader[0] := Ord(Opcode);
     if Final then
-      FFrameHeader[0] := FFrameHeader[0] or cWebSocket_FIN_Bit;
+      FFrameHeader[0] := FFrameHeader[0] or WS_FLAG_FIN;
 
     // Byte 1+: lunghezza + eventuale estensione
-    if PayloadLen < cWebSocket_LenGreaterThan125 then
+    if PayloadLen < WS_LEN_EXTENDED_16BIT then
     begin
       FFrameHeader[1] := Byte(PayloadLen);
       HeaderLen := 2;
     end
     else if PayloadLen <= High(Word) then
     begin
-      FFrameHeader[1] := cWebSocket_LenGreaterThan125;
+      FFrameHeader[1] := WS_LEN_EXTENDED_16BIT;
       pWord(@FFrameHeader[2])^ := NtoBE(Word(PayloadLen));
       HeaderLen := 4;
     end
     else
     begin
-      FFrameHeader[1] := cWebSocket_LenGreaterThanWord;
+      FFrameHeader[1] := WS_LEN_EXTENDED_64BIT;
       PInt64(@FFrameHeader[2])^ := NtoBE(PayloadLen);
       HeaderLen := 10;
     end;
@@ -624,7 +609,7 @@ end;
 
 procedure TLBWebSocketSession.CloseSession;
 begin
-  FSocket.SendString(cWebSocket_Frame_Close);
+  FSocket.SendString(WS_FRAME_CLOSE);
   FSocket.CloseSocket;
   LBLogger.Write(5, 'TLBWebSocketSession.CloseSession', lmt_Debug, 'WebSocket session closed for <%s:%d>', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort]);
 end;
@@ -653,10 +638,10 @@ begin
         if (not _CloseRequested) and (not FConnectionError) then
         begin
           _Now := GetTickCount64;
-          if (_Now - FLastActivity) > cWebSocket_PingInterval then
+          if (_Now - FLastActivity) > WS_PING_INTERVAL_DEFAULT then
             Self.SendPing(IntToStr(_Now));
 
-          RTLEventWaitFor(FNewDataEvent, cWebSocket_SleepInterval);
+          RTLEventWaitFor(FNewDataEvent, WS_SLEEP_INTERVAL);
         end
         else
           Break;
@@ -665,7 +650,7 @@ begin
       else
         Break;
 
-    until FTerminate^  or (_Now - FLastActivity > cWebSocket_SessionTimeout);
+    until FTerminate^  or (_Now - FLastActivity > WS_SESSION_TIMEOUT_DEFAULT);
 
     Result := True;
 

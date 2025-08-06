@@ -113,11 +113,11 @@ begin
           else
             FRangeEnd := _EndVal;
 //          FRangeEnd := Min(_EndVal, aFileSize - 1);
-          FStatusCode := http_PartialContent;
+          FStatusCode := HTTP_STATUS_PARTIAL_CONTENT;
           Result := True;
         end
         else
-          FStatusCode := http_RangeNotSatisfiable;
+          FStatusCode := HTTP_STATUS_RANGE_NOT_SATISFIABLE;
       end
       else if (_StartStr <> '') and (_EndStr = '') then // Caso 2: bytes=Start-
       begin
@@ -126,11 +126,11 @@ begin
         begin
           FRangeStart := _StartVal;
           FRangeEnd := aFileSize - 1;
-          FStatusCode := http_PartialContent;
+          FStatusCode := HTTP_STATUS_PARTIAL_CONTENT;
           Result := True;
         end
         else
-          FStatusCode := http_RangeNotSatisfiable;
+          FStatusCode := HTTP_STATUS_RANGE_NOT_SATISFIABLE;
       end
       else if (_StartStr = '') and (_EndStr <> '') then // Caso 3: bytes=-End
       begin
@@ -143,20 +143,20 @@ begin
             FRangeStart := aFileSize - _EndVal;
 
           FRangeEnd := aFileSize - 1;
-          FStatusCode := http_PartialContent;
+          FStatusCode := HTTP_STATUS_PARTIAL_CONTENT;
           Result := True;
         end
         else
-          FStatusCode := http_RangeNotSatisfiable;
+          FStatusCode := HTTP_STATUS_RANGE_NOT_SATISFIABLE;
       end
       else // Caso malformato
-        FStatusCode := http_RangeNotSatisfiable;
+        FStatusCode := HTTP_STATUS_RANGE_NOT_SATISFIABLE;
     end
     else
-      FStatusCode := http_BadRequest;
+      FStatusCode := HTTP_STATUS_BAD_REQUEST;
   end
   else begin
-    FStatusCode := http_BadRequest;
+    FStatusCode := HTTP_STATUS_BAD_REQUEST;
     LBLogger.Write(1, 'TLBmWsFileManager.ParseRangeHeader', lmt_Warning, 'Wrong range header <%s>', [aRangeHeader]);
   end;
 
@@ -182,7 +182,7 @@ begin
       if (aRangeHeader <> '') then
         Result := ParseRangeHeader(aRangeHeader, FFileStream.Size)
       else begin
-        FStatusCode := http_Ok;
+        FStatusCode := HTTP_STATUS_OK;
         Result := True;
       end;
 
@@ -194,14 +194,14 @@ begin
 
     end
     else begin
-      FStatusCode := http_NotFound;
+      FStatusCode := HTTP_STATUS_NOT_FOUND;
       LBLogger.Write(1, 'TLBmWsFileManager.SetFile', lmt_Warning, 'File not found: %s', [aFilename]);
     end;
 
   except
     on E: Exception do
     begin
-      FStatusCode := http_InternalServerError;
+      FStatusCode := HTTP_STATUS_INTERNAL_ERROR;
       LBLogger.Write(1, 'TLBmWsFileManager.SetFile', lmt_Error, 'File <%s>: %s', [aFilename, E.Message]);
     end;
   end;
@@ -222,43 +222,43 @@ begin
 
       _ext := Lowercase(ExtractFileExt(FFileStream.FileName));
       case _ext of
-        cHTTP_Ext_HTML   : _ContentType := cHTTP_MimeType_HTML;
-        cHTTP_Ext_CSS    : _ContentType := cHTTP_MimeType_CSS;
-        cHTTP_Ext_JS     : _ContentType := cHTTP_MimeType_JS;
-        cHTTP_Ext_JSON   : _ContentType := cHTTP_MimeType_JSON;
-        cHTTP_Ext_XML    : _ContentType := cHTTP_MimeType_XML;
-        cHTTP_Ext_TXT    : _ContentType := cHTTP_MimeType_TXT;
+        FILE_EXT_HTML   : _ContentType := MIME_TYPE_HTML;
+        FILE_EXT_CSS    : _ContentType := MIME_TYPE_CSS;
+        FILE_EXT_JS     : _ContentType := MIME_TYPE_JAVASCRIPT;
+        FILE_EXT_JSON   : _ContentType := MIME_TYPE_JSON;
+        FILE_EXT_XML    : _ContentType := MIME_TYPE_XML;
+        FILE_EXT_TXT    : _ContentType := MIME_TYPE_PLAIN_TEXT;
 
-        cHTTP_Ext_JPG,
-        cHTTP_Ext_JPEG   : _ContentType := cHTTP_MimeType_JPEG;
-        cHTTP_Ext_PNG    : _ContentType := cHTTP_MimeType_PNG;
-        cHTTP_Ext_GIF    : _ContentType := cHTTP_MimeType_GIF;
-        cHTTP_Ext_SVG    : _ContentType := cHTTP_MimeType_SVG;
-        cHTTP_Ext_WEBP   : _ContentType := cHTTP_MimeType_WEBP;
-        cHTTP_Ext_ICO    : _ContentType := cHTTP_MimeType_ICO;
+        FILE_EXT_JPG,
+        FILE_EXT_JPEG   : _ContentType := MIME_TYPE_JPEG;
+        FILE_EXT_PNG    : _ContentType := MIME_TYPE_PNG;
+        FILE_EXT_GIF    : _ContentType := MIME_TYPE_GIF;
+        FILE_EXT_SVG    : _ContentType := MIME_TYPE_SVG;
+        FILE_EXT_WEBP   : _ContentType := MIME_TYPE_WEBP;
+        FILE_EXT_ICO    : _ContentType := MIME_TYPE_ICO;
 
-        cHTTP_Ext_PDF    : _ContentType := cHTTP_MimeType_PDF;
+        FILE_EXT_PDF    : _ContentType := MIME_TYPE_PDF;
 
-        cHTTP_Ext_MP4    : _ContentType := cHTTP_MimeType_MP4;
-        cHTTP_Ext_WEBM   : _ContentType := cHTTP_MimeType_WEBM;
-        cHTTP_Ext_MOV    : _ContentType := cHTTP_MimeType_MOV;
-        cHTTP_Ext_M3U8   : _ContentType := cHTTP_MimeType_M3U8;
-        cHTTP_Ext_TS     : _ContentType := cHTTP_MimeType_TS;
+        FILE_EXT_MP4    : _ContentType := MIME_TYPE_MP4;
+        FILE_EXT_WEBM   : _ContentType := MIME_TYPE_WEBM;
+        FILE_EXT_MOV    : _ContentType := MIME_TYPE_MOV;
+        FILE_EXT_M3U8   : _ContentType := MIME_TYPE_M3U8;
+        FILE_EXT_TS     : _ContentType := MIME_TYPE_TS;
 
-        cHTTP_Ext_WOFF   : _ContentType := cHTTP_MimeType_WOFF;
-        cHTTP_Ext_WOFF2  : _ContentType := cHTTP_MimeType_WOFF2;
+        FILE_EXT_WOFF   : _ContentType := MIME_TYPE_WOFF;
+        FILE_EXT_WOFF2  : _ContentType := MIME_TYPE_WOFF2;
 
         else
-          _ContentType := cHTTPValue_ContentTypeOctet; // fallback: application/octet-stream
+          _ContentType := MIME_TYPE_OCTET_STREAM; // fallback: application/octet-stream
       end;
 
-      anHeadersList.Add(cHTTPHeader_ContentType + ': ' + _ContentType);
-      anHeadersList.Add(cHTTPHeader_ContentLength + ': ' + IntToStr(FRangeEnd - FRangeStart + 1));
-      anHeadersList.Add(cHTTPHeader_AcceptRanges + ': bytes');
-      if FStatusCode = http_PartialContent then
-        anHeadersList.Add(cHTTPHeader_ContentRange + ': ' + Format('bytes %d-%d/%d', [FRangeStart, FRangeEnd, FFileStream.Size]));
+      anHeadersList.Add(HTTP_HEADER_CONTENT_TYPE + ': ' + _ContentType);
+      anHeadersList.Add(HTTP_HEADER_CONTENT_LENGTH + ': ' + IntToStr(FRangeEnd - FRangeStart + 1));
+      anHeadersList.Add(HTTP_HEADER_ACCEPT_RANGES + ': bytes');
+      if FStatusCode = HTTP_STATUS_PARTIAL_CONTENT then
+        anHeadersList.Add(HTTP_HEADER_CONTENT_RANGE + ': ' + Format('bytes %d-%d/%d', [FRangeStart, FRangeEnd, FFileStream.Size]));
 
-      anHeadersList.Add(cHTTPHeader_Connection + ': ' + cHTTPValue_ConnectionKeepAlive);
+      anHeadersList.Add(HTTP_HEADER_CONNECTION + ': ' + HTTP_CONNECTION_KEEP_ALIVE);
 
     except
       on E: Exception do

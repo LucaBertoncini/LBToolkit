@@ -693,7 +693,7 @@ const
   cStaticHTML = AnsiString('<!DOCTYPE html><html><head></head><body><br>Micro-WebServer working! ;-)</body></html>');
 
 begin
-  Result := 404;
+  Result := HTTP_STATUS_NOT_FOUND;
   KeepConnection := False;
   NextState := rms_CloseSocket;
 
@@ -701,7 +701,7 @@ begin
   if (Trim(FInputHeaders.Values[cHeader_Upgrade]) = cValue_WebSocketUpgrade) and
      (Pos(cValue_ConnectionUpgrade, FInputHeaders.Values[cHeader_Connection]) > 0) then
   begin
-    Result := 200;
+    Result := HTTP_STATUS_OK;
     KeepConnection := True;
     NextState := rms_ManageWebSocketSession;
     Exit;
@@ -709,14 +709,18 @@ begin
 
   if FURI = cTestURI then
   begin
-    FOutputHeaders.Add('Content-type: text/html');
+    LBLogger.Write(5, 'THTTPRequestManager.ProcessGETRequest', lmt_Debug, 'Test request');
+
+    FOutputHeaders.Add(HTTP_HEADER_CONTENT_TYPE + ': ' + MIME_TYPE_HTML);
     if FOutputData = nil then
-      FOutputData := TMemoryStream.Create;
+      FOutputData := TMemoryStream.Create
+    else
+      FOutputData.Clear;
 
 
     FOutputData.Write(cStaticHTML[1], Length(cStaticHTML));
 
-    Result := 200;
+    Result := HTTP_STATUS_OK;
     NextState := rms_SendHTTPAnswer;
     Exit;
   end;
@@ -739,7 +743,7 @@ begin
   // Custom handler GET (fallback)
   if Assigned(gv_WebServer.OnGETRequest) then
   begin
-    Result := 404;
+    Result := HTTP_STATUS_NOT_FOUND;
     if gv_WebServer.OnGETRequest(FURI_Resource, FInputHeaders, FURI_Params, FOutputHeaders, FOutputData, Result) then
       NextState := rms_SendHTTPAnswer;
   end;
@@ -750,7 +754,7 @@ var
   _DocFolder: TLBmWsDocumentsFolder;
 
 begin
-  Result := 404;
+  Result := HTTP_STATUS_NOT_FOUND;
   KeepConnection := False;
   NextState := rms_CloseSocket;
 
@@ -774,7 +778,7 @@ end;
 
 function THTTPRequestManager.ProcessPOSTRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
 begin
-  Result := 404;
+  Result := HTTP_STATUS_NOT_FOUND;
   KeepConnection := False;
   NextState := rms_CloseSocket;
 

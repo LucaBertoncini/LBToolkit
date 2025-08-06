@@ -172,12 +172,18 @@ var
   _Strings : TStringList;
 
 begin
+  Sleep(5000);
+  LBLogger.Write(1, 'THTTPRequestManagerTests.Test_TestRequest', lmt_Debug, '------------------------> Started');
   Application.WebServer.OnGETRequest := nil;
   _Strings := TStringList.Create;
+  LBLogger.Write(1, 'THTTPRequestManagerTests.Test_TestRequest', lmt_Debug, 'Sending test request');
   AssertTrue(HttpGetText('http://127.0.0.1:10320/test', _Strings));
+  LBLogger.Write(1, 'THTTPRequestManagerTests.Test_TestRequest', lmt_Debug, 'Answer received');
   AssertTrue(_Strings.Count >= 1);
+  LBLogger.Write(1, 'THTTPRequestManagerTests.Test_TestRequest', lmt_Debug, 'Received: %s', [_Strings.Strings[0]]);
   AssertTrue(_Strings.Strings[0] = '<!DOCTYPE html><html><head></head><body><br>Micro-WebServer working! ;-)</body></html>');
   _Strings.Free;
+  LBLogger.Write(1, 'THTTPRequestManagerTests.Test_TestRequest', lmt_Debug, '------------------------> Done');
 end;
 
 procedure THTTPRequestManagerTests.Test_DownloadDummyFile;

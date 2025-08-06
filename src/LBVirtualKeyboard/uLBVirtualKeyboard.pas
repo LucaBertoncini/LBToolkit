@@ -167,11 +167,12 @@ type
 
   TKeyboard = class(TObject)
     strict private
-      FOwner         : TCustomControl;
-      FRows          : TObjectList;
-      FPages         : TPages;
-      FActivePageIdx : Integer;
-      FShiftPressed  : Boolean;
+      FOwner          : TCustomControl;
+      FRows           : TObjectList;
+      FPages          : TPages;
+      FActivePageIdx  : Integer;
+      FShiftPressed   : Boolean;
+      FDestroyBitmaps : Boolean;
 
       FBitmaps       : array [sk_None .. sk_Switcher] of TBitmap;
       FRenderer      : TKeyRenderer;  // Renderer per i temi viene distrutto dall'oggetto KeyBoard
@@ -197,12 +198,16 @@ type
 
       function DrawKeyboard(): Boolean;
       function LoadLayoutFromXMLFile(const aFilename: String): Boolean;
-      
+
+      procedure DestroyKeysBitmaps();
+
       // Nuovi metodi per i temi
       procedure SetThemeRenderer(aRenderer: TKeyRenderer);
       procedure EnableThemes(aEnable: Boolean);
       procedure SetTheme(aTheme: TKeyboardTheme);
 
+      property DestroyBitmaps: Boolean write FDEstroyBitmaps;
+      property Pages: TPages read FPages;
       property Bitmap[aKey: TSpecialKey]: TBitmap read get_Bitmap write get_Bitmap;
       property ShiftPressed: Boolean read FShiftPressed;
       property Owner: TCustomControl read FOwner;
@@ -795,6 +800,21 @@ begin
   end;
 end;
 
+procedure TKeyboard.DestroyKeysBitmaps();
+var
+  _Key : TSpecialKey;
+
+begin
+  if FDestroyBitmaps then
+  begin
+    for _Key := TSpecialKey.sk_None to TSpecialKey.sk_Switcher do
+    begin
+      if FBitmaps[_Key] <> nil then
+        FreeAndNil(FBitmaps[_Key]);
+    end;
+  end;
+end;
+
 function TKeyboard.get_Bitmap(aKey: TSpecialKey): TBitmap;
 begin
   Result := FBitmaps[aKey];
@@ -881,6 +901,8 @@ begin
 
   FOwner := anOwner;
 
+  FDestroyBitmaps := True;
+
   FRows := TObjectList.Create(True);
 
   FPages := TPages.Create(Self);
@@ -893,6 +915,7 @@ end;
 destructor TKeyboard.Destroy;
 begin
   try
+    Self.DestroyKeysBitmaps();
 
     FreeAndNil(FTimer);
 

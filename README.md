@@ -1,5 +1,7 @@
 # LBToolkit
-Swiss-army toolkit for FreePascal developers: thread-safe classes, event systems, file utilities and a reactive logging engine UI integration. Lightweight, extensible, and non-intrusive
+A modular, reactive and thread-safe architecture toolkit for systems programming and automation.
+
+It is a swiss-army toolkit for FreePascal developers: thread-safe classes, event systems, file utilities and a reactive logging engine UI integration. Lightweight, extensible, and non-intrusive.
 
 **LBToolkit** is a modular and extensible collection of units crafted to simplify multithreaded programming, event handling, file operations, and robust logging for desktop, service, and embedded applications.
 

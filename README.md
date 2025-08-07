@@ -64,9 +64,20 @@ Modular bridge between Pascal and Python, enabling script-driven microservices w
 
 Ideal for extending Pascal-based applications with Python logic — from AI modules to complex computation — without recompiling the server or introducing overhead.
 
-
 ---
 
+### 🌐 LBWebSocketClient (`src/LBWebSocketClient/`)
+Standalone WebSocket client with RFC 6455 support, designed for real-time communication in services and desktop applications.
+
+- Secure and non-secure WebSocket connections (`ws://`, `wss://`)
+- Automatic ping/pong handling for connection health
+- Event-driven architecture with callbacks for text, binary, and raw frames
+- Threaded design with reconnection logic and message queuing
+- XML-based configuration loading for host, port, and URI
+
+Ideal for integrating WebSocket communication into automation tools, dashboards, or remote control interfaces.
+
+---
 
 ### 📦 Examples & Demos
 

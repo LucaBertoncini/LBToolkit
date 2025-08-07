@@ -52,13 +52,19 @@ Other platforms may be compatible via FreePascal, but are not currently tested.
 
 ---
 
-## Examples & Demos
+## Practical Examples
 
-LBToolkit includes several practical examples embedded in its test suites and demo folders:
+These examples demonstrate how to use key components of the library through Lazarus projects and their main source units.
 
-- `LBLogger`: see `LazTest` project for a GUI demo of reactive logging
-- `LBVirtualKeyboard`: explore the `Demo/` folder for a working keyboard interface
-- `LBWebPyBridge`: includes a complete test suite for both Pascal and Python sides
+| Lazarus Project | Main Unit | Description |
+|-----------------|-----------|-------------|
+| [`Test_LBLogger.lpr`](src/LBLogger/LazTest/Test_LBLogger.lpr) | [`ufrmmain.pas`](src/LBLogger/LazTest/ufrmmain.pas) | Demonstrates how to use `TLBBaseLogger` with sub-loggers |
+| [`VKb_Demo.lpr`](src/LBVirtualKeyboard/Demo/VKb_Demo.lpr) | [`ufrmmain.pas`](src/LBVirtualKeyboard/Demo/ufrmmain.pas) | Demo of the `LBVirtualKeyboard` component |
+| [`LBWebPyBridgeTest.lpr`](src/LBWebPyBridge/UnitTest/LBWebPyBridgeTest.lpr) | [`uLBWebPyBridgeTests.pas`](src/LBWebPyBridge/UnitTest/uLBWebPyBridgeTests.pas) | Unit test showing basic functionality of the Python bridge |
+| [`TestWebSocketClient.lpr`](src/LBWebSocketClient/UnitTest/TestWebSocketClient.lpr) | [`uTestWebSocketClient.pas`](src/LBWebSocketClient/UnitTest/uTestWebSocketClient.pas) | Unit test for the `LBWebSocketClient` component |
+| [`LBmicroWebServerTests.lpr`](src/LBmicroWebServer/UnitTest/WebServer/LBmicroWebServerTests.lpr) | [`uhttprequestmanagertests.pas`](src/LBmicroWebServer/UnitTest/WebServer/uhttprequestmanagertests.pas) | Unit test for the `LBmicroWebServer` HTTP/WebSocket server |
+| [`LBbaseThreadDemo.lpr`](src/utils/demos/LBBaseThread/LBbaseThreadDemo.lpr) | [`ufrmmain.pas`](src/utils/demos/LBBaseThread/ufrmmain.pas) | Example showing how `uLBBaseThread` simplifies thread usage |
+| [`EventsManagerExample.lps`](src/utils/demos/EventsManager/EventsManagerExample.lps) | [`ufrmmain.pas`](src/utils/demos/EventsManager/ufrmmain.pas) | Example usage of the `TEventsManager` component |
 
 These examples are designed to be minimal, focused, and directly runnable.
 

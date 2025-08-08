@@ -41,6 +41,11 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ufrmMain"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../umultireference.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uMultiReference"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

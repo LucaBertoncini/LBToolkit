@@ -20,8 +20,6 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="ufrmMain"/>
-        <IsVisibleTab Value="True"/>
-        <TopLine Value="53"/>
         <CursorPos X="38" Y="16"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
@@ -29,14 +27,24 @@
       </Unit>
       <Unit>
         <Filename Value="../../uLBBaseThread.pas"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="39"/>
-        <CursorPos X="3" Y="34"/>
+        <CursorPos X="37" Y="8"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../umultireference.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uMultiReference"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="22"/>
+        <CursorPos X="13" Y="34"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
     </Units>
-    <JumpHistory HistoryIndex="5">
+    <JumpHistory HistoryIndex="9">
       <Position>
         <Filename Value="ufrmmain.pas"/>
         <Caret Line="18" Column="47"/>
@@ -60,6 +68,22 @@
       <Position>
         <Filename Value="ufrmmain.pas"/>
         <Caret Line="78" Column="27"/>
+      </Position>
+      <Position>
+        <Filename Value="ufrmmain.pas"/>
+        <Caret Line="16" Column="38"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBBaseThread.pas"/>
+        <Caret Line="15" Column="41" TopLine="7"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBBaseThread.pas"/>
+        <Caret Line="23" Column="42" TopLine="7"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBBaseThread.pas"/>
+        <Caret Line="8" Column="37" TopLine="7"/>
       </Position>
     </JumpHistory>
     <RunParams>

@@ -3,10 +3,7 @@ library LBToolkit_shared;
 {$mode objfpc}{$H+}
 
 uses
-  toolkit_capi_circularbuffer in 'toolkit_capi_circularbuffer.pas',
-  toolkit_capi_logger in 'toolkit_capi_logger.pas';
-
-// Add more units here as we implement their APIs
+  {$IFDEF UNIX}cthreads,{$ENDIF} Toolkit_CAPI_Logger, Toolkit_CAPI_CircularBuffer;
 
 exports
   // Circular Buffer API
@@ -16,13 +13,20 @@ exports
   CircularBuffer_Read,
   CircularBuffer_GetAvailableForRead,
   CircularBuffer_GetAvailableForWrite,
+  CircularBuffer_FindPattern,
+  CircularBuffer_Peek,
+  CircularBuffer_Seek,
   CircularBuffer_Clear,
+
   CircularBufferTS_Create,
   CircularBufferTS_Destroy,
   CircularBufferTS_Write,
   CircularBufferTS_Read,
   CircularBufferTS_GetAvailableForRead,
   CircularBufferTS_GetAvailableForWrite,
+  CircularBufferTS_FindPattern,
+  CircularBufferTS_Peek,
+  CircularBufferTS_Seek,
   CircularBufferTS_Clear,
 
   // Logger API
@@ -30,9 +34,11 @@ exports
   Logger_Finalize,
   Logger_Write,
   Logger_CreateCallbackSublogger,
-  Logger_DestroySublogger;
-
-// Add more exports here for other components
+  Logger_DestroySublogger,
+  Logger_GetMsgType_Error,
+  Logger_GetMsgType_Warning,
+  Logger_GetMsgType_Debug,
+  Logger_GetMsgType_Info;
 
 begin
 end.

@@ -43,8 +43,7 @@ type
     function Write(aBuffer: Pointer; aCount: Cardinal): Boolean;
     
     { Utilità }
-    function FindPattern(aPattern: PByte; aPatternSize: Cardinal; aOffset: Cardinal
-      ): Integer;
+    function FindPattern(aPattern: PByte; aPatternSize: Cardinal; aOffset: Cardinal): Integer;
     function FindByte(aByte: Byte; aOffset: Cardinal): Integer;
     
     { Proprietà }
@@ -56,6 +55,9 @@ type
 
 
 type
+
+  { TLBCircularBufferThreaded }
+
   TLBCircularBufferThreaded = class(TMultiReferenceObject)
   private
     FBuffer: TLBCircularBuffer;
@@ -70,6 +72,9 @@ type
     function PeekByte(aOffset: Cardinal): Byte;
     function Skip(aCount: Cardinal): Boolean;
     function Seek(aOffset: Cardinal): Boolean;
+    function FindPattern(aPattern: PByte; aPatternSize: Cardinal; aOffset: Cardinal): Integer;
+
+    function Clear(): Boolean;
 
     property Buffer: TLBCircularBuffer read FBuffer;
     property BufferCS: TTimedOutCriticalSection read FBufferCS;
@@ -471,6 +476,34 @@ begin
   begin
     try
       Result := FBuffer.Seek(aOffset);
+    finally
+      FBufferCS.Release;
+    end;
+  end;
+end;
+
+function TLBCircularBufferThreaded.FindPattern(aPattern: PByte; aPatternSize: Cardinal; aOffset: Cardinal): Integer;
+begin
+  Result := -1;
+
+  if FBufferCS.Acquire('TLBCircularBufferThreaded.FindPattern') then
+  begin
+    try
+      Result := FBuffer.FindPattern(aPattern, aPatternSize, aOffset);
+    finally
+      FBufferCS.Release;
+    end;
+  end;
+end;
+
+function TLBCircularBufferThreaded.Clear: Boolean;
+begin
+  Result := False;
+  if FBufferCS.Acquire('TLBCircularBufferThreaded.Clear') then
+  begin
+    try
+      FBuffer.Clear();
+      Result := True;
     finally
       FBufferCS.Release;
     end;

@@ -3,7 +3,8 @@ library LBToolkit_shared;
 {$mode objfpc}{$H+}
 
 uses
-  toolkit_capi_circularbuffer in 'toolkit_capi_circularbuffer.pas';
+  toolkit_capi_circularbuffer in 'toolkit_capi_circularbuffer.pas',
+  toolkit_capi_logger in 'toolkit_capi_logger.pas';
 
 // Add more units here as we implement their APIs
 
@@ -22,7 +23,14 @@ exports
   CircularBufferTS_Read,
   CircularBufferTS_GetAvailableForRead,
   CircularBufferTS_GetAvailableForWrite,
-  CircularBufferTS_Clear;
+  CircularBufferTS_Clear,
+
+  // Logger API
+  Logger_Initialize,
+  Logger_Finalize,
+  Logger_Write,
+  Logger_CreateCallbackSublogger,
+  Logger_DestroySublogger;
 
 // Add more exports here for other components
 

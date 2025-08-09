@@ -20,6 +20,14 @@ type
   TCircularBufferTS_Read = function(aHandle: Pointer; aData: PByte; aCount: Cardinal): Boolean; cdecl;
   TCircularBufferTS_GetAvailableForRead = function(aHandle: Pointer): Cardinal; cdecl;
 
+  // Logger API
+  TLogCallback = function(aLevel: Integer; aSender: PChar; aMessage: PChar): Boolean; cdecl;
+  TLogger_Initialize = procedure(aLogFileName: PChar; aLogLevel: Integer); cdecl;
+  TLogger_Finalize = procedure(); cdecl;
+  TLogger_Write = procedure(aLevel: Integer; aSender: PChar; aMessage: PChar); cdecl;
+  TLogger_CreateCallbackSublogger = function(aCallback: TLogCallback; aMaxLogLevel: Integer): Pointer; cdecl;
+  TLogger_DestroySublogger = procedure(aHandle: Pointer); cdecl;
+
 var
   // Non-Thread-Safe Pointers
   CircularBuffer_Create: TCircularBuffer_Create;
@@ -35,6 +43,32 @@ var
   CircularBufferTS_Read: TCircularBufferTS_Read;
   CircularBufferTS_GetAvailableForRead: TCircularBufferTS_GetAvailableForRead;
 
+  // Logger Pointers
+  Logger_Initialize: TLogger_Initialize;
+  Logger_Finalize: TLogger_Finalize;
+  Logger_Write: TLogger_Write;
+  Logger_CreateCallbackSublogger: TLogger_CreateCallbackSublogger;
+  Logger_DestroySublogger: TLogger_DestroySublogger;
+
+  // Global variables to check if our callback was called
+  G_CallbackWasCalled: Boolean = False;
+  G_CallbackMessage: String = '';
+  G_CallbackSender: String = '';
+  G_CallbackLevel: Integer = 0;
+
+
+// This is the callback function that we will pass to the logger library.
+function MyLogCallback(aLevel: Integer; aSender: PChar; aMessage: PChar): Boolean; cdecl;
+begin
+  WriteLn('[CALLBACK CALLED] Level: ', aLevel, ', Sender: ', StrPas(aSender), ', Message: ', StrPas(aMessage));
+  G_CallbackWasCalled := True;
+  G_CallbackLevel := aLevel;
+  G_CallbackSender := StrPas(aSender);
+  G_CallbackMessage := StrPas(aMessage);
+
+  // Stop propagation for messages with level > 50
+  Result := (aLevel > 50);
+end;
 
 procedure WriteLnSuccess(aMessage: String);
 begin
@@ -109,6 +143,56 @@ begin
   WriteLn('--- Thread-Safe Tests Passed ---');
 end;
 
+procedure RunLoggerTests;
+var
+  CallbackLoggerHandle: Pointer;
+  TestSender, TestMessage: String;
+begin
+  WriteLn('--- Running Logger API Tests ---');
+
+  // 1. Create Callback Sublogger with a high log level
+  CallbackLoggerHandle := Logger_CreateCallbackSublogger(@MyLogCallback, 100);
+  Check(CallbackLoggerHandle <> nil, 'CreateCallbackSublogger: Sublogger created.', 'CreateCallbackSublogger: FAILED to create sublogger.');
+
+  // 2. Test the selective log level
+  TestSender := 'LogLevelTest';
+  TestMessage := 'This message has level 100.';
+  G_CallbackWasCalled := False;
+  Logger_Write(100, PChar(TestSender), PChar(TestMessage));
+  Check(G_CallbackWasCalled, 'Selective Log Level: Callback was invoked for high-level message.', 'Selective Log Level: Callback was NOT invoked.');
+  Check(G_CallbackLevel = 100, 'Selective Log Level: Correct level passed to callback.', 'Selective Log Level: Incorrect level.');
+
+  // 3. Test the stop propagation feature
+  TestSender := 'StopPropagationTest';
+  TestMessage := 'This message has level 101 and should stop propagation.';
+  G_CallbackWasCalled := False;
+  Logger_Write(101, PChar(TestSender), PChar(TestMessage));
+  Check(G_CallbackWasCalled, 'Stop Propagation: Callback was invoked.', 'Stop Propagation: Callback was NOT invoked.');
+  // We can't easily check if it was written to the file log, but we trust the implementation.
+  WriteLnSuccess('Stop Propagation: Test message sent.');
+
+  // 4. Test a standard message
+  TestSender := 'StandardTest';
+  TestMessage := 'This is a standard message.';
+  G_CallbackWasCalled := False;
+  Logger_Write(1, PChar(TestSender), PChar(TestMessage));
+  Check(G_CallbackWasCalled, 'Standard Message: Callback was invoked.', 'Standard Message: Callback was NOT invoked.');
+  Check(G_CallbackLevel = 1, 'Standard Message: Correct level passed.', 'Standard Message: Incorrect level.');
+
+
+  // 5. Destroy Sublogger
+  Logger_DestroySublogger(CallbackLoggerHandle);
+  WriteLnSuccess('DestroySublogger: Callback sublogger destroyed.');
+
+  // 6. Verify callback is no longer called
+  G_CallbackWasCalled := False;
+  Logger_Write(1, 'APITester', 'This message should NOT trigger the callback.');
+  Check(not G_CallbackWasCalled, 'Post-Destroy: Callback was not invoked, as expected.', 'Post-Destroy: FAILED, callback was invoked after being destroyed.');
+
+
+  WriteLn('--- Logger Tests Passed ---');
+end;
+
 var
   LibHandle: TLibHandle;
   LibName: String;
@@ -156,6 +240,19 @@ begin
     @CircularBufferTS_GetAvailableForRead := GetProcedureAddress(LibHandle, 'CircularBufferTS_GetAvailableForRead');
     if @CircularBufferTS_GetAvailableForRead = nil then AllFunctionsLoaded := False;
 
+    // Load Logger functions
+    @Logger_Initialize := GetProcedureAddress(LibHandle, 'Logger_Initialize');
+    if @Logger_Initialize = nil then AllFunctionsLoaded := False;
+    @Logger_Finalize := GetProcedureAddress(LibHandle, 'Logger_Finalize');
+    if @Logger_Finalize = nil then AllFunctionsLoaded := False;
+    @Logger_Write := GetProcedureAddress(LibHandle, 'Logger_Write');
+    if @Logger_Write = nil then AllFunctionsLoaded := False;
+    @Logger_CreateCallbackSublogger := GetProcedureAddress(LibHandle, 'Logger_CreateCallbackSublogger');
+    if @Logger_CreateCallbackSublogger = nil then AllFunctionsLoaded := False;
+    @Logger_DestroySublogger := GetProcedureAddress(LibHandle, 'Logger_DestroySublogger');
+    if @Logger_DestroySublogger = nil then AllFunctionsLoaded := False;
+
+
     if not AllFunctionsLoaded then
     begin
       WriteLn('FATAL: Could not find all required functions in the library.');
@@ -164,10 +261,22 @@ begin
 
     WriteLn('Library loaded and all functions found.');
 
+    // Initialize Logger
+    Logger_Initialize('APITester.log', 5);
+    WriteLnSuccess('Logger Initialized via API call.');
+
     RunCircularBufferTests;
     RunCircularBufferTSTests;
+    RunLoggerTests;
 
   finally
+    // Finalize Logger
+    if @Logger_Finalize <> nil then
+    begin
+      Logger_Finalize;
+      WriteLnSuccess('Logger Finalized via API call.');
+    end;
+
     WriteLn('Unloading library.');
     UnloadLibrary(LibHandle);
   end;

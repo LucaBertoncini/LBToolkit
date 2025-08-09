@@ -9,28 +9,33 @@ uses
 
 type
   // New callback signature that returns a Boolean to stop propagation.
-  TLogCallback = function(aLevel: Integer; aSender: PChar; aMsgType: Byte; aMessage: PChar; aStopPropagation: PBoolean): Boolean; cdecl;
+  TLogCallback = function(aLevel: Integer; aSender: PChar; aMsgType: Byte; aMessage: PChar; aStopPropagation: PBoolean; userData: Pointer): Boolean; cdecl;
 
   { TCallbackLogger }
   // A sublogger that forwards log messages to a C-style callback function.
   TCallbackLogger = class(TLBBaseLogger)
   strict private
-    FCallback: TLogCallback;
+    FUserData : Pointer;
+    FCallback : TLogCallback;
+
   protected
     function virtualWrite(LogLevel: Byte; const Sender: String; MsgType: TLBLoggerMessageType; var MsgText: String): Boolean; override;
   public
-    constructor Create(aCallback: TLogCallback; aMaxLogLevel: Integer); reintroduce;
+    constructor Create(aCallback: TLogCallback; aMaxLogLevel: Integer; aUserData: Pointer); reintroduce;
   end;
 
 implementation
 
 { TCallbackLogger }
 
-constructor TCallbackLogger.Create(aCallback: TLogCallback; aMaxLogLevel: Integer);
+constructor TCallbackLogger.Create(aCallback: TLogCallback; aMaxLogLevel: Integer; aUserData: Pointer);
 begin
   inherited Create('CallbackLogger', True);
+
   FCallback := aCallback;
+  FUserData := aUserData;
   Self.MaxLogLevel := aMaxLogLevel;
+
   // By default, enable all message types for a callback logger.
   // The filtering should be done by the callback handler itself.
   Self.EnabledMessages := [Low(TLBLoggerMessageType)..High(TLBLoggerMessageType)];
@@ -48,7 +53,7 @@ begin
 
     try
       // Call the callback and get the stop propagation flag
-      Result := FCallback(LogLevel, PChar(Sender), Byte(MsgType), PChar(MsgText), @_StopPropagation);
+      Result := FCallback(LogLevel, PChar(Sender), Byte(MsgType), PChar(MsgText), @_StopPropagation, FUserData);
     except
       // If the callback fails, we can't do much, but we shouldn't crash the logger.
       Result := False;

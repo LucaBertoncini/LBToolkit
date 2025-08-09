@@ -33,11 +33,11 @@ type
   TCircularBufferTS_Clear                = procedure(aHandle: Pointer); cdecl;
 
   // Logger API
-  TLogCallback                    = function(aLevel: Integer; aSender: PChar; aMessage: PChar): Boolean; cdecl;
+  TLogCallback                    = function(aLevel: Integer; aSender: PChar; aMsgType: Byte; aMessage: PChar; aStopPropagation: PBoolean; userData: Pointer): Boolean; cdecl;
   TLogger_Initialize              = procedure(aLogFileName: PChar; aLogLevel: Integer); cdecl;
   TLogger_Finalize                = procedure(); cdecl;
   TLogger_Write                   = procedure(aLevel: Integer; aSender: PChar; aMsgType: Byte; aMessage: PChar); cdecl;
-  TLogger_CreateCallbackSublogger = function(aCallback: TLogCallback; aMaxLogLevel: Integer): Pointer; cdecl;
+  TLogger_CreateCallbackSublogger = function(aCallback: TLogCallback; aMaxLogLevel: Integer; userData: Pointer): Pointer; cdecl;
   TLogger_DestroySublogger        = procedure(aHandle: Pointer); cdecl;
   TLogger_GetMsgType_Error        = function(): byte; cdecl;
   TLogger_GetMsgType_Warning      = function(): byte; cdecl;

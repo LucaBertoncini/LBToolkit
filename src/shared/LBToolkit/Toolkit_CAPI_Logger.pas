@@ -10,7 +10,7 @@ uses
 procedure Logger_Initialize(aLogFileName: PChar; aLogLevel: Integer); export; cdecl;
 procedure Logger_Finalize; export; cdecl;
 procedure Logger_Write(aLevel: Integer; aSender: PChar; aMessageType: Byte; aMessage: PChar); export; cdecl;
-function Logger_CreateCallbackSublogger(aCallback: TLogCallback; aMaxLogLevel: Integer): Pointer; export; cdecl;
+function Logger_CreateCallbackSublogger(aCallback: TLogCallback; aMaxLogLevel: Integer; userData: Pointer): Pointer; export; cdecl;
 procedure Logger_DestroySublogger(aHandle: Pointer); export; cdecl;
 function Logger_GetMsgType_Error(): byte; export; cdecl;
 function Logger_GetMsgType_Warning(): byte; export; cdecl;
@@ -20,7 +20,7 @@ function Logger_GetMsgType_Info(): byte; export; cdecl;
 implementation
 
 uses
-  ULBLogger,
+  ULBLogger;
 
 procedure Logger_Initialize(aLogFileName: PChar; aLogLevel: Integer); cdecl;
 var
@@ -43,7 +43,7 @@ begin
   LBLogger.Write(aLevel, StrPas(aSender), TLBLoggerMessageType(aMessageType), StrPas(aMessage));
 end;
 
-function Logger_CreateCallbackSublogger(aCallback: TLogCallback; aMaxLogLevel: Integer): Pointer; cdecl;
+function Logger_CreateCallbackSublogger(aCallback: TLogCallback; aMaxLogLevel: Integer; userData: Pointer): Pointer; cdecl;
 var
   CallbackLogger: TCallbackLogger;
 begin
@@ -52,7 +52,7 @@ begin
   begin
 
     try
-      CallbackLogger := TCallbackLogger.Create(aCallback, aMaxLogLevel);
+      CallbackLogger := TCallbackLogger.Create(aCallback, aMaxLogLevel, userData);
       if LBLogger.addAlternativeLogger(CallbackLogger) then
         Result := Pointer(CallbackLogger)
       else

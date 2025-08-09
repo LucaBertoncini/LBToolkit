@@ -52,19 +52,19 @@ const
 type
   ILBBaseLoggerInterface = Interface(IUnknown)
     ['{5746C090-6093-47BB-8CB6-1787C292B43D}']
-    function logWrite(LogLevel: Byte; Sender: PChar; MsgType: TLBLoggerMessageType; MsgText: PChar): Boolean; {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
-    procedure set_MaxLogLevel(AValue: Byte); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
-    procedure set_EnabledMessageTypes(AList: PChar); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};  // The string '1,3,4' will enable error, debug and warning messages
+    function logWrite(LogLevel: Byte; Sender: PChar; MsgType: TLBLoggerMessageType; MsgText: PChar): Boolean; cdecl;
+    procedure set_MaxLogLevel(AValue: Byte); cdecl;
+    procedure set_EnabledMessageTypes(AList: PChar); cdecl;  // The string '1,3,4' will enable error, debug and warning messages
   end;
 
   ILBLogger = Interface(ILBBaseLoggerInterface)
     ['{1019E32D-D1EF-E411-938A-543530D8EA6B}']
-    procedure set_MaxFileSize(ASize: Int64); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+    procedure set_MaxFileSize(ASize: Int64); cdecl;
     procedure setLogFile(aFilename: PChar);
 
     // Metodi per configurazione formattazione
-    procedure set_DateTimeFormat(AValue: PChar); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
-    procedure set_SourceMaxLength(AValue: Integer); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+    procedure set_DateTimeFormat(AValue: PChar); cdecl;
+    procedure set_SourceMaxLength(AValue: Integer); cdecl;
   end;
 
 
@@ -170,8 +170,8 @@ type
 
 
       // Metodi per configurazione formattazione
-      procedure set_DateTimeFormat(AValue: PChar); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
-      procedure set_SourceMaxLength(AValue: Integer); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+      procedure set_DateTimeFormat(AValue: PChar); cdecl;
+      procedure set_SourceMaxLength(AValue: Integer); cdecl;
 
     protected
       FMessageFormat: String;
@@ -182,8 +182,8 @@ type
       destructor Destroy; override;
 
       // Interface
-      procedure set_MaxLogLevel(AValue: Byte); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
-      procedure set_EnabledMessageTypes(AList: PChar); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+      procedure set_MaxLogLevel(AValue: Byte); cdecl;
+      procedure set_EnabledMessageTypes(AList: PChar); cdecl;
       procedure setLogFile(aFilename: PChar); virtual;
       // ------------------------------------------------------------------------------------------------
       property MaxLogLevel: Byte read FMaxLogLevel write SetMaxLogLevel;
@@ -227,9 +227,9 @@ type
      function Write(LogLevel: Byte; const Sender: String; MsgType: TLBLoggerMessageType; const MsgText: String; Parameters: array of const): Boolean; overload;
      function Write(LogLevel: Byte; const Sender: String; MsgType: TLBLoggerMessageType; const MsgText: String): Boolean; overload;
        // Interface
-     function logWrite(LogLevel: Byte; Sender: PChar; MsgType: TLBLoggerMessageType; MsgText: PChar): Boolean; {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+     function logWrite(LogLevel: Byte; Sender: PChar; MsgType: TLBLoggerMessageType; MsgText: PChar): Boolean; cdecl;
      procedure setLogFile(aFilename: PChar); override;
-     procedure set_MaxFileSize(ASize: Int64); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+     procedure set_MaxFileSize(ASize: Int64); cdecl;
 
      // ------------------------------------------------------------------------------------------------
      function addAlternativeLogger(anAlternativeLogger: TLBBaseLogger; aPriority: Integer = -1): Boolean;
@@ -480,8 +480,8 @@ end;
 
 procedure TLBBaseLogger.setMaxLogLevel(AValue: Byte);
 begin
-  if (Self = nil) or (FMaxLogLevel = AValue) then Exit;
-  FMaxLogLevel := AValue;
+  if (Self <> nil) and (FMaxLogLevel <> AValue) then
+    FMaxLogLevel := AValue;
 end;
 
 procedure TLBBaseLogger.set_EnabledMessageTypes(AList: PChar); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
@@ -753,17 +753,19 @@ var
   _MsgText : AnsiString;
 begin
   Result := False;
-  if (Self = nil) or FDestroying then Exit;
-  if Length(Parameters) = 0 then
-    Result := Self.Write(LogLevel, Sender, MsgType, MsgText)
-  else begin
-    try
-      _MsgText := Format(MsgText, Parameters);
-    except
-      on E: Exception do
-        _MsgText := E.Message;
+  if (Self <> nil) and (not FDestroying) then
+  begin
+    if Length(Parameters) = 0 then
+      Result := Self.Write(LogLevel, Sender, MsgType, MsgText)
+    else begin
+      try
+        _MsgText := Format(MsgText, Parameters);
+      except
+        on E: Exception do
+          _MsgText := E.Message;
+      end;
+      Result := Self.Write(LogLevel, Sender, MsgType, _MsgText);
     end;
-    Result := Self.Write(LogLevel, Sender, MsgType, _MsgText);
   end;
 end;
 
@@ -776,44 +778,48 @@ var
   _Msg : String;
 begin
   Result := False;
-  if Self = nil then Exit;
-  if (FAlternativeLoggers <> nil) and FCSAlternativeLoggers.Acquire('TLBLogger.Write') then
+  if Self <> nil then
   begin
-    try
-      _Msg := MsgText;
-      for i := 0 to FAlternativeLoggers.Count - 1 do
-      begin
-        _isOK := TLBBaseLogger(FAlternativeLoggers.Items[i]).virtualWrite(LogLevel, Sender, MsgType, _Msg);
-        if _Msg = '' then
-        begin
-          Result := _isOK;
-          Exit;
-        end;
-      end;
-    finally
-      FCSAlternativeLoggers.Release();
-    end;
-  end;
-  if (LogLevel <= FMaxLogLevel) and (MsgType in FEnabledMessages) then
-  begin
-    if Self.CreateWriter(Sender) then
+    if (FAlternativeLoggers <> nil) and FCSAlternativeLoggers.Acquire('TLBLogger.Write') then
     begin
-      _AMessage := FMessageClass.Create(Self);
-      _AMessage.Time := Now();
-      _AMessage.MsgType := MsgType;
-      _AMessage.Message := MsgText;
-      _AMessage.PID := GetProcessID;
-      _AMessage.ThreadId := GetThreadID;
-      _AMessage.CallingRoutine := Sender;
-      _List := FMessageList.LockList;
       try
-        _List.Add(Pointer(_AMessage));
+        _Msg := MsgText;
+        for i := 0 to FAlternativeLoggers.Count - 1 do
+        begin
+          _isOK := TLBBaseLogger(FAlternativeLoggers.Items[i]).virtualWrite(LogLevel, Sender, MsgType, _Msg);
+          if _Msg = '' then
+          begin
+            Result := _isOK;
+            Exit;
+          end;
+        end;
       finally
-        FMessageList.UnlockList;
+        FCSAlternativeLoggers.Release();
       end;
-      FWriter.setNewMessage(); // Segnalo che ho qualcosa in coda
-      Result := True;
     end;
+
+    if (LogLevel <= FMaxLogLevel) and (MsgType in FEnabledMessages) then
+    begin
+      if Self.CreateWriter(Sender) then
+      begin
+        _AMessage := FMessageClass.Create(Self);
+        _AMessage.Time := Now();
+        _AMessage.MsgType := MsgType;
+        _AMessage.Message := MsgText;
+        _AMessage.PID := GetProcessID;
+        _AMessage.ThreadId := GetThreadID;
+        _AMessage.CallingRoutine := Sender;
+        _List := FMessageList.LockList;
+        try
+          _List.Add(Pointer(_AMessage));
+        finally
+          FMessageList.UnlockList;
+        end;
+        FWriter.setNewMessage(); // Segnalo che ho qualcosa in coda
+        Result := True;
+      end;
+    end;
+
   end;
 end;
 

@@ -10,7 +10,7 @@
         <MainUnitHasScaledStatement Value="False"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="LBCircularBuffer_shared"/>
+      <Title Value="LBToolkit_shared"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
@@ -31,11 +31,11 @@
     </RequiredPackages>
     <Units>
       <Unit>
-        <Filename Value="LBCircularBuffer_shared.lpr"/>
+        <Filename Value="LBToolkit_shared.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="lbcbuffer_capi.pas"/>
+        <Filename Value="toolkit_capi_circularbuffer.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
     </Units>
@@ -44,12 +44,12 @@
     <Version Value="11"/>
     <PathDelim Value="/"/>
     <Target>
-      <Filename Value="../../lib/LBCircularBuffer_shared"/>
+      <Filename Value="../../lib/LBToolkit"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
-      <SrcPath Value="../../utils"/>
+      <SrcPath Value="../../utils;../../LBLogger;../../LBmicroWebServer;../../LBWebSocketClient;../../LBVirtualKeyboard;../../LBWebPyBridge"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
@@ -73,17 +73,4 @@
       <CompilerPath Value="$(CompPath)"/>
     </Other>
   </CompilerOptions>
-  <Debugging>
-    <Exceptions>
-      <Item>
-        <Name Value="EAbort"/>
-      </Item>
-      <Item>
-        <Name Value="ECodetoolError"/>
-      </Item>
-      <Item>
-        <Name Value="EFOpenError"/>
-      </Item>
-    </Exceptions>
-  </Debugging>
 </CONFIG>

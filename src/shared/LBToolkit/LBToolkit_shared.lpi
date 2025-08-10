@@ -14,42 +14,7 @@
       <ResourceType Value="res"/>
     </General>
     <BuildModes>
-      <Item Name="Default" Default="True"/>
-      <Item Name="Release">
-        <CompilerOptions>
-          <Version Value="11"/>
-          <Target>
-            <Filename Value="sharedLib/LBToolkit"/>
-          </Target>
-          <SearchPaths>
-            <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="../../utils;../../LBLogger"/>
-            <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
-          </SearchPaths>
-          <CodeGeneration>
-            <SmartLinkUnit Value="True"/>
-            <RelocatableUnit Value="True"/>
-            <Optimizations>
-              <OptimizationLevel Value="3"/>
-            </Optimizations>
-          </CodeGeneration>
-          <Linking>
-            <Debugging>
-              <GenerateDebugInfo Value="False"/>
-              <RunWithoutDebug Value="True"/>
-              <UseLineInfoUnit Value="False"/>
-              <StripSymbols Value="True"/>
-            </Debugging>
-            <LinkSmart Value="True"/>
-            <Options>
-              <Win32>
-                <GraphicApplication Value="True"/>
-              </Win32>
-              <ExecutableType Value="Library"/>
-            </Options>
-          </Linking>
-        </CompilerOptions>
-      </Item>
+      <Item Name="Release" Default="True"/>
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
@@ -81,13 +46,24 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../utils;../../LBLogger"/>
+      <OtherUnitFiles Value="../../utils;../../LBLogger;../../LBVirtualKeyboard"/>
       <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <CodeGeneration>
       <SmartLinkUnit Value="True"/>
+      <RelocatableUnit Value="True"/>
+      <Optimizations>
+        <OptimizationLevel Value="3"/>
+      </Optimizations>
     </CodeGeneration>
     <Linking>
+      <Debugging>
+        <GenerateDebugInfo Value="False"/>
+        <RunWithoutDebug Value="True"/>
+        <UseLineInfoUnit Value="False"/>
+        <StripSymbols Value="True"/>
+      </Debugging>
+      <LinkSmart Value="True"/>
       <Options>
         <Win32>
           <GraphicApplication Value="True"/>

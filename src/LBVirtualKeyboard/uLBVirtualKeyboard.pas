@@ -807,6 +807,8 @@ var
 begin
   if FDestroyBitmaps then
   begin
+    LBLogger.Write(1, 'TKeyboard.DestroyKeysBitmaps', lmt_Debug, 'Destroying bitmaps ...');
+
     for _Key := TSpecialKey.sk_None to TSpecialKey.sk_Switcher do
     begin
       if FBitmaps[_Key] <> nil then
@@ -828,7 +830,8 @@ end;
 
 procedure TKeyboard.KeyPressed(aKey: TKeyDescriptor);
 begin
-  Application.QueueAsyncCall(@Self.KeyPressedSync, PtrInt(aKey));
+  Self.KeyPressedSync(PtrInt(aKey));
+//  Application.QueueAsyncCall(@Self.KeyPressedSync, PtrInt(aKey));
 end;
 
 procedure TKeyboard.KeyPressedSync(Data: PtrInt);
@@ -938,7 +941,7 @@ var
   i : Integer;
   _Row : TKeyRow;
   _Rect : TRect;
-  _Height : Integer;
+  _Height : Integer = 0;
   _Page : TPageDescriptor;
   _RowDescriptor : TKeyDescriptorsInRow;
   _EmptyBitmap : TBitmap;
@@ -961,21 +964,26 @@ begin
         _Height := _EmptyBitmap.Height;
     end;
 
-    _Rect.Height := _Height;
-
-    _Page := FPages.getPage(FActivePageIdx);
-
-    for i := 0 to FPages.MaxRows - 1 do
+    if _Height > 0 then
     begin
-      _RowDescriptor := _Page.getRow(i);
-
-      _Row := TKeyRow.Create(Self, _Rect, FPages.MaxColumns, _RowDescriptor);
-      _Rect.Top += _Height;
       _Rect.Height := _Height;
-      FRows.Add(_Row);
-    end;
 
-    Result := True;
+      _Page := FPages.getPage(FActivePageIdx);
+
+      for i := 0 to FPages.MaxRows - 1 do
+      begin
+        _RowDescriptor := _Page.getRow(i);
+
+        _Row := TKeyRow.Create(Self, _Rect, FPages.MaxColumns, _RowDescriptor);
+        _Rect.Top += _Height;
+        _Rect.Height := _Height;
+        FRows.Add(_Row);
+      end;
+
+      Result := True;
+    end
+    else
+      LBLogger.Write(1, 'TKeyboard.DrawKeyboard', lmt_Warning, 'Not enable to set button height!');
 
   end;
 end;
@@ -984,6 +992,7 @@ function TKeyboard.LoadLayoutFromXMLFile(const aFilename: String): Boolean;
 var
   _Doc : TXMLDocument = nil;
   _RootNode : TDOMNode;
+  _Filename : String;
 
 begin
   Result := False;
@@ -992,13 +1001,15 @@ begin
 
   if Length(aFilename) > 0 then
   begin
-    if OpenXMLFile(aFilename, _Doc) then
+    _Filename := ExpandFileName(aFilename);
+
+    if OpenXMLFile(_Filename, _Doc) then
     begin
       _RootNode := _Doc.DocumentElement;
       Result := FPages.LoadFromXMLNode(TDOMElement(_RootNode));
     end
     else
-      LBLogger.Write(1, 'TKeyboard.LoadLayoutFromXMLFile', lmt_Warning, 'Keyboard layout file <%s> not opened!', [aFilename]);
+      LBLogger.Write(1, 'TKeyboard.LoadLayoutFromXMLFile', lmt_Warning, 'Keyboard layout file <%s> not opened!', [_Filename]);
   end
   else
     LBLogger.Write(1, 'TKeyboard.LoadLayoutFromXMLFile', lmt_Warning, 'No keyboard layout file!', []);

@@ -16,6 +16,15 @@ const
   HTTP_HEADER_CONTENT_RANGE      = 'Content-Range';
   HTTP_HEADER_ACCEPT_RANGES      = 'Accept-Ranges';
 
+  // 🔹 HTTP Methods
+  HTTP_METHOD_GET                = 'GET';
+  HTTP_METHOD_POST               = 'POST';
+  HTTP_METHOD_HEAD               = 'HEAD';
+  HTTP_METHOD_PUT                = 'PUT';
+  HTTP_METHOD_DELETE             = 'DELETE';
+  HTTP_METHOD_PATCH              = 'PATCH';
+  HTTP_METHOD_OPTIONS            = 'OPTIONS';
+
   // 🔹 Common HTTP Header Values
   HTTP_CONNECTION_CLOSE          = 'close';
   HTTP_CONNECTION_UPGRADE        = 'Upgrade';
@@ -177,7 +186,7 @@ type
   );
 
   TWebSocketCloseCode = (
-    wsClose_Normal              = 1000,
+    wsClose_Normal             = 1000,
     wsClose_GoingAway          = 1001,
     wsClose_ProtocolError      = 1002,
     wsClose_UnsupportedData    = 1003,
@@ -196,3 +205,4 @@ type
 implementation
 
 end.
+

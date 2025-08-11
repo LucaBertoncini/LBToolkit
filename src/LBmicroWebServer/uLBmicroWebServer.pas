@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, blcksock, synsock, contnrs, Laz2_DOM,
   uWebSocketManagement, uLBBaseThread, uTimedoutCriticalSection, uLBTimers,
-  fpjson, jsonparser, uLBmWsFileManager, uLBmWsDocumentsFolder, uLBSSLConfig;
+  fpjson, jsonparser, uLBmWsFileManager, uLBmWsDocumentsFolder, uLBSSLConfig,
+  uHTTPRequestParser, uLBCircularBuffer;
 
 type
   TLBmicroWebServer = class;
@@ -88,8 +89,10 @@ type
         FURI_Params   : TStringList;
 
         FSendingFile : TLBmWsFileManager;
+        FRecvBuffer: TLBCircularBufferThreaded;
+        FParser: THTTPRequestParser;
 
-      function ReadIncomingRequest(): Boolean;
+      function ReceiveAndParseRequest(out SocketError: Boolean): Boolean;
       function SendAnswer(aResultCode: Integer): Boolean;
       function SendHeaders(aResultCode: Integer): Boolean;
 
@@ -445,77 +448,6 @@ begin
   end;
 end;
 
-function THTTPRequestManager.ReadIncomingRequest(): Boolean;
-var
-  _RequestLine: String;
-  _HeaderLine: String;
-  _ContentLength: Integer = 0;
-  _PayloadRead: Integer;
-
-const
-  cLongTimeout    = 60000;
-  cHeaderTimeout  = 10000;
-  cPayloadTimeout = 60000;
-
-begin
-  Result := False;
-
-  FInputHeaders.Clear;
-  SetLength(FInputData, 0);
-
-  try
-    _RequestLine := FSocket.RecvString(cLongTimeout);
-    if FSocket.LastError = 0 then
-    begin
-      FRequestMethod := fetch(_RequestLine, ' ');
-      FURI := fetch(_RequestLine, ' ');
-      FProtocol := fetch(_RequestLine, ' ');
-
-      if (FRequestMethod <> '') and (FURI <> '') and (FProtocol <> '') then
-      begin
-        Self.SplitURIIntoResourceAndParameters(FURI);
-
-        // Read headers
-        while not Self.Terminated do
-        begin
-          _HeaderLine := FSocket.RecvString(cHeaderTimeout);
-          if (FSocket.LastError = 0) and (_HeaderLine <> '') then
-          begin
-            FInputHeaders.Add(_HeaderLine);
-
-            if (_ContentLength = 0) and _HeaderLine.Contains('Content-Length') then
-              _ContentLength := StrToIntDef(SeparateRight(_HeaderLine, ' '), 0);
-          end
-          else
-            Break;
-        end;
-
-        // Read payload
-        if _ContentLength > 0 then
-        begin
-          SetLength(FInputData, _ContentLength);
-          _PayloadRead := FSocket.RecvBufferEx(@FInputData[1], _ContentLength, cPayloadTimeout);
-          if (FSocket.LastError = 0) then
-          begin
-            if (_PayloadRead < _ContentLength) then
-              SetLength(FInputData, _PayloadRead);
-
-            Result := True;
-          end;
-        end
-        else
-          Result := True;
-      end
-      else
-        LBLogger.Write(1, 'THTTPRequestManager.ReadIncomingRequest', lmt_Warning, 'Malformed request line from <%s:%d>: <%s>', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort, _RequestLine]);
-    end
-    else
-      LBLogger.Write(1, 'THTTPRequestManager.ReadIncomingRequest', lmt_Warning, 'Error receiving request line from <%s:%d>: %s', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort, FSocket.LastErrorDesc]);
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'THTTPRequestManager.ReadIncomingRequest', lmt_Error, E.Message);
-  end;
-end;
 
 function THTTPRequestManager.SendAnswer(aResultCode: Integer): Boolean;
 begin
@@ -803,7 +735,8 @@ var
   _KeepConnection         : Boolean = False;
   _InternalState          : THTTPRequestManagerState = rms_ReadIncomingHTTPRequest;
   _SSLData                : TSSLConnectionData;
-
+  _SocketError            : Boolean;
+  _BodySize               : Int64;
 begin
   if (FWebServerOwner <> nil) then
   begin
@@ -830,11 +763,26 @@ begin
 
         rms_ReadIncomingHTTPRequest:
           begin
-            FInputHeaders.Clear;
-            FInputData := '';
-
-            if Self.ReadIncomingRequest() then // Read Header, uri, method
+            if self.ReceiveAndParseRequest(_SocketError) then
             begin
+              // Request parsed correctly, populate fields
+              FRequestMethod := FParser.Method;
+              FURI := FParser.URI;
+              FProtocol := FParser.HTTPVersion;
+              FInputHeaders.Clear;
+              FInputHeaders.AddStrings(FParser.Headers);
+              Self.SplitURIIntoResourceAndParameters(FURI);
+
+              // Handle body
+              SetLength(FInputData, 0);
+              _BodySize := FParser.Body.Size;
+              if _BodySize > 0 then
+              begin
+                SetLength(FInputData, _BodySize);
+                FParser.Body.Position := 0;
+                FParser.Body.ReadBuffer(FInputData[1], _BodySize);
+              end;
+
               if FOutputData <> nil then
                 FOutputData.Clear;
 
@@ -901,6 +849,66 @@ begin
   Self.DoExecuteTerminated();
 end;
 
+function THTTPRequestManager.ReceiveAndParseRequest(out SocketError: Boolean): Boolean;
+const
+  cReadChunkSize = 4096; // Read in 4KB chunks
+  cRequestIdleTimeout = 10000; // 10 seconds idle timeout
+var
+  parseResult: TParserResult;
+  lastDataTime: TTimeoutTimer;
+  bytesRead: Integer;
+begin
+  SocketError := False;
+  Result := False;
+  FParser.Reset;
+  FRecvBuffer.Clear;
+  lastDataTime := TTimeoutTimer.Create(cRequestIdleTimeout);
+  try
+    while not Terminated do
+    begin
+      // Try to parse what we already have in the buffer
+      parseResult := FParser.Parse;
+
+      if parseResult = prComplete then
+      begin
+        Result := True;
+        Break;
+      end;
+
+      if parseResult = prError then
+      begin
+        Result := False;
+        Break;
+      end;
+
+      // If more data is needed, wait for it on the socket
+      if FSocket.CanRead(100) then
+      begin
+        bytesRead := FRecvBuffer.Buffer.WriteFromSocket(FSocket, cReadChunkSize);
+        if bytesRead > 0 then
+          lastDataTime.Reset // Reset idle timer since we got data
+        else if bytesRead < 0 then
+        begin
+          // CanRead was true but read failed, socket error
+          SocketError := True;
+          Result := False;
+          Break;
+        end;
+      end;
+
+      // Check for idle timeout
+      if lastDataTime.Expired then
+      begin
+        Result := False;
+        LBLogger.Write(1, 'THTTPRequestManager', lmt_Warning, 'Request idle timeout.');
+        Break;
+      end;
+    end;
+  finally
+    lastDataTime.Free;
+  end;
+end;
+
 constructor THTTPRequestManager.Create(ASocket: TSocket; AOwner: TLBmicroWebServer);
 begin
   FDestroying := False;
@@ -909,6 +917,9 @@ begin
   FWebServerOwner := AOwner;
   FSocket := TTCPBlockSocket.Create;
   FSocket.Socket := ASocket;
+
+  FRecvBuffer := TLBCircularBufferThreaded.Create(16 * 1024); // 16KB buffer
+  FParser := THTTPRequestParser.Create(FRecvBuffer.Buffer);
 
   FAnswerDescription := TFPStringHashTable.Create;
   FAnswerDescription.Add('200', ' OK');
@@ -946,7 +957,8 @@ begin
 
     SetLength(FInputData, 0);
 
-
+    FreeAndNil(FParser);
+    FreeAndNil(FRecvBuffer);
     FreeAndNil(FSendingFile);
 
     FreeAndNil(FSocket);

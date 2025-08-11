@@ -7,8 +7,8 @@
       <Unit>
         <Filename Value="LBmicroWebServerTests.lpr"/>
         <IsPartOfProject Value="True"/>
-        <CursorPos X="49" Y="6"/>
-        <UsageCount Value="26"/>
+        <CursorPos X="67" Y="7"/>
+        <UsageCount Value="27"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -16,9 +16,9 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="uHTTPRequestManagerTests"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="164"/>
+        <TopLine Value="161"/>
         <CursorPos X="3" Y="161"/>
-        <UsageCount Value="26"/>
+        <UsageCount Value="27"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -26,8 +26,9 @@
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
-        <CursorPos X="33" Y="8"/>
-        <UsageCount Value="26"/>
+        <TopLine Value="428"/>
+        <CursorPos X="45" Y="434"/>
+        <UsageCount Value="27"/>
         <Bookmarks Count="1">
           <Item0 Left="1" Top="1" ID="1"/>
         </Bookmarks>
@@ -40,8 +41,16 @@
         <EditorIndex Value="1"/>
         <TopLine Value="3"/>
         <CursorPos X="5" Y="16"/>
-        <UsageCount Value="26"/>
+        <UsageCount Value="27"/>
         <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../uhttprequestparser.pas"/>
+        <UnitName Value="uHTTPRequestParser"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="272"/>
+        <CursorPos X="116" Y="278"/>
+        <UsageCount Value="21"/>
       </Unit>
       <Unit>
         <Filename Value="/root/.lazarus/onlinepackagemanager/packages/synapse40.1/httpsend.pas"/>
@@ -59,7 +68,7 @@
       </Unit>
       <Unit>
         <Filename Value="../../uWebSocketManagement.pas"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="6"/>
         <TopLine Value="632"/>
         <CursorPos X="77" Y="653"/>
         <UsageCount Value="13"/>
@@ -108,7 +117,7 @@
       </Unit>
       <Unit>
         <Filename Value="../../uLBmWsFileManager.pas"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="7"/>
         <TopLine Value="44"/>
         <CursorPos Y="46"/>
         <UsageCount Value="12"/>
@@ -116,73 +125,21 @@
       </Unit>
       <Unit>
         <Filename Value="../../../utils/uHTTPConsts.pas"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="5"/>
         <CursorPos X="6" Y="7"/>
         <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../../utils/uLBCircularBuffer.pas"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="322"/>
+        <CursorPos X="13" Y="451"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
     </Units>
-    <JumpHistory HistoryIndex="29">
-      <Position>
-        <Filename Value="utestrunner.pas"/>
-        <Caret Line="16" Column="5" TopLine="3"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="97" Column="66" TopLine="84"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="116" Column="93" TopLine="96"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="190" Column="45" TopLine="169"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="208" Column="62" TopLine="188"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="221" Column="50" TopLine="201"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="244" Column="98" TopLine="223"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="252" Column="86" TopLine="232"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="312" Column="110" TopLine="291"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="384" Column="98" TopLine="363"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="435" Column="17" TopLine="414"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="437" Column="24" TopLine="416"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="459" Column="44" TopLine="439"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="465" Column="40" TopLine="445"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="469" Column="24" TopLine="448"/>
-      </Position>
+    <JumpHistory HistoryIndex="19">
       <Position>
         <Filename Value="../../uLBmicroWebServer.pas"/>
         <Caret Line="531" Column="42" TopLine="511"/>
@@ -242,6 +199,26 @@
       <Position>
         <Filename Value="../../../utils/uHTTPConsts.pas"/>
         <Caret Line="7" Column="34"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="11" Column="20"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../utils/uLBCircularBuffer.pas"/>
+        <Caret Line="12" Column="53"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../utils/uLBCircularBuffer.pas"/>
+        <Caret Line="44" Column="24" TopLine="30"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../utils/uLBCircularBuffer.pas"/>
+        <Caret Line="597" Column="73" TopLine="583"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="73" Column="58" TopLine="69"/>
       </Position>
     </JumpHistory>
     <RunParams>

@@ -3,7 +3,7 @@ unit uLBCircularBuffer;
 interface
 
 uses
-  SysUtils, Classes, uMultiReference, uTimedoutCriticalSection;
+  SysUtils, Classes, uMultiReference, uTimedoutCriticalSection, blcksock;
 
 type
   { TLBCircularBuffer }
@@ -18,12 +18,12 @@ type
     function FindDWord(aDWord: Cardinal; aOffset: Cardinal): Integer;
     function FindWord(aWord: Word; aOffset: Cardinal): Integer;
     function FindQWord(aQWord: UInt64; aOffset: Cardinal): Integer;
-	
+
   protected
     function GetAvailableForRead: Cardinal;
     function GetAvailableForWrite: Cardinal;
     function WrapPosition(aPos: Cardinal): Cardinal; inline;
-    
+
   public
     constructor Create(aSize: Cardinal); reintroduce; virtual;
     destructor Destroy; override;
@@ -31,7 +31,7 @@ type
     { Gestione buffer }
     procedure Clear;
     function ResizeBuffer(aNewSize: Cardinal; aPreserveData: Boolean = True): Boolean;
-    
+
     { Lettura }
     function Read(aBuffer: Pointer; aCount: Cardinal): Boolean;
     function Peek(aBuffer: Pointer; aCount: Cardinal; aOffset: Cardinal = 0): Boolean;
@@ -41,11 +41,12 @@ type
 
     { Scrittura }
     function Write(aBuffer: Pointer; aCount: Cardinal): Boolean;
-    
+    function WriteFromSocket(aSocket: TTCPBlockSocket; aMaxCount: Cardinal): Integer;
+
     { Utilità }
     function FindPattern(aPattern: PByte; aPatternSize: Cardinal; aOffset: Cardinal): Integer;
     function FindByte(aByte: Byte; aOffset: Cardinal): Integer;
-    
+
     { Proprietà }
     property MemorySize: Cardinal read FMemorySize;
     property AvailableForRead: Cardinal read GetAvailableForRead;
@@ -73,6 +74,7 @@ type
     function Skip(aCount: Cardinal): Boolean;
     function Seek(aOffset: Cardinal): Boolean;
     function FindPattern(aPattern: PByte; aPatternSize: Cardinal; aOffset: Cardinal): Integer;
+    function WriteFromSocket(aSocket: TTCPBlockSocket; aMaxCount: Cardinal): Integer;
 
     function Clear(): Boolean;
 
@@ -91,28 +93,28 @@ uses
 constructor TLBCircularBuffer.Create(aSize: Cardinal);
 begin
   inherited Create;
-  
+
   if aSize = 0 then
   begin
     LBLogger.Write(6, 'TLBCircularBuffer.Create', lmt_Debug, 'Buffer size cannot be zero');
     raise Exception.Create('Buffer size cannot be zero');
   end;
-    
+
   FMemorySize := aSize;
   FData := AllocMem(FMemorySize);
   FReadPos := 0;
   FWritePos := 0;
   FCount := 0;
-  
+
 end;
 
 destructor TLBCircularBuffer.Destroy;
 begin
   LBLogger.Write(6, 'TLBCircularBuffer.Destroy', lmt_Debug, Format('Destroying buffer of size %d', [FMemorySize]));
-    
+
   Self.Clear;
   FreeMemAndNil(FData);
-  
+
   inherited Destroy;
 end;
 
@@ -154,20 +156,20 @@ var
   _BytesToCopy: Cardinal;
 begin
   Result := False;
-  
+
   if aNewSize > 0 then
   begin
     _NewData := AllocMem(aNewSize);
-    
+
     if aPreserveData and (FCount > 0) then
     begin
       _BytesToCopy := FCount;
       if _BytesToCopy > aNewSize then
         _BytesToCopy := aNewSize;
-        
+
       Self.Read(_NewData, _BytesToCopy);
     end;
-    
+
     FreeMem(FData);
     FData := _NewData;
     _NewData := nil;
@@ -188,7 +190,7 @@ begin
   end
   else
     LBLogger.Write(1, 'TLBCircularBuffer.ResizeBuffer', lmt_Error, 'New size cannot be zero');
-  
+
 end;
 
 function TLBCircularBuffer.Read(aBuffer: Pointer; aCount: Cardinal): Boolean;
@@ -197,11 +199,11 @@ var
   _Dest: PByte;
 begin
   Result := False;
-  
+
   if (aCount > 0) and (aBuffer <> nil) and (FCount >= aCount) then
-  begin  
+  begin
     _Dest := PByte(aBuffer);
-  
+
     // Calcola quanto leggere prima del wrap
     if FReadPos + aCount <= FMemorySize then // Lettura in un solo blocco
       Move(FData[FReadPos], _Dest^, aCount)
@@ -209,14 +211,20 @@ begin
       // Lettura in due blocchi (wrap around)
       _FirstChunk := FMemorySize - FReadPos;
       _SecondChunk := aCount - _FirstChunk;
-	
+
       Move(FData[FReadPos], _Dest^, _FirstChunk);
       Move(FData[0], (_Dest + _FirstChunk)^, _SecondChunk);
     end;
-  
+
     FReadPos := WrapPosition(FReadPos + aCount);
     Dec(FCount, aCount);
     Result := True;
+
+    if FCount = 0 then
+    begin
+      FReadPos := 0;
+      FWritePos := 0;
+    end;
   end;
 end;
 
@@ -226,12 +234,12 @@ var
   Src: PByte;
 begin
   Result := False;
-  
+
   if (aCount > 0) and (aBuffer <> nil) and (Self.GetAvailableForWrite >= aCount) then
   begin
-    
+
     Src := PByte(aBuffer);
-  
+
     // Calcola quanto scrivere prima del wrap
     if FWritePos + aCount <= FMemorySize then // Scrittura in un solo blocco
       Move(Src^, FData[FWritePos], aCount)
@@ -239,11 +247,11 @@ begin
       // Scrittura in due blocchi (wrap around)
       FirstChunk := FMemorySize - FWritePos;
       SecondChunk := aCount - FirstChunk;
-    
+
       Move(Src^, FData[FWritePos], FirstChunk);
       Move((Src + FirstChunk)^, FData[0], SecondChunk);
     end;
-  
+
     FWritePos := Self.WrapPosition(FWritePos + aCount);
     Inc(FCount, aCount);
     Result := True;
@@ -255,13 +263,13 @@ var
   _OrigReadPos: Cardinal;
 begin
   Result := False;
-  
+
   if FCount >= (aOffset + aCount) then
   begin
     _OrigReadPos := FReadPos;
     FReadPos := WrapPosition(FReadPos + aOffset);
     Result := Self.Read(aBuffer, aCount);
-	
+
     // Ripristina posizione originale
     FReadPos := _OrigReadPos;
     Inc(FCount, aCount); // Ripristina il count
@@ -284,12 +292,18 @@ end;
 function TLBCircularBuffer.Skip(aCount: Cardinal): Boolean;
 begin
   Result := False;
-  
+
   if FCount >= aCount then
   begin
     FReadPos := WrapPosition(FReadPos + aCount);
     Dec(FCount, aCount);
     Result := True;
+
+    if FCount = 0 then
+    begin
+      FReadPos := 0;
+      FWritePos := 0;
+    end;
   end;
 end;
 
@@ -301,6 +315,12 @@ begin
     FReadPos := WrapPosition(FReadPos + aOffset);
     Dec(FCount, aOffset);
     Result := True;
+
+    if FCount = 0 then
+    begin
+      FReadPos := 0;
+      FWritePos := 0;
+    end;
   end;
 end;
 
@@ -386,6 +406,69 @@ end;
 function TLBCircularBuffer.FindQWord(aQWord: UInt64; aOffset: Cardinal): Integer;
 begin
   Result := Self.FindPattern(@aQWord, 8, aOffset);
+end;
+
+function TLBCircularBuffer.WriteFromSocket(aSocket: TTCPBlockSocket; aMaxCount: Cardinal): Integer;
+var
+  _BytesToRead, _AvailableToWrite, _FirstChunk, _SecondChunk, _BytesRead: Cardinal;
+begin
+  Result := 0;
+
+  if Assigned(aSocket) then
+  begin
+
+    _AvailableToWrite := Self.GetAvailableForWrite;
+    if _AvailableToWrite > 0 then
+    begin
+      _BytesToRead := aMaxCount;
+      if _BytesToRead > _AvailableToWrite then
+        _BytesToRead := _AvailableToWrite;
+
+      if (FWritePos + _BytesToRead <= FMemorySize) then
+      begin
+        // Contiguous write
+        _BytesRead := aSocket.RecvBuffer(@FData[FWritePos], _BytesToRead);
+        if _BytesRead > 0 then
+        begin
+          FWritePos := Self.WrapPosition(FWritePos + _BytesRead);
+          Inc(FCount, _BytesRead);
+          Result := _BytesRead;
+        end;
+      end
+      else
+      begin
+        // Wrap-around write
+        _FirstChunk := FMemorySize - FWritePos;
+        _BytesRead := aSocket.RecvBuffer(@FData[FWritePos], _FirstChunk);
+
+        if _BytesRead > 0 then
+        begin
+          Inc(FCount, _BytesRead);
+          Result := _BytesRead;
+          FWritePos := self.WrapPosition(FWritePos + _BytesRead);
+
+          if _BytesRead = _FirstChunk then // We filled the first chunk, try for the second
+          begin
+            _SecondChunk := _BytesToRead - _FirstChunk;
+            if _SecondChunk > 0 then
+            begin
+              _BytesRead := aSocket.RecvBuffer(@FData[FWritePos], _SecondChunk);
+              if _BytesRead > 0 then
+              begin
+                Inc(FCount, _BytesRead);
+                Inc(Result, _BytesRead);
+                FWritePos := self.WrapPosition(FWritePos + _BytesRead);
+              end;
+            end;
+          end;
+        end;
+      end;
+    end
+    else
+      LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSocket', lmt_Warning, 'Buffer is full!');
+  end
+  else
+    LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSocket', lmt_Warning, 'No socket available!');
 end;
 
 { TLBCircularBufferThreaded }
@@ -510,4 +593,18 @@ begin
   end;
 end;
 
+function TLBCircularBufferThreaded.WriteFromSocket(aSocket: TTCPBlockSocket; aMaxCount: Cardinal): Integer;
+begin
+  Result := -1;
+  if FBufferCS.Acquire('TLBCircularBufferThreaded.WriteFromSocket') then
+  begin
+    try
+      Result := FBuffer.WriteFromSocket(aSocket, aMaxCount);
+    finally
+      FBufferCS.Release;
+    end;
+  end;
+end;
+
 end.
+

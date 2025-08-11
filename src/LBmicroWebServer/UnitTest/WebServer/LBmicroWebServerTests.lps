@@ -8,29 +8,28 @@
         <Filename Value="LBmicroWebServerTests.lpr"/>
         <IsPartOfProject Value="True"/>
         <CursorPos X="49" Y="6"/>
-        <UsageCount Value="24"/>
+        <UsageCount Value="26"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uhttprequestmanagertests.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uHTTPRequestManagerTests"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="169"/>
-        <CursorPos X="15" Y="175"/>
-        <UsageCount Value="24"/>
+        <TopLine Value="164"/>
+        <CursorPos X="3" Y="161"/>
+        <UsageCount Value="26"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../uLBmicroWebServer.pas"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
-        <TopLine Value="530"/>
-        <CursorPos X="72" Y="574"/>
-        <UsageCount Value="24"/>
+        <CursorPos X="33" Y="8"/>
+        <UsageCount Value="26"/>
         <Bookmarks Count="1">
-          <Item0 Y="720" Left="1" Top="700" ID="1"/>
+          <Item0 Left="1" Top="1" ID="1"/>
         </Bookmarks>
         <Loaded Value="True"/>
       </Unit>
@@ -39,8 +38,9 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="uTestRunner"/>
         <EditorIndex Value="1"/>
-        <CursorPos X="81" Y="8"/>
-        <UsageCount Value="24"/>
+        <TopLine Value="3"/>
+        <CursorPos X="5" Y="16"/>
+        <UsageCount Value="26"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -62,7 +62,7 @@
         <EditorIndex Value="5"/>
         <TopLine Value="632"/>
         <CursorPos X="77" Y="653"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="13"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -110,135 +110,138 @@
         <Filename Value="../../uLBmWsFileManager.pas"/>
         <EditorIndex Value="6"/>
         <TopLine Value="44"/>
-        <CursorPos X="28" Y="46"/>
-        <UsageCount Value="11"/>
+        <CursorPos Y="46"/>
+        <UsageCount Value="12"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../../utils/uHTTPConsts.pas"/>
         <EditorIndex Value="4"/>
-        <TopLine Value="73"/>
-        <CursorPos X="24" Y="87"/>
-        <UsageCount Value="10"/>
+        <CursorPos X="6" Y="7"/>
+        <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="28">
+    <JumpHistory HistoryIndex="29">
       <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="341" Column="46" TopLine="325"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="343" Column="11" TopLine="319"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="97" Column="18" TopLine="83"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="348" TopLine="311"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="313" Column="33" TopLine="261"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="73"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="75" Column="27" TopLine="54"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="296" Column="52" TopLine="273"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="75" Column="27" TopLine="63"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="648" Column="105" TopLine="638"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="289" Column="75" TopLine="281"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="305" Column="63" TopLine="290"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="304" Column="93" TopLine="290"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="315" Column="79" TopLine="296"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="324" Column="52" TopLine="302"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="316" Column="82" TopLine="305"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="388" Column="85" TopLine="389"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="486" Column="84" TopLine="637"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="430" Column="41" TopLine="415"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uWebSocketManagement.pas"/>
-        <Caret Line="653" Column="77" TopLine="632"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmWsFileManager.pas"/>
-        <Caret Line="236" Column="52" TopLine="210"/>
-      </Position>
-      <Position>
-        <Filename Value="../../uLBmWsFileManager.pas"/>
-        <Caret Line="249" Column="52" TopLine="243"/>
-      </Position>
-      <Position>
-        <Filename Value="uhttprequestmanagertests.pas"/>
-        <Caret Line="40" Column="28" TopLine="35"/>
+        <Filename Value="utestrunner.pas"/>
+        <Caret Line="16" Column="5" TopLine="3"/>
       </Position>
       <Position>
         <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="229" Column="11" TopLine="625"/>
+        <Caret Line="97" Column="66" TopLine="84"/>
       </Position>
       <Position>
         <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="45" Column="18" TopLine="31"/>
+        <Caret Line="116" Column="93" TopLine="96"/>
       </Position>
       <Position>
         <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="696" Column="3" TopLine="703"/>
+        <Caret Line="190" Column="45" TopLine="169"/>
       </Position>
       <Position>
         <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="713" Column="36" TopLine="283"/>
+        <Caret Line="208" Column="62" TopLine="188"/>
       </Position>
       <Position>
         <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="712" Column="72" TopLine="686"/>
+        <Caret Line="221" Column="50" TopLine="201"/>
       </Position>
       <Position>
         <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="779" Column="34" TopLine="173"/>
+        <Caret Line="244" Column="98" TopLine="223"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="252" Column="86" TopLine="232"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="312" Column="110" TopLine="291"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="384" Column="98" TopLine="363"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="435" Column="17" TopLine="414"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="437" Column="24" TopLine="416"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="459" Column="44" TopLine="439"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="465" Column="40" TopLine="445"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="469" Column="24" TopLine="448"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="531" Column="42" TopLine="511"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="534" Column="40" TopLine="514"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="537" Column="40" TopLine="517"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="541" Column="24" TopLine="520"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="549" Column="40" TopLine="528"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="552" Column="40" TopLine="531"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="556" Column="40" TopLine="535"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="560" Column="24" TopLine="539"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="592" Column="44" TopLine="572"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="600" Column="42" TopLine="580"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="607" Column="25" TopLine="586"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="628" Column="107" TopLine="616"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBmicroWebServer.pas"/>
+        <Caret Line="629" Column="45" TopLine="611"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../utils/uHTTPConsts.pas"/>
+        <Caret Line="81" Column="70" TopLine="73"/>
+      </Position>
+      <Position>
+        <Filename Value="../../../utils/uHTTPConsts.pas"/>
+        <Caret Line="7" Column="34"/>
       </Position>
     </JumpHistory>
     <RunParams>

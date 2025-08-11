@@ -39,6 +39,7 @@ begin
   FWebServer.DocumentsFolder := TLBmWsDocumentsFolder.Create;
   FWebServer.DocumentsFolder.DocumentFolder := GetTempDir;
   FWebServer.Activate(10320, nil);
+  Sleep(10);
 end;
 
 destructor TMyTestRunner.Destroy;

@@ -10,6 +10,7 @@ uses
   fpjson, jsonparser, uLBmWsFileManager, uLBmWsDocumentsFolder, uLBSSLConfig;
 
 type
+  TLBmicroWebServer = class;
 
   TOnGETRequest = function(
     const Resource: String;
@@ -42,6 +43,7 @@ type
                                     rms_ManageWebSocketSession        = 3,
                                     rms_CloseSocket                   = 7);
     strict private
+      FWebServerOwner: TLBmicroWebServer;
       function ProcessGETRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
       function ProcessHEADRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
       function ProcessPOSTRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
@@ -49,18 +51,6 @@ type
       procedure DoExecuteTerminated();
 
       const
-        cHeader_Upgrade = 'Upgrade';
-        cValue_WebSocketUpgrade = 'websocket';
-
-        cHeader_Connection = 'Connection';
-        cValue_ConnectionUpgrade = 'Upgrade';
-
-        cHTTPHeader_FileRange = String('RANGE');
-
-        cGETRequest   = String('GET');
-        cHEADRequest   = String('HEAD');
-        cPOSTRequest  = String('POST');
-
         cTestURI = String('/test');
 
 
@@ -119,7 +109,7 @@ type
       procedure InternalExecute; override;
 
     public
-      constructor Create(ASocket: TSocket); reintroduce; virtual;
+      constructor Create(ASocket: TSocket; AOwner: TLBmicroWebServer); reintroduce; virtual;
       destructor Destroy; override;
 
       property OnExecuteTerminated: TNotifyEvent write FOnExecuteTerminated;
@@ -187,6 +177,7 @@ type
         FRequestManagerType : THTTPRequestManagerClass;
         FOnNewConnectionRequest : TNewConnectionRequestEvent;
         FMaxActiveConnections : Integer;
+        FWebServerOwner: TLBmicroWebServer;
 
         FSock : TTCPBlockSocket;
         FListeningPort : Integer;
@@ -195,7 +186,7 @@ type
         FLastConnectionTimer : TTimeoutTimer;
 
       const
-        cNoConnectionsTimeout = Int64(14400000); // 4 ore
+        cNoConnectionsTimeout = Int64(14400000); // 4 hours
 
       procedure DestroyAllChildren();
       procedure DestroySocket();
@@ -211,7 +202,7 @@ type
       procedure InternalExecute; override;
 
     public
-      constructor Create(aListeningPort: Integer); reintroduce;
+      constructor Create(aListeningPort: Integer; aOwner: TLBmicroWebServer); reintroduce;
       destructor Destroy; override;
 
       property OnNewConnectionRequest: TNewConnectionRequestEvent write FOnNewConnectionRequest;
@@ -288,9 +279,6 @@ implementation
 uses
   uHTTPConsts, strutils, synautil, laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
 
-var
-  gv_WebServer : TLBmicroWebServer;
-
 { TAnswerError }
 
 procedure TAnswerError.set_Error(AValue: String);
@@ -310,7 +298,7 @@ procedure TLBmicroWebServer.StartListeningThread(aListeningPort: Integer; aReque
 begin
   if FListener = nil then
   begin
-    FListener := TLBmWsListener.Create(aListeningPort);
+    FListener := TLBmWsListener.Create(aListeningPort, Self);
     FListener.RequestManagerType := aRequestManagerType;
     FListener.AddReference(@FListener);
     FListener.Start();
@@ -352,16 +340,10 @@ begin
   FSSLData := TSSLConnectionData.Create;
 
   FListener := nil;
-
-  if gv_WebServer = nil then
-    gv_WebServer := Self;
 end;
 
 destructor TLBmicroWebServer.Destroy;
 begin
-  if gv_WebServer = Self then
-    gv_WebServer := nil;
-
   try
     FreeAndNil(FListener);
 
@@ -493,7 +475,7 @@ begin
       begin
         Self.SplitURIIntoResourceAndParameters(FURI);
 
-        // Lettura header
+        // Read headers
         while not Self.Terminated do
         begin
           _HeaderLine := FSocket.RecvString(cHeaderTimeout);
@@ -508,7 +490,7 @@ begin
             Break;
         end;
 
-        // Lettura payload
+        // Read payload
         if _ContentLength > 0 then
         begin
           SetLength(FInputData, _ContentLength);
@@ -634,9 +616,9 @@ begin
     try
 
       case FRequestMethod of
-        cGETRequest    : Result := Self.ProcessGETRequest(KeepConnection, NextState);
-        cHEADRequest   : Result := Self.ProcessHEADRequest(KeepConnection, NextState);
-        cPOSTRequest   : Result := Self.ProcessPOSTRequest(KeepConnection, NextState);
+        HTTP_METHOD_GET    : Result := Self.ProcessGETRequest(KeepConnection, NextState);
+        HTTP_METHOD_HEAD   : Result := Self.ProcessHEADRequest(KeepConnection, NextState);
+        HTTP_METHOD_POST   : Result := Self.ProcessPOSTRequest(KeepConnection, NextState);
         else
           LBLogger.Write(1, 'THTTPRequestManager.ProcessHttpRequest', lmt_Warning, Format('Unknown request method <%s>', [FRequestMethod]));
       end;
@@ -697,9 +679,9 @@ begin
   KeepConnection := False;
   NextState := rms_CloseSocket;
 
-  // Verifica Upgrade WebSocket
-  if (Trim(FInputHeaders.Values[cHeader_Upgrade]) = cValue_WebSocketUpgrade) and
-     (Pos(cValue_ConnectionUpgrade, FInputHeaders.Values[cHeader_Connection]) > 0) then
+  // Check for WebSocket Upgrade
+  if (Trim(FInputHeaders.Values[HTTP_HEADER_UPGRADE]) = HTTP_UPGRADE_WEBSOCKET) and
+     (Pos(HTTP_CONNECTION_UPGRADE, FInputHeaders.Values[HTTP_HEADER_CONNECTION]) > 0) then
   begin
     Result := HTTP_STATUS_OK;
     KeepConnection := True;
@@ -725,27 +707,30 @@ begin
     Exit;
   end;
 
-  // Tentativo di accesso a file statico
-  _DocFolder := gv_WebServer.DocumentsFolder;
-  if (_DocFolder <> nil) and _DocFolder.isValidSubpath(FURI) then
+  // Attempt to access static file
+  if (FWebServerOwner <> nil) then
   begin
-    FSendingFile := TLBmWsFileManager.Create;
-    if FSendingFile.setFile(_DocFolder.RetrieveFilename(FURI), Trim(FInputHeaders.Values['Range'])) then
+    _DocFolder := FWebServerOwner.DocumentsFolder;
+    if (_DocFolder <> nil) and _DocFolder.isValidSubpath(FURI) then
     begin
-      Result := FSendingFile.answerStatus;
-      NextState := rms_SendHTTPAnswer;
-      Exit;
-    end
-    else
-      FreeAndNil(FSendingFile);
-  end;
+      FSendingFile := TLBmWsFileManager.Create;
+      if FSendingFile.setFile(_DocFolder.RetrieveFilename(FURI), Trim(FInputHeaders.Values[HTTP_HEADER_RANGE])) then
+      begin
+        Result := FSendingFile.answerStatus;
+        NextState := rms_SendHTTPAnswer;
+        Exit;
+      end
+      else
+        FreeAndNil(FSendingFile);
+    end;
 
-  // Custom handler GET (fallback)
-  if Assigned(gv_WebServer.OnGETRequest) then
-  begin
-    Result := HTTP_STATUS_NOT_FOUND;
-    if gv_WebServer.OnGETRequest(FURI_Resource, FInputHeaders, FURI_Params, FOutputHeaders, FOutputData, Result) then
-      NextState := rms_SendHTTPAnswer;
+    // Custom GET handler (fallback)
+    if Assigned(FWebServerOwner.OnGETRequest) then
+    begin
+      Result := HTTP_STATUS_NOT_FOUND;
+      if FWebServerOwner.OnGETRequest(FURI_Resource, FInputHeaders, FURI_Params, FOutputHeaders, FOutputData, Result) then
+        NextState := rms_SendHTTPAnswer;
+    end;
   end;
 end;
 
@@ -758,22 +743,25 @@ begin
   KeepConnection := False;
   NextState := rms_CloseSocket;
 
-  _DocFolder := gv_WebServer.DocumentsFolder;
-  if (_DocFolder <> nil) and (Length(FURI) > 1) and _DocFolder.isValidSubpath(FURI) then
+  if (FWebServerOwner <> nil) then
   begin
-    FSendingFile := TLBmWsFileManager.Create;
+    _DocFolder := FWebServerOwner.DocumentsFolder;
+    if (_DocFolder <> nil) and (Length(FURI) > 1) and _DocFolder.isValidSubpath(FURI) then
+    begin
+      FSendingFile := TLBmWsFileManager.Create;
     FSendingFile.SendHeadersOnly := True;
 
-    if FSendingFile.setFile(_DocFolder.RetrieveFilename(FURI), Trim(FInputHeaders.Values[cHTTPHeader_FileRange])) then
+    if FSendingFile.setFile(_DocFolder.RetrieveFilename(FURI), Trim(FInputHeaders.Values[HTTP_HEADER_RANGE])) then
     begin
       Result := FSendingFile.answerStatus;
       NextState := rms_SendHTTPAnswer;
     end
     else
       FreeAndNil(FSendingFile);
-  end
-  else
-    LBLogger.Write(1, 'THTTPRequestManager.ProcessHEADRequest', lmt_Warning, 'File not found for HEAD <%s>', [FURI]);
+    end
+    else
+      LBLogger.Write(1, 'THTTPRequestManager.ProcessHEADRequest', lmt_Warning, 'File not found for HEAD <%s>', [FURI]);
+  end;
 end;
 
 function THTTPRequestManager.ProcessPOSTRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
@@ -782,9 +770,9 @@ begin
   KeepConnection := False;
   NextState := rms_CloseSocket;
 
-  if Assigned(gv_WebServer.OnPOSTRequest) then
+  if (FWebServerOwner <> nil) and Assigned(FWebServerOwner.OnPOSTRequest) then
   begin
-    if gv_WebServer.OnPOSTRequest(FURI_Resource, FInputHeaders, FInputData, FOutputHeaders, FOutputData, Result) then
+    if FWebServerOwner.OnPOSTRequest(FURI_Resource, FInputHeaders, FInputData, FOutputHeaders, FOutputData, Result) then
     begin
       NextState := rms_SendHTTPAnswer;
       KeepConnection := False;
@@ -817,13 +805,16 @@ var
   _SSLData                : TSSLConnectionData;
 
 begin
-  _SSLData := gv_WebServer.SSLData;
-  if (_SSLData <> nil) and _SSLData.hasValidData then
+  if (FWebServerOwner <> nil) then
   begin
-    if (not Self.setSSLConnection(_SSLData)) then
+    _SSLData := FWebServerOwner.SSLData;
+    if (_SSLData <> nil) and _SSLData.hasValidData then
     begin
-      LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Warning, 'SSL connection not set!');
-      Exit;
+      if (not Self.setSSLConnection(_SSLData)) then
+      begin
+        LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Warning, 'SSL connection not set!');
+        Exit;
+      end;
     end;
   end;
 
@@ -842,20 +833,21 @@ begin
             FInputHeaders.Clear;
             FInputData := '';
 
-            if Self.ReadIncomingRequest() then // Lettura Header, uri, method
+            if Self.ReadIncomingRequest() then // Read Header, uri, method
             begin
               if FOutputData <> nil then
                 FOutputData.Clear;
 
               FOutputHeaders.Clear;
 
-              _ResultCode := Self.ProcessHttpRequest(_KeepConnection, _InternalState); // La funzione determina il nuovo stato:  rms_SendHTTPAnswer per una singola richiesta HTTP   rms_WebSocket_SendHandshakeAnswer nel caso di richiesta di connessione tramite WebSocket
+              // This function determines the new state: rms_SendHTTPAnswer for a single HTTP request or rms_ManageWebSocketSession for a WebSocket connection request.
+              _ResultCode := Self.ProcessHttpRequest(_KeepConnection, _InternalState);
             end
             else
               _InternalState := rms_CloseSocket;
           end;
 
-        rms_SendHTTPAnswer:  // HTTP Request
+        rms_SendHTTPAnswer:
           begin
             if (not Self.SendAnswer(_ResultCode)) or (not _KeepConnection) then
               _InternalState := rms_CloseSocket
@@ -868,14 +860,15 @@ begin
             if FWebSocketManager = nil then
             begin
               FWebSocketManager := TLBWebSocketSession.Create(FSocket, @Self.Terminated);
-              FWebSocketManager.OnDataReceived := gv_WebServer.OnElaborateWebSocketMessage;
+              if FWebServerOwner <> nil then
+                FWebSocketManager.OnDataReceived := FWebServerOwner.OnElaborateWebSocketMessage;
             end;
 
             try
               if FWebSocketManager.PerformHandshake(FInputHeaders) then
               begin
-                if Assigned(gv_WebServer.OnWebSocketConnectionEstablished) then
-                  gv_WebServer.OnWebSocketConnectionEstablished(Self);
+                if (FWebServerOwner <> nil) and Assigned(FWebServerOwner.OnWebSocketConnectionEstablished) then
+                  FWebServerOwner.OnWebSocketConnectionEstablished(Self);
 
                 FWebSocketManager.ExecuteSession();
               end;
@@ -908,11 +901,12 @@ begin
   Self.DoExecuteTerminated();
 end;
 
-constructor THTTPRequestManager.Create(ASocket: TSocket);
+constructor THTTPRequestManager.Create(ASocket: TSocket; AOwner: TLBmicroWebServer);
 begin
   FDestroying := False;
   inherited Create();
 
+  FWebServerOwner := AOwner;
   FSocket := TTCPBlockSocket.Create;
   FSocket.Socket := ASocket;
 
@@ -1131,7 +1125,7 @@ begin
     begin
       FLastConnectionTimer.Reset(cNoConnectionsTimeout);
 
-      // Verifica limite connessioni attive
+      // Check active connections limit
       if FCS.Acquire('TLBmWsListener.AddNewConnections (limit check)') then
       begin
         try
@@ -1143,7 +1137,7 @@ begin
           _Msg := Format('Too many active connections (%d)!', [FMaxActiveConnections]);
       end
       else begin
-        _CanAccept := False; // impossibile verificare stato
+        _CanAccept := False; // unable to verify state
         _Msg := 'Not enable to verify connection count!'
       end;
 
@@ -1152,7 +1146,7 @@ begin
         if Assigned(FOnNewConnectionRequest) then
           Result := FOnNewConnectionRequest(FSock.Accept)
         else begin
-          _Child := FRequestManagerType.Create(FSock.Accept);
+          _Child := FRequestManagerType.Create(FSock.Accept, FWebServerOwner);
           _Child.OnExecuteTerminatedInternal := @Self.RemoveChild;
 
           if FCS.Acquire('TLBmWsListener.AddNewConnections') then
@@ -1334,13 +1328,13 @@ begin
   LBLogger.Write(1, 'TLBmWsListener.InternalExecute', lmt_Debug, 'HTTP Server closed');
 end;
 
-constructor TLBmWsListener.Create(aListeningPort: Integer);
+constructor TLBmWsListener.Create(aListeningPort: Integer; aOwner: TLBmicroWebServer);
 begin
   inherited Create();
 
   Self.setThreadName('WServerListener');
 
-
+  FWebServerOwner := aOwner;
   FRequestManagerType := THTTPRequestManager;
 
   FCS := TTimedOutCriticalSection.Create;
@@ -1385,9 +1379,6 @@ begin
   end;
 end;
 
-finalization
-  if gv_WebServer <> nil then
-    FreeAndNil(gv_WebServer);
-
 end.
+
 

@@ -172,7 +172,7 @@ var
   _Strings : TStringList;
 
 begin
-  Sleep(5000);
+  // Sleep(5000);
   LBLogger.Write(1, 'THTTPRequestManagerTests.Test_TestRequest', lmt_Debug, '------------------------> Started');
   Application.WebServer.OnGETRequest := nil;
   _Strings := TStringList.Create;

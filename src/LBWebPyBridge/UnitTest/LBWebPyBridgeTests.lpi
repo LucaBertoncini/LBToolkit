@@ -81,7 +81,7 @@
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
       <OtherUnitFiles Value="..;../../utils;../../LBLogger;../../LBmicroWebServer"/>
-      <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+      <UnitOutputDirectory Value="/tmp/Test_LBWebPyBridge/lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Other>
       <ExecuteAfter>

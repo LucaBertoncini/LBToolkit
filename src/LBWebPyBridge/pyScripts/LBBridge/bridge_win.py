@@ -2,6 +2,7 @@
 import struct, json, sys, time
 from multiprocessing import shared_memory
 from .LBBridge_constants import *
+from . import sem_win
 
 class Request:
     def __init__(self, filename, params_raw):
@@ -16,18 +17,22 @@ class Request:
 
 
 class LBBridge:
-    def __init__(self, shm_name, shm_size):
+    def __init__(self, shm_name, shm_size, req_sem_name=None, res_sem_name=None):
         self.shm = shared_memory.SharedMemory(name=shm_name)
         self.shm_size = shm_size
         self.buffer = self.shm.buf
+        self.req_sem = sem_win.Semaphore(req_sem_name) if req_sem_name else None
+        self.res_sem = sem_win.Semaphore(res_sem_name) if res_sem_name else None
 
     def wait_for_request(self):
-        while True:
-            raw = bytes(self.buffer[:1 + HEADER_SIZE_IN])
-            if raw and raw[0] == TRIGGER_REQUEST:
-                file_len, params_len = struct.unpack(HEADER_FORMAT_IN, raw[1:1 + HEADER_SIZE_IN])
-                return file_len, params_len
-            time.sleep(0.01)
+        # This call will now block until the Pascal host signals the request semaphore.
+        if self.req_sem:
+            self.req_sem.acquire()
+
+        # Once woken up, read the header from shared memory
+        raw = bytes(self.buffer[:1 + HEADER_SIZE_IN])
+        file_len, params_len = struct.unpack(HEADER_FORMAT_IN, raw[1:1 + HEADER_SIZE_IN])
+        return file_len, params_len
 
     def read_request(self):
         file_len, params_len = self.wait_for_request()
@@ -66,4 +71,9 @@ class LBBridge:
 
     def _trigger(self):
         self.buffer[0] = TRIGGER_RESPONSE
+
+    def signal_completion(self):
+        if self.res_sem:
+            self.res_sem.release()
+
 

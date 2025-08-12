@@ -18,6 +18,7 @@ type
       TConfigurationInfo = record
         SharedMemorySize : Cardinal;
         ThreadPoolSize   : Integer;
+        WorkerTimeoutMs  : Integer;
       end;
 
   strict private
@@ -28,8 +29,10 @@ type
       INI_SECTION_WEBPYBRIDGE      = 'LBWebPyBridge';
       INI_KEY_SHARED_MEMORY_SIZE   = 'SharedMemorySize';
       INI_KEY_THREAD_POOL_SIZE     = 'ThreadPoolSize';
+      INI_KEY_WORKER_TIMEOUT       = 'WorkerTimeout';
       DEFAULT_SHARED_MEMORY_SIZE   = 5 * 1024 * 1024; // 5MB
       DEFAULT_THREAD_POOL_SIZE     = 4;
+      DEFAULT_WORKER_TIMEOUT_MS    = 20000; // 20 seconds
 
 
     strict protected
@@ -80,6 +83,7 @@ begin
 
     FConfig.SharedMemorySize := aFile.ReadInt64(INI_SECTION_WEBPYBRIDGE, INI_KEY_SHARED_MEMORY_SIZE, DEFAULT_SHARED_MEMORY_SIZE);
     FConfig.ThreadPoolSize   := aFile.ReadInteger(INI_SECTION_WEBPYBRIDGE, INI_KEY_THREAD_POOL_SIZE, DEFAULT_THREAD_POOL_SIZE);
+    FConfig.WorkerTimeoutMs  := aFile.ReadInteger(INI_SECTION_WEBPYBRIDGE, INI_KEY_WORKER_TIMEOUT, DEFAULT_WORKER_TIMEOUT_MS);
 
     Result := True;
   except
@@ -134,8 +138,9 @@ end;
 procedure TLBWebPyBridgeApplication.Activate();
 begin
   if FOrchestratorModule <> nil then
-    FOrchestratorModule.setOrchestratorParams(FConfig.ThreadPoolSize, FConfig.SharedMemorySize);
+    FOrchestratorModule.setOrchestratorParams(FConfig.ThreadPoolSize, FConfig.SharedMemorySize, FConfig.WorkerTimeoutMs);
 end;
 
 
 end.
+

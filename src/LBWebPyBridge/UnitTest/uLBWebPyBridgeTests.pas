@@ -22,6 +22,7 @@ type
   protected
     procedure SetUp; override;
     procedure TearDown; override;
+
   published
     procedure Test_NoWorkerPy;
     {$IFDEF Unix}
@@ -144,7 +145,7 @@ begin
   LBLogger.Write(5, 'TLBWebPyBridgeTests.Test_FakeWorker_WrongRequest', lmt_Debug, '***************************************************************');
 
   Self.CreateFakeWorkerPy;
-  Application.WebPyBridge.setOrchestratorParams(3, 8092); // Forcing orchestrator rebuild
+  Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
   Sleep(5000);
   AssertTrue('Verifing process', Self.PythonWorkerRunning);
 end;
@@ -160,7 +161,7 @@ begin
   LBLogger.Write(5, 'TLBWebPyBridgeTests.Test_FakeWorker_WrongRequest', lmt_Debug, '***************************************************************');
 
   Self.CreateFakeWorkerPy;
-  Application.WebPyBridge.setOrchestratorParams(3, 8092); // Forcing orchestrator rebuild
+  Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
   Sleep(200); // wait for restart
 
   _Obj := TJSONObject.Create();
@@ -190,15 +191,17 @@ begin
   DeleteDirectory(FScriptsPath, False);
 
   AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFiles(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
-  Application.WebPyBridge.setOrchestratorParams(3, 8092); // Forcing orchestrator rebuild
-  Sleep(200); // wait for restart
+  Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
+  Sleep(50); // wait for restart
 
   _Dummy := TJSONObject.Create();
   _Dummy.Add('Code', 'Test');
   _Answer := TJSONObject.Create;
   _Answer.Add('echo', _Dummy);
   _String := TStringStream.Create();
+  LBLogger.Write(5, 'TLBWebPyBridgeTests.Test_Echo', lmt_Debug, 'Sending echo request ...');
   AssertTrue('Sending POST request', HttpPostURL('http://127.0.0.1:10320/tests/echo_test', _Dummy.AsJSON, _String));
+  LBLogger.Write(5, 'TLBWebPyBridgeTests.Test_Echo', lmt_Debug, 'Needed: <%s>  -  Received: <%s>', [_Answer.AsJSON, _String.DataString]);
   _Received := TJSONObject(GetJSON(_String.DataString));
   LBLogger.Write(5, 'TLBWebPyBridgeTests.Test_Echo', lmt_Debug, 'Needed: <%s>  -  Received: <%s>', [_Answer.AsJSON, _Received.AsJSON]);
   AssertTrue('Verifing answer', _Answer.AsJSON = _Received.AsJSON);
@@ -219,7 +222,7 @@ begin
   DeleteDirectory(FScriptsPath, False);
 
   AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFiles(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
-  Application.WebPyBridge.setOrchestratorParams(3, 8092); // Forcing orchestrator rebuild
+  Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
   Sleep(200); // wait for restart
 
   _Dummy := TJSONObject.Create();
@@ -249,7 +252,7 @@ begin
   DeleteDirectory(FScriptsPath, False);
 
   AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFiles(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
-  Application.WebPyBridge.setOrchestratorParams(3, 8092); // Forcing orchestrator rebuild
+  Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
   Sleep(200); // wait for restart
 
   _Dummy := TJSONObject.Create();
@@ -279,8 +282,8 @@ begin
   DeleteDirectory(FScriptsPath, False);
 
   AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFiles(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
-  Application.WebPyBridge.setOrchestratorParams(3, 8092); // Forcing orchestrator rebuild
-  Sleep(200); // wait for restart
+  Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
+  Sleep(50); // wait for restart
 
   _Dummy := TJSONObject.Create();
   _Dummy.Add('custom_message', 'enjoy the tests');

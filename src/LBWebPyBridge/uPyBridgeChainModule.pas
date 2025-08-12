@@ -36,7 +36,7 @@ type
         out ResponseCode: Integer
       ): Boolean; override;
 
-      procedure setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer);
+      procedure setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer; aWorkerTimeoutMs: Integer);
 
       property isActive: boolean read get_isActive;
   end;
@@ -147,7 +147,7 @@ begin
   Result := True;
 end;
 
-procedure TPyBridgeChainModule.setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer);
+procedure TPyBridgeChainModule.setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer; aWorkerTimeoutMs: Integer);
 begin
   if FOrchestrator <> nil then
   begin
@@ -156,7 +156,7 @@ begin
   end;
 
   if (aThreadPoolSize > 0) and (aSharedMemorySize > 0) then
-    FOrchestrator := TBridgeOrchestrator.Create(aThreadPoolSize, aSharedMemorySize)
+    FOrchestrator := TBridgeOrchestrator.Create(aThreadPoolSize, aSharedMemorySize, aWorkerTimeoutMs)
   else
     LBLogger.Write(1, 'TPyBridgeChainModule.setOrchestratorParams', lmt_Warning, 'Wrong values for the thread pool size or for the shared memory size!');
 end;

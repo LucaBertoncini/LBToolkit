@@ -52,7 +52,8 @@ begin
     _cfg.Add('');
     _cfg.Add('[LBWebPyBridge]');
     _cfg.Add('SharedMemorySize=1048576');
-    _cfg.Add('ThreadPoolSize=4');
+    _cfg.Add('ThreadPoolSize=1');
+    _cfg.Add('WorkerTimeout=5000'); // Use a shorter timeout for tests
     _cfg.SaveToFile(FConfigFilename);
   finally
     _cfg.Free;
@@ -88,4 +89,5 @@ begin
 end;
 
 end.
+
 

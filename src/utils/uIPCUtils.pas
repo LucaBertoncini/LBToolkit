@@ -1,11 +1,11 @@
-unit uSharedMemoryManagement;
+unit uIPCUtils;
 
 {$mode ObjFPC}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, {$IFDEF shmPOSIX}BaseUnix,{$ENDIF}{$IFDEF Windows} Windows{$ELSE} Unix{$ENDIF}, ipc;
+  Classes, SysUtils, {$IFDEF shmPOSIX}BaseUnix,{$ENDIF}{$IFDEF Windows} Windows{$ELSE}Unix{$ENDIF}, ipc;
 
 type
   {$IFDEF Windows}
@@ -18,14 +18,14 @@ type
   {$ELSE}
     {$IFDEF shmPOSIX}
     TSharedMemory = record
-      shmHandle: Integer;       // file descriptor o ID segment
+    shmHandle: Integer;       // file descriptor or segment ID
       mem       : Pointer;
       size      : Integer;
       name      : String;       // /dev/shm/<name>
     end;
     {$ELSE}
     TSharedMemory = record      // SysV
-      shmHandle: Integer;       // file descriptor o ID segment
+      shmHandle: Integer;       // file descriptor or segment ID
       mem       : Pointer;
       size      : Integer;
       key       : TKey;         // IPC SysV key
@@ -50,6 +50,30 @@ function AllocateSharedMemory(aName: String; aSize: Integer): pSharedMemory;
   function AllocateSharedMemory(aKey: TKey; aSize: Integer): pSharedMemory;
   {$ENDIF}
 {$ENDIF}
+
+type
+  { TLBNamedSemaphore }
+
+  TLBNamedSemaphore = class(TObject)
+  strict private
+    {$IFDEF WINDOWS}
+    FSemHandle: THandle;
+    {$ELSE}
+    FSemId: cint;
+    {$ENDIF}
+    FName: string;
+    FKey: TKey;
+  public
+    constructor Create(const AName: string; const AKey: TKey; Locked: Boolean);
+    destructor Destroy; override;
+
+    function Wait(aTimeoutMs: Cardinal): Boolean;
+    procedure Signal;
+    // procedure Reset;
+
+    property Key: TKey read FKey;
+    property Name: String read FName;
+  end;
 
 implementation
 
@@ -156,8 +180,16 @@ const
   function ftruncate(fd: cint; length: off_t): cint; cdecl; external clib name 'ftruncate';
 {$ELSE}
 const
-  SHM_MODE = &666; // S_IRUSR or S_IWUSR; // Permessi di lettura e scrittura
+  SHM_MODE = &666; // S_IRUSR or S_IWUSR; // Read and write permissions
 {$ENDIF}
+
+{$IFDEF Unix}
+const
+  GETVAL   = 12;
+  SETVAL   = 16;
+  IPC_RMID = 0;
+{$ENDIF}
+
 
 
 {$IFDEF shmPOSIX}
@@ -243,7 +275,7 @@ begin
     aShmInfo^.shmHandle := shmget(aShmInfo^.key, aShmInfo^.size, IPC_CREAT or SHM_MODE);
     if aShmInfo^.shmHandle <> -1 then
     begin
-      // Attacco della memoria condivisa al nostro spazio di indirizzi
+      // Attach shared memory to our address space
       aShmInfo^.mem := shmat(aShmInfo^.shmHandle, nil, 0);
       if aShmInfo^.mem <> Pointer(-1) then
         Result := True
@@ -275,7 +307,7 @@ begin
 
   if aShmInfo^.shmHandle <> -1 then
   begin
-    // Rimozione della memoria condivisa
+    // Remove shared memory
     if shmctl(aShmInfo^.shmHandle, IPC_RMID, nil) = -1 then
       LBLogger.Write(1, 'closeSharedMemory', lmt_Warning, 'Error removing shared memory!');
     aShmInfo^.shmHandle := -1;
@@ -304,5 +336,96 @@ end;
 {$ENDIF}
 {$ENDIF}
 
+
+{ TLBNamedSemaphore }
+
+constructor TLBNamedSemaphore.Create(const AName: string; const AKey: TKey; Locked: Boolean);
+{$IFDEF Unix}
+var
+  _arg: TSEMun;
+{$ENDIF}
+begin
+  inherited Create;
+  FName := AName;
+  FKey := AKey;
+  {$IFDEF WINDOWS}
+  FSemHandle := CreateSemaphore(nil, 0, 1, PChar(FName));
+  {$ELSE}
+  LBLogger.Write(5, 'TLBNamedSemaphore.Create', lmt_Debug, 'Creating semaphore with key: %d', [Integer(FKey)]);
+
+  FSemId := semget(FKey, 1, IPC_CREAT or IPC_EXCL or 438); // 438 = 0o666
+  if FSemId = -1 then // Already exists, get it
+  begin
+    LBLogger.Write(5, 'TLBNamedSemaphore.Create', lmt_Debug, 'Semaphore %d already exists, getting it', [Integer(FKey)]);
+    FSemId := semget(FKey, 1, 438);
+  end;
+
+  if Locked then
+    _arg.val := 0  // Red semaphore
+  else
+    _arg.val := 1;
+
+  // Initialize semaphore
+  semctl(FSemId, 0, SETVAL, _arg);
+  {$ENDIF}
+end;
+
+destructor TLBNamedSemaphore.Destroy;
+{$IFDEF Unix}
+var
+  _dummy : TSEMun;
+{$ENDIF}
+begin
+  {$IFDEF WINDOWS}
+  if FSemHandle <> 0 then
+    CloseHandle(FSemHandle);
+  {$ELSE}
+  if FSemId <> -1 then
+  begin
+    FillChar(_dummy, SizeOf(_dummy), 0);
+    semctl(FSemId, 0, IPC_RMID, _dummy);
+  end;
+  {$ENDIF}
+  inherited Destroy;
+end;
+
+function TLBNamedSemaphore.Wait(aTimeoutMs: Cardinal): Boolean;
+{$IFDEF WINDOWS}
+begin
+  Result := WaitForSingleObject(FSemHandle, aTimeoutMs) = WAIT_OBJECT_0;
+end;
+{$ELSE}
+var
+  timeout_spec: TTimeSpec;
+  sops: TSEMbuf;
+begin
+  timeout_spec.tv_sec := aTimeoutMs div 1000;
+  timeout_spec.tv_nsec := (aTimeoutMs mod 1000) * 1000000;
+
+  sops.sem_num := 0;
+  sops.sem_op := -1; // Wait operation
+  sops.sem_flg := 0;
+  Result := semtimedop(FSemId, @sops, 1, @timeout_spec) <> -1;
+end;
+{$ENDIF}
+
+procedure TLBNamedSemaphore.Signal;
+{$IFDEF WINDOWS}
+begin
+  ReleaseSemaphore(FSemHandle, 1, nil);
+end;
+{$ELSE}
+var
+  sops: TSEMbuf;
+begin
+  sops.sem_num := 0;
+  sops.sem_op := 1; // Signal operation
+  sops.sem_flg := 0;
+
+  semop(FSemId, @sops, 1);
+end;
+{$ENDIF}
+
 end.
+
 

@@ -69,7 +69,6 @@ type
 
     function Wait(aTimeoutMs: Cardinal): Boolean;
     procedure Signal;
-    // procedure Reset;
 
     property Key: TKey read FKey;
     property Name: String read FName;

@@ -12,6 +12,15 @@
       <Title Value="LBToolkit_shared"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
+      <Resources Count="7">
+        <Resource_0 FileName="../../LBVirtualKeyboard/img/Backspace.png" Type="RCDATA" ResourceName="BACKSPACE"/>
+        <Resource_1 FileName="../../LBVirtualKeyboard/img/ReturnKey.png" Type="RCDATA" ResourceName="RETURNKEY"/>
+        <Resource_2 FileName="../../LBVirtualKeyboard/img/ShiftKey.png" Type="RCDATA" ResourceName="SHIFTKEY"/>
+        <Resource_3 FileName="../../LBVirtualKeyboard/img/SingleKey.png" Type="RCDATA" ResourceName="SINGLEKEY"/>
+        <Resource_4 FileName="../../LBVirtualKeyboard/img/SpaceKey.png" Type="RCDATA" ResourceName="SPACEKEY"/>
+        <Resource_5 FileName="../../LBVirtualKeyboard/img/SwitcherKey.png" Type="RCDATA" ResourceName="SWITCHERKEY"/>
+        <Resource_6 FileName="../../LBVirtualKeyboard/img/TabKey.png" Type="RCDATA" ResourceName="TABKEY"/>
+      </Resources>
     </General>
     <BuildModes>
       <Item Name="Release" Default="True"/>
@@ -25,6 +34,15 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="laz_synapse"/>
+      </Item>
+      <Item>
+        <PackageName Value="BGRABitmapPack"/>
+      </Item>
+      <Item>
+        <PackageName Value="LCLBase"/>
+      </Item>
+      <Item>
         <PackageName Value="LCL"/>
       </Item>
     </RequiredPackages>
@@ -37,6 +55,11 @@
         <Filename Value="uCallbackLogger.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="toolkit_capi_microwebserver.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Toolkit_CAPI_microWebServer"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -46,8 +69,8 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../utils;../../LBLogger;../../LBVirtualKeyboard"/>
-      <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+      <OtherUnitFiles Value="../../utils;../../LBLogger;../../LBmicroWebServer"/>
+      <UnitOutputDirectory Value="/tmp/lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <CodeGeneration>
       <SmartLinkUnit Value="True"/>

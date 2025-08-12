@@ -3,8 +3,8 @@ library LBToolkit_shared;
 {$mode objfpc}{$H+}
 
 uses
-  {$IFDEF UNIX}cthreads,{$ENDIF} Toolkit_CAPI_Logger, Toolkit_CAPI_CircularBuffer,
-  Toolkit_CAPI_VirtualKeyboard;
+  {$IFDEF UNIX}cthreads, Toolkit_CAPI_Logger, Toolkit_CAPI_CircularBuffer,
+  Toolkit_CAPI_microWebServer;
 
 exports
   // Circular Buffer API
@@ -39,18 +39,11 @@ exports
   Logger_GetMsgType_Error,
   Logger_GetMsgType_Warning,
   Logger_GetMsgType_Debug,
-  Logger_GetMsgType_Info,
+  Logger_GetMsgType_Info;
 
-  // Virtual Keyboard API
-  VKeyboard_Initialize,
-  VKeyboard_Finalize,
-  VKeyboard_Create,
-  VKeyboard_Destroy,
-  VKeyboard_Show,
-  VKeyboard_Hide,
-  VKeyboard_LoadLayout,
-  VKeyboard_SetPositionAndSize;
 
+
+{$R *.res}
 
 begin
 end.

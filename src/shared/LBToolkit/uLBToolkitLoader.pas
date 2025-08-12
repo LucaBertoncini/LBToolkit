@@ -44,15 +44,6 @@ type
   TLogger_GetMsgType_Debug        = function(): byte; cdecl;
   TLogger_GetMsgType_Info         = function(): byte; cdecl;
 
-  // Keyboard API
-  TVKeyboard_Initialize         = procedure(aAppHandle: THandle); cdecl;
-  TVKeyboard_Finalize           = procedure(); cdecl;
-  TVKeyboard_Create             = function(aParentHandle: THandle): Pointer; cdecl;
-  TVKeyboard_Destroy            = procedure(aHandle: Pointer); cdecl;
-  TVKeyboard_Show               = procedure(aHandle: Pointer); cdecl;
-  TVKeyboard_Hide               = procedure(aHandle: Pointer); cdecl;
-  TVKeyboard_LoadLayout         = function(aHandle: Pointer; aLayoutFile: PChar): Boolean; cdecl;
-  TVKeyboard_SetPositionAndSize = procedure(aHandle: Pointer; aLeft, aTop, aWidth, aHeight: Integer); cdecl;
 
 
 var
@@ -91,15 +82,6 @@ var
   Logger_GetMsgType_Debug        : TLogger_GetMsgType_Debug;
   Logger_GetMsgType_Info         : TLogger_GetMsgType_Info;
 
-  // Virtual Keyboard Pointers
-  VKeyboard_Initialize         : TVKeyboard_Initialize;
-  VKeyboard_Finalize           : TVKeyboard_Finalize;
-  VKeyboard_Create             : TVKeyboard_Create;
-  VKeyboard_Destroy            : TVKeyboard_Destroy;
-  VKeyboard_Show               : TVKeyboard_Show;
-  VKeyboard_Hide               : TVKeyboard_Hide;
-  VKeyboard_LoadLayout         : TVKeyboard_LoadLayout;
-  VKeyboard_SetPositionAndSize : TVKeyboard_SetPositionAndSize;
 
 
 function LoadLBToolkit(const aFilePath: String): Boolean;
@@ -173,16 +155,6 @@ begin
     gv_LibraryManager.addFunction('Logger_GetMsgType_Warning', @Logger_GetMsgType_Warning);
     gv_LibraryManager.addFunction('Logger_GetMsgType_Debug', @Logger_GetMsgType_Debug);
     gv_LibraryManager.addFunction('Logger_GetMsgType_Info', @Logger_GetMsgType_Info);
-
-    // Virtual Keyboard functions
-    gv_LibraryManager.addFunction('VKeyboard_Initialize', @VKeyboard_Initialize);
-    gv_LibraryManager.addFunction('VKeyboard_Finalize', @VKeyboard_Finalize);
-    gv_LibraryManager.addFunction('VKeyboard_Create', @VKeyboard_Create);
-    gv_LibraryManager.addFunction('VKeyboard_Destroy', @VKeyboard_Destroy);
-    gv_LibraryManager.addFunction('VKeyboard_Show', @VKeyboard_Show);
-    gv_LibraryManager.addFunction('VKeyboard_Hide', @VKeyboard_Hide);
-    gv_LibraryManager.addFunction('VKeyboard_LoadLayout', @VKeyboard_LoadLayout);
-    gv_LibraryManager.addFunction('VKeyboard_SetPositionAndSize', @VKeyboard_SetPositionAndSize);
 
 
     Result := gv_LibraryManager.LoadLibrary(_LibFile, _ErrMsg);

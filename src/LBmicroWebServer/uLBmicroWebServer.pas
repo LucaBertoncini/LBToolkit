@@ -8,25 +8,25 @@ uses
   Classes, SysUtils, blcksock, synsock, contnrs, Laz2_DOM,
   uWebSocketManagement, uLBBaseThread, uTimedoutCriticalSection, uLBTimers,
   fpjson, jsonparser, uLBmWsFileManager, uLBmWsDocumentsFolder, uLBSSLConfig,
-  uHTTPRequestParser, uLBCircularBuffer;
+  uHTTPRequestParser, uLBCircularBuffer, fgl;
 
 type
   TLBmicroWebServer = class;
 
   TOnGETRequest = function(
-    const Resource: String;
-    const Headers: TStringList;
-    const URIParams: TStringList;
-    var ResponseHeaders: TStringList;
+    var Resource: String;
+    Headers: TStringList;
+    URIParams: TStringList;
+    ResponseHeaders: TStringList;
     var ResponseData: TMemoryStream;
     out ResponseCode: Integer
   ): Boolean of object;
 
   TOnPOSTRequest = function(
-    const Resource: String;
-    const Headers: TStringList;
-    const Payload: AnsiString;
-    var ResponseHeaders: TStringList;
+    var Resource: String;
+    Headers: TStringList;
+    var Payload: AnsiString;
+    ResponseHeaders: TStringList;
     var ResponseData: TMemoryStream;
     out ResponseCode: Integer
   ): Boolean of object;
@@ -140,26 +140,52 @@ type
 
   TRequestChainProcessor = class(TObject)
     strict protected
+      FWebServerOwner : TLBmicroWebServer;
       FNext: TRequestChainProcessor;
 
-    public
-      function ProcessGETRequest(
-        const Resource: String;
-        const Headers: TStringList;
-        const URIParams: TStringList;
-        var ResponseHeaders: TStringList;
+
+      function DoProcessGETRequest(
+        var Resource: String;
+        Headers: TStringList;
+        URIParams: TStringList;
+        ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
       ): Boolean; virtual; abstract;
 
-      function ProcessPOSTRequest(
-        const Resource: String;
-        const Headers: TStringList;
-        const Payload: AnsiString;
-        var ResponseHeaders: TStringList;
+      function DoProcessPOSTRequest(
+        var Resource: String;
+        Headers: TStringList;
+        var Payload: AnsiString;
+        ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
       ): Boolean; virtual; abstract;
+
+
+    private
+      property Owner: TLBmicroWebServer write FWebServerOwner;
+
+
+    public
+
+      function ProcessGETRequest(
+        var Resource: String;
+        Headers: TStringList;
+        URIParams: TStringList;
+        ResponseHeaders: TStringList;
+        var ResponseData: TMemoryStream;
+        out ResponseCode: Integer
+      ): Boolean;
+
+      function ProcessPOSTRequest(
+        var Resource: String;
+        Headers: TStringList;
+        var Payload: AnsiString;
+        ResponseHeaders: TStringList;
+        var ResponseData: TMemoryStream;
+        out ResponseCode: Integer
+      ): Boolean;
 
       property NextStep: TRequestChainProcessor write FNext;
   end;
@@ -215,24 +241,49 @@ type
         cResetTimeout = Integer(180000);
   end;
 
+  TRequestChainProcessorList = specialize TFPGObjectList<TRequestChainProcessor>;
 
   { TLBmicroWebServer }
 
   TLBmicroWebServer = class(TObject)
     strict private
-      FOnGETRequest                     : TOnGETRequest;
-      FOnPOSTRequest                    : TOnPOSTRequest;
       FOnWebSocketConnectionEstablished : TNotifyEvent;
       FOnElaborateWebSocketMessage      : TWebSocketDataReceivedEvent;
+
+      FProcessors : TRequestChainProcessorList;
 
 
       FListener          : TLBmWsListener;
       FSSLData           : TSSLConnectionData;
       FDocumentsFolder   : TLBmWsDocumentsFolder;
 
+      FAdditionalData    : TObject;
+
       function get_DocumentsFolder: TLBmWsDocumentsFolder;
       procedure set_DocumentsFolder(AValue: TLBmWsDocumentsFolder);
       procedure StartListeningThread(aListeningPort: Integer; aRequestManagerType: THTTPRequestManagerClass);
+
+      procedure UpdateChain();
+
+    private
+      function ProcessGETRequest(
+        var Resource: String;
+        Headers: TStringList;
+        URIParams: TStringList;
+        ResponseHeaders: TStringList;
+        var ResponseData: TMemoryStream;
+        out ResponseCode: Integer
+      ): Boolean;
+
+      function ProcessPOSTRequest(
+        var Resource: String;
+        Headers: TStringList;
+        var Payload: AnsiString;
+        ResponseHeaders: TStringList;
+        var ResponseData: TMemoryStream;
+        out ResponseCode: Integer
+      ): Boolean;
+
 
     public
       constructor Create();
@@ -244,15 +295,18 @@ type
 
       procedure Stop();
 
+      function addChainProcessor(aProcessor: TRequestChainProcessor; asFirst: Boolean): Boolean;
+
+      function LoadFromXMLFile(const aFilename: String): Boolean;
       function LoadFromXMLNode(aNode: TDOMNode): Boolean;
 
-      property OnGETRequest : TOnGETRequest read FOnGETRequest write FOnGETRequest;
-      property OnPOSTRequest : TOnPOSTRequest read FOnPOSTRequest write FOnPOSTRequest;
       property OnElaborateWebSocketMessage: TWebSocketDataReceivedEvent read FOnElaborateWebSocketMessage write FOnElaborateWebSocketMessage;
       property OnWebSocketConnectionEstablished: TNotifyEvent read FOnWebSocketConnectionEstablished write FOnWebSocketConnectionEstablished;
 
       property DocumentsFolder  : TLBmWsDocumentsFolder  read get_DocumentsFolder   write set_DocumentsFolder;
       property SSLData          : TSSLConnectionData     read FSSLData;
+
+      property AdditionalData   : TObject                read FAdditionalData       write FAdditionalData;
   end;
 
   { TAnswerError }
@@ -280,7 +334,7 @@ const
 implementation
 
 uses
-  uHTTPConsts, strutils, synautil, laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
+  uHTTPConsts, uLBFileUtils, synautil, laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
 
 { TAnswerError }
 
@@ -308,6 +362,35 @@ begin
   end
   else
     LBLogger.Write(1, 'TLBmicroWebServer.StartListeningThread', lmt_Warning, 'Listener already active!');
+end;
+
+procedure TLBmicroWebServer.UpdateChain();
+var
+  i: Integer;
+begin
+  for i := 0 to FProcessors.Count - 2 do
+    FProcessors[i].NextStep := FProcessors[i+1];
+
+  if FProcessors.Count > 0 then
+    FProcessors.Last.NextStep := nil;
+end;
+
+function TLBmicroWebServer.ProcessGETRequest(var Resource: String;
+  Headers: TStringList; URIParams: TStringList; ResponseHeaders: TStringList;
+  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+begin
+  Result := False;
+  if FProcessors.First <> nil then
+    Result := FProcessors.First.ProcessGETRequest(Resource, Headers, URIParams, ResponseHeaders, ResponseData, ResponseCode);
+end;
+
+function TLBmicroWebServer.ProcessPOSTRequest(var Resource: String;
+  Headers: TStringList; var Payload: AnsiString; ResponseHeaders: TStringList;
+  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+begin
+  Result := False;
+  if FProcessors.First <> nil then
+    Result := FProcessors.First.ProcessPOSTRequest(Resource, Headers, Payload, ResponseHeaders, ResponseData, ResponseCode);
 end;
 
 procedure TLBmicroWebServer.set_DocumentsFolder(AValue: TLBmWsDocumentsFolder);
@@ -342,6 +425,8 @@ begin
 
   FSSLData := TSSLConnectionData.Create;
 
+  FProcessors := TRequestChainProcessorList.Create(True);
+
   FListener := nil;
 end;
 
@@ -352,6 +437,8 @@ begin
 
     if FDocumentsFolder <> nil then
       FreeAndNil(FDocumentsFolder);
+
+    FreeAndNil(FProcessors);
 
     FreeAndNil(FSSLData);
 
@@ -410,7 +497,40 @@ end;
 procedure TLBmicroWebServer.Stop();
 begin
   FreeAndNil(FListener);
-  LBLogger.Write(1, 'TLBmicroWebServer.Stop', lmt_Debug, 'Web-server stopped!');
+end;
+
+function TLBmicroWebServer.addChainProcessor(aProcessor: TRequestChainProcessor; asFirst: Boolean): Boolean;
+begin
+  Result := False;
+  if (aProcessor <> nil) then
+  begin
+    if asFirst then
+      FProcessors.Insert(0, aProcessor)
+    else
+      FProcessors.Add(aProcessor);
+
+    aProcessor.Owner := Self;
+
+    Self.UpdateChain();
+  end;
+end;
+
+function TLBmicroWebServer.LoadFromXMLFile(const aFilename: String): Boolean;
+var
+  _Doc : TXMLDocument = nil;
+
+begin
+  try
+    if OpenXMLFile(aFilename, _Doc) then
+      Result := Self.LoadFromXMLNode(_Doc.DocumentElement);
+
+  except
+    on E: Exception do
+      LBLogger.Write(1, 'TLBmicroWebServer.LoadFromXMLFile', lmt_Error, E.Message);
+  end;
+
+  if _Doc <> nil then
+    _Doc.Free;
 end;
 
 
@@ -490,7 +610,7 @@ begin
       if FSendingFile <> nil then
         FSendingFile.addResponseHeaders(FOutputHeaders)
       else if FOutputData <> nil then
-        FOutputHeaders.Add('Content-length: ' + IntTostr(FOutputData.Size));
+        FOutputHeaders.Add(HTTP_HEADER_CONTENT_LENGTH + ': ' + IntTostr(FOutputData.Size));
 
       FOutputHeaders.Add('');
 
@@ -538,7 +658,7 @@ end;
 
 function THTTPRequestManager.ProcessHttpRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
 begin
-  Result := 404;
+  Result := HTTP_STATUS_NOT_FOUND;
   KeepConnection := False;
   NextState := rms_CloseSocket;
 
@@ -657,12 +777,9 @@ begin
     end;
 
     // Custom GET handler (fallback)
-    if Assigned(FWebServerOwner.OnGETRequest) then
-    begin
-      Result := HTTP_STATUS_NOT_FOUND;
-      if FWebServerOwner.OnGETRequest(FURI_Resource, FInputHeaders, FURI_Params, FOutputHeaders, FOutputData, Result) then
-        NextState := rms_SendHTTPAnswer;
-    end;
+    Result := HTTP_STATUS_NOT_FOUND;
+    if FWebServerOwner.ProcessGETRequest(FURI_Resource, FInputHeaders, FURI_Params, FOutputHeaders, FOutputData, Result) then
+      NextState := rms_SendHTTPAnswer;
   end;
 end;
 
@@ -702,9 +819,9 @@ begin
   KeepConnection := False;
   NextState := rms_CloseSocket;
 
-  if (FWebServerOwner <> nil) and Assigned(FWebServerOwner.OnPOSTRequest) then
+  if (FWebServerOwner <> nil) then
   begin
-    if FWebServerOwner.OnPOSTRequest(FURI_Resource, FInputHeaders, FInputData, FOutputHeaders, FOutputData, Result) then
+    if FWebServerOwner.ProcessPOSTRequest(FURI_Resource, FInputHeaders, FInputData, FOutputHeaders, FOutputData, Result) then
     begin
       NextState := rms_SendHTTPAnswer;
       KeepConnection := False;
@@ -1020,6 +1137,38 @@ begin
     FSocket.SSLDoShutdown;
 end;
 
+{ TRequestChainProcessor }
+(*
+constructor TRequestChainProcessor.Create;
+begin
+  inherited Create;
+
+  FWebServerOwner := aWebserverOwner;
+end;
+*)
+
+function TRequestChainProcessor.ProcessGETRequest(var Resource: String;
+  Headers: TStringList; URIParams: TStringList; ResponseHeaders: TStringList;
+  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+begin
+  Result := Self.DoProcessGETRequest(Resource, Headers, URIParams, ResponseHeaders, ResponseData, ResponseCode);
+
+  // if Result = True the chain is blocked
+  if (not Result) and (FNext <> nil) then
+    Result := FNext.ProcessGETRequest(Resource, Headers, URIParams, ResponseHeaders, ResponseData, ResponseCode);
+end;
+
+function TRequestChainProcessor.ProcessPOSTRequest(var Resource: String;
+  Headers: TStringList; var Payload: AnsiString; ResponseHeaders: TStringList;
+  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+begin
+  Result := Self.DoProcessPOSTRequest(Resource, Headers, Payload, ResponseHeaders, ResponseData, ResponseCode);
+
+  // if Result = True the chain is blocked
+  if (not Result) and (FNext <> nil) then
+    Result := FNext.ProcessPOSTRequest(Resource, Headers, Payload, ResponseHeaders, ResponseData, ResponseCode);
+end;
+
 { TLBmWsListener }
 
 procedure TLBmWsListener.DestroyAllChildren();
@@ -1228,7 +1377,6 @@ begin
   else
     FRequestManagerType := AValue;
 end;
-
 
 function TLBmWsListener.WaitForDestruction(): Boolean;
 var

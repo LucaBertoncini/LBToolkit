@@ -8,25 +8,25 @@
         <Filename Value="LBWebPyBridgeTests.lpr"/>
         <IsPartOfProject Value="True"/>
         <CursorPos Y="7"/>
-        <UsageCount Value="63"/>
+        <UsageCount Value="76"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uLBWebPyBridgeTests.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="281"/>
-        <CursorPos X="37" Y="28"/>
-        <UsageCount Value="63"/>
+        <TopLine Value="190"/>
+        <CursorPos X="60" Y="278"/>
+        <UsageCount Value="76"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uLBWebPyBridgeTestRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="7"/>
+        <EditorIndex Value="8"/>
         <TopLine Value="55"/>
         <CursorPos X="31" Y="55"/>
-        <UsageCount Value="63"/>
+        <UsageCount Value="76"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -35,7 +35,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="10"/>
         <CursorPos X="19" Y="35"/>
-        <UsageCount Value="45"/>
+        <UsageCount Value="58"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -43,7 +43,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="24" Y="3"/>
-        <UsageCount Value="40"/>
+        <UsageCount Value="53"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -52,7 +52,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="44"/>
         <CursorPos X="31" Y="65"/>
-        <UsageCount Value="40"/>
+        <UsageCount Value="53"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -60,7 +60,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="25" Y="4"/>
-        <UsageCount Value="36"/>
+        <UsageCount Value="49"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -68,16 +68,15 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="9" Y="7"/>
-        <UsageCount Value="32"/>
+        <UsageCount Value="45"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
         <Filename Value="../uPyBridgeChainModule.pas"/>
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="3"/>
-        <TopLine Value="140"/>
-        <CursorPos X="3" Y="152"/>
-        <UsageCount Value="32"/>
+        <CursorPos X="3" Y="13"/>
+        <UsageCount Value="45"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -85,21 +84,22 @@
         <UnitName Value="uLBWebPyBridgeTestRunner"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="3" Y="36"/>
-        <UsageCount Value="15"/>
+        <UsageCount Value="14"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-fpcunit/src/consoletestrunner.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="56"/>
         <CursorPos Y="80"/>
-        <UsageCount Value="5"/>
+        <UsageCount Value="4"/>
       </Unit>
       <Unit>
         <Filename Value="../uLBWebPyBridgeApplication.pas"/>
-        <EditorIndex Value="4"/>
-        <TopLine Value="119"/>
-        <CursorPos X="3" Y="140"/>
-        <UsageCount Value="31"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="124"/>
+        <CursorPos Y="64"/>
+        <UsageCount Value="37"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -107,14 +107,14 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="14"/>
         <CursorPos X="3" Y="14"/>
-        <UsageCount Value="24"/>
+        <UsageCount Value="23"/>
       </Unit>
       <Unit>
         <Filename Value="../uPyBridge.pas"/>
-        <EditorIndex Value="5"/>
-        <TopLine Value="212"/>
-        <CursorPos Y="226"/>
-        <UsageCount Value="31"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="619"/>
+        <CursorPos X="38" Y="588"/>
+        <UsageCount Value="37"/>
         <Bookmarks Count="1">
           <Item0 X="7" Y="396" Left="1" Top="370" ID="1"/>
         </Bookmarks>
@@ -125,56 +125,55 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="781"/>
         <CursorPos X="11" Y="795"/>
-        <UsageCount Value="5"/>
+        <UsageCount Value="4"/>
       </Unit>
       <Unit>
         <Filename Value="/root/.lazarus/onlinepackagemanager/packages/synapse40.1/httpsend.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="139"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/sysutils/filutilh.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="186"/>
         <CursorPos X="10" Y="200"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit>
       <Unit>
         <Filename Value="../../uLBBaseThread.pas"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="212"/>
         <CursorPos Y="229"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="15"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="644"/>
-        <CursorPos X="36" Y="754"/>
-        <UsageCount Value="18"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="383"/>
+        <CursorPos X="7" Y="172"/>
+        <UsageCount Value="19"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/sysutils/syshelph.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="88"/>
         <CursorPos X="16" Y="101"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/sysutils/syshelp.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="487"/>
         <CursorPos X="3" Y="489"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uIPCUtils.pas"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="406"/>
-        <CursorPos Y="428"/>
-        <UsageCount Value="15"/>
+        <CursorPos Y="72"/>
+        <UsageCount Value="21"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -182,157 +181,157 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="28"/>
         <CursorPos X="4" Y="42"/>
-        <UsageCount Value="15"/>
+        <UsageCount Value="14"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/packages/rtl-extra/src/linux/ipcsys.inc"/>
         <EditorIndex Value="-1"/>
         <TopLine Value="62"/>
         <CursorPos X="11" Y="81"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-process/src/process.pp"/>
         <EditorIndex Value="-1"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBBaseThread.pas"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="7"/>
         <TopLine Value="27"/>
         <CursorPos X="70" Y="48"/>
-        <UsageCount Value="15"/>
+        <UsageCount Value="21"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
-        <EditorIndex Value="8"/>
-        <TopLine Value="41"/>
-        <CursorPos X="19" Y="41"/>
-        <UsageCount Value="11"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="4"/>
+        <CursorPos X="3" Y="214"/>
+        <UsageCount Value="17"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
     <JumpHistory HistoryIndex="29">
       <Position>
-        <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="68" Column="55" TopLine="51"/>
-      </Position>
-      <Position>
-        <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="229" Column="49" TopLine="215"/>
-      </Position>
-      <Position>
-        <Filename Value="../../utils/uIPCUtils.pas"/>
-        <Caret Line="71" Column="17" TopLine="57"/>
-      </Position>
-      <Position>
-        <Filename Value="../../utils/uIPCUtils.pas"/>
-        <Caret Line="429" Column="19" TopLine="421"/>
-      </Position>
-      <Position>
-        <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="226" Column="29" TopLine="224"/>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="15" Column="3" TopLine="5"/>
       </Position>
       <Position>
         <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
-        <Caret Line="53" Column="19" TopLine="40"/>
+        <Caret Line="51" Column="21" TopLine="35"/>
       </Position>
       <Position>
         <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
-        <Caret Line="284" Column="3" TopLine="278"/>
+        <Caret Line="38" Column="17" TopLine="29"/>
       </Position>
       <Position>
         <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
-        <Caret Line="43" Column="19" TopLine="30"/>
+        <Caret Line="242" Column="58" TopLine="234"/>
       </Position>
       <Position>
         <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
-        <Caret Line="41" Column="19" TopLine="28"/>
-      </Position>
-      <Position>
-        <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="232" Column="75" TopLine="224"/>
-      </Position>
-      <Position>
-        <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="345" Column="42" TopLine="338"/>
-      </Position>
-      <Position>
-        <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="346" Column="43" TopLine="338"/>
-      </Position>
-      <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="147" Column="50" TopLine="141"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
-        <Caret Line="45" Column="20" TopLine="32"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
-        <Caret Line="100" Column="3" TopLine="97"/>
-      </Position>
-      <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="31" Column="22" TopLine="17"/>
-      </Position>
-      <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="37" Column="22" TopLine="23"/>
-      </Position>
-      <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="196" Column="3" TopLine="190"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
-        <Caret Line="45" Column="20" TopLine="33"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
-        <Caret Line="100" Column="3" TopLine="97"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
-        <Caret Line="48" Column="20" TopLine="35"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
-        <Caret Line="140" Column="3" TopLine="119"/>
+        <Caret Line="245" Column="51" TopLine="42"/>
       </Position>
       <Position>
         <Filename Value="../uPyBridgeChainModule.pas"/>
-        <Caret Line="39" Column="20" TopLine="27"/>
+        <Caret Line="32" Column="13" TopLine="136"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="25" Column="3" TopLine="52"/>
       </Position>
       <Position>
         <Filename Value="../uPyBridgeChainModule.pas"/>
-        <Caret Line="152" Column="3" TopLine="140"/>
+        <Caret Line="13" Column="3"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="299" Column="22" TopLine="288"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="515" Column="5" TopLine="502"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="1143" Column="43" TopLine="1130"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="171" Column="22" TopLine="150"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="1150" TopLine="1131"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="171" Column="3" TopLine="131"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="64" Column="46" TopLine="45"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="25" TopLine="18"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="43" Column="3" TopLine="87"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebPyBridgeApplication.pas"/>
+        <Caret Line="15" Column="3" TopLine="5"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
+        <Caret Line="41" Column="36" TopLine="32"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
+        <Caret Line="142" Column="3" TopLine="133"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
+        <Caret Line="43" Column="38" TopLine="29"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
+        <Caret Line="168" Column="3" TopLine="175"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
+        <Caret Line="31" Column="20" TopLine="19"/>
       </Position>
       <Position>
         <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="75" Column="28" TopLine="55"/>
+        <Caret Line="226" TopLine="186"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="193" Column="90" TopLine="181"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="224" Column="90" TopLine="211"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBWebPyBridgeTests.pas"/>
+        <Caret Line="254" Column="90" TopLine="241"/>
       </Position>
       <Position>
         <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="259" Column="3" TopLine="284"/>
+        <Caret Line="98" Column="20" TopLine="86"/>
       </Position>
       <Position>
         <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="68" Column="19" TopLine="57"/>
+        <Caret Line="564" Column="32" TopLine="558"/>
       </Position>
       <Position>
         <Filename Value="../uPyBridge.pas"/>
-        <Caret Line="226" TopLine="212"/>
-      </Position>
-      <Position>
-        <Filename Value="../../utils/uIPCUtils.pas"/>
-        <Caret Line="72" Column="18" TopLine="55"/>
-      </Position>
-      <Position>
-        <Filename Value="../../utils/uIPCUtils.pas"/>
-        <Caret Line="422" Column="23" TopLine="420"/>
+        <Caret Line="585" Column="147" TopLine="565"/>
       </Position>
     </JumpHistory>
     <RunParams>

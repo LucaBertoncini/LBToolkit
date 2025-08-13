@@ -3,8 +3,8 @@ library LBToolkit_shared;
 {$mode objfpc}{$H+}
 
 uses
-  {$IFDEF UNIX}cthreads, Toolkit_CAPI_Logger, Toolkit_CAPI_CircularBuffer,
-  Toolkit_CAPI_microWebServer;
+  {$IFDEF UNIX}cthreads,{$ENDIF} Toolkit_CAPI_Logger, Toolkit_CAPI_CircularBuffer,
+  Toolkit_CAPI_microWebServer, Toolkit_CAPI_WebPyBridge;
 
 exports
   // Circular Buffer API
@@ -39,7 +39,23 @@ exports
   Logger_GetMsgType_Error,
   Logger_GetMsgType_Warning,
   Logger_GetMsgType_Debug,
-  Logger_GetMsgType_Info;
+  Logger_GetMsgType_Info,
+
+
+  // WebServer API
+  WebServer_Create,
+  WebServer_Destroy,
+  ReqElab_RequestHeaderValue,
+  ReqElab_RequestHeaderName,
+  ReqElab_RequestHeadersCount,
+  ReqElab_setResponseData,
+  ReqElab_addResponseHeader,
+  ReqElab_URIParamsCount,
+  ReqElab_URIParam,
+
+  // WebPyBridge API
+  WebPyBridge_Create,
+  WebPyBridge_Destroy;
 
 
 

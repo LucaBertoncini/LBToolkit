@@ -109,7 +109,7 @@ type
       procedure BridgeTerminated(Sender: TObject);
 
     public
-      constructor Create(aBridgesCount: Integer; aSharedMemorySize: Cardinal; aWorkerTimeoutMs: Integer); reintroduce;
+      constructor Create(aBridgesCount: Integer; aSharedMemorySize: Cardinal; aWorkerTimeoutMs: Integer; const ScriptsFolder: String); reintroduce;
       destructor Destroy; override;
 
       function insertRequest(aRequest: pRequestData): Boolean;
@@ -587,7 +587,7 @@ begin
 
 end;
 
-constructor TBridgeOrchestrator.Create(aBridgesCount: Integer; aSharedMemorySize: Cardinal; aWorkerTimeoutMs: Integer);
+constructor TBridgeOrchestrator.Create(aBridgesCount: Integer; aSharedMemorySize: Cardinal; aWorkerTimeoutMs: Integer; const ScriptsFolder: String);
 var
   i : Integer;
 
@@ -595,7 +595,11 @@ begin
   inherited Create;
   FTerminating := False;
 
-  FWorkerScript := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + cPythonScriptsSubfolder + PathDelim + cPythonMainWorker;
+  FWorkerScript := ScriptsFolder;
+  if FWorkerScript = '' then
+    FWorkerScript := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + cPythonScriptsSubfolder + PathDelim + cPythonMainWorker
+  else
+    FWorkerScript := IncludeTrailingPathDelimiter(FWorkerScript) + cPythonMainWorker;
 
   FInitialBridgesCount := aBridgesCount;
   FInitialSharedMemorySize := aSharedMemorySize;

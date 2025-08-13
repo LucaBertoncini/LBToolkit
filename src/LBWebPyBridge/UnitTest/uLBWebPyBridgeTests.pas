@@ -190,7 +190,7 @@ begin
   LBLogger.Write(5, 'TLBWebPyBridgeTests.Test_Echo', lmt_Debug, '***************************************************************');
   DeleteDirectory(FScriptsPath, False);
 
-  AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFiles(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
+  AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFilesFromZIP(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
   Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
   Sleep(50); // wait for restart
 
@@ -221,7 +221,7 @@ begin
   LBLogger.Write(5, 'TLBWebPyBridgeTests.Test_ScriptException', lmt_Debug, '***************************************************************');
   DeleteDirectory(FScriptsPath, False);
 
-  AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFiles(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
+  AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFilesFromZIP(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
   Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
   Sleep(200); // wait for restart
 
@@ -251,7 +251,7 @@ begin
   LBLogger.Write(5, 'TLBWebPyBridgeTests.Test_Sum', lmt_Debug, '***************************************************************');
   DeleteDirectory(FScriptsPath, False);
 
-  AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFiles(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
+  AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFilesFromZIP(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
   Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
   Sleep(200); // wait for restart
 
@@ -281,7 +281,7 @@ begin
   LBLogger.Write(5, 'TLBWebPyBridgeTests.Test_AppHello', lmt_Debug, '***************************************************************');
   DeleteDirectory(FScriptsPath, False);
 
-  AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFiles(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
+  AssertTrue('Python files extraction', Application.WebPyBridge.extractPythonFilesFromZIP(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + 'python_runtime.zip'));
   Application.WebPyBridge.setOrchestratorParams(1, 8092); // Forcing orchestrator rebuild
   Sleep(50); // wait for restart
 

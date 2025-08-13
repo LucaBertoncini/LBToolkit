@@ -12,14 +12,17 @@
       <Title Value="LBToolkit_shared"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
-      <Resources Count="7">
-        <Resource_0 FileName="../../LBVirtualKeyboard/img/Backspace.png" Type="RCDATA" ResourceName="BACKSPACE"/>
-        <Resource_1 FileName="../../LBVirtualKeyboard/img/ReturnKey.png" Type="RCDATA" ResourceName="RETURNKEY"/>
-        <Resource_2 FileName="../../LBVirtualKeyboard/img/ShiftKey.png" Type="RCDATA" ResourceName="SHIFTKEY"/>
-        <Resource_3 FileName="../../LBVirtualKeyboard/img/SingleKey.png" Type="RCDATA" ResourceName="SINGLEKEY"/>
-        <Resource_4 FileName="../../LBVirtualKeyboard/img/SpaceKey.png" Type="RCDATA" ResourceName="SPACEKEY"/>
-        <Resource_5 FileName="../../LBVirtualKeyboard/img/SwitcherKey.png" Type="RCDATA" ResourceName="SWITCHERKEY"/>
-        <Resource_6 FileName="../../LBVirtualKeyboard/img/TabKey.png" Type="RCDATA" ResourceName="TABKEY"/>
+      <Resources Count="10">
+        <Resource_0 FileName="../../LBWebPyBridge/pyScripts/lb_logger.py" Type="RCDATA" ResourceName="LB_LOGGER"/>
+        <Resource_1 FileName="../../LBWebPyBridge/pyScripts/readme.txt" Type="RCDATA" ResourceName="README"/>
+        <Resource_2 FileName="../../LBWebPyBridge/pyScripts/test_launcher.py" Type="RCDATA" ResourceName="TEST_LAUNCHER"/>
+        <Resource_3 FileName="../../LBWebPyBridge/pyScripts/worker.py" Type="RCDATA" ResourceName="WORKER"/>
+        <Resource_4 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_sysv.py" Type="RCDATA" ResourceName="BRIDGE_SYSV"/>
+        <Resource_5 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_win.py" Type="RCDATA" ResourceName="BRIDGE_WIN"/>
+        <Resource_6 FileName="../../LBWebPyBridge/pyScripts/LBBridge/__init__.py" Type="RCDATA" ResourceName="__INIT__"/>
+        <Resource_7 FileName="../../LBWebPyBridge/pyScripts/LBBridge/LBBridge_constants.py" Type="RCDATA" ResourceName="LBBRIDGE_CONSTANTS"/>
+        <Resource_8 FileName="../../LBWebPyBridge/pyScripts/LBBridge/sem_sysv.py" Type="RCDATA" ResourceName="SEM_SYSV"/>
+        <Resource_9 FileName="../../LBWebPyBridge/pyScripts/LBBridge/sem_win.py" Type="RCDATA" ResourceName="SEM_WIN"/>
       </Resources>
     </General>
     <BuildModes>
@@ -55,11 +58,6 @@
         <Filename Value="uCallbackLogger.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
-      <Unit>
-        <Filename Value="toolkit_capi_microwebserver.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="Toolkit_CAPI_microWebServer"/>
-      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -69,7 +67,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../utils;../../LBLogger;../../LBmicroWebServer"/>
+      <OtherUnitFiles Value="../../utils;../../LBLogger;../../LBmicroWebServer;../../LBWebPyBridge"/>
       <UnitOutputDirectory Value="/tmp/lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <CodeGeneration>

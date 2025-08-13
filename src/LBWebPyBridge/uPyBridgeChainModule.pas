@@ -13,30 +13,33 @@ type
   TPyBridgeChainModule = class(TRequestChainProcessor)
     strict private
       FOrchestrator : TBridgeOrchestrator;
+
       function get_isActive: boolean;
+
+    strict protected
+      function DoProcessGETRequest(
+        var Resource: String;
+        Headers: TStringList;
+        URIParams: TStringList;
+        ResponseHeaders: TStringList;
+        var ResponseData: TMemoryStream;
+        out ResponseCode: Integer
+      ): Boolean; override;
+
+      function DoProcessPOSTRequest(
+        var Resource: String;
+        Headers: TStringList;
+        var Payload: AnsiString;
+        ResponseHeaders: TStringList;
+        var ResponseData: TMemoryStream;
+        out ResponseCode: Integer
+      ): Boolean; override;
+
 
     public
       destructor Destroy; override;
 
-      function ProcessGETRequest(
-        const Resource: String;
-        const Headers: TStringList;
-        const URIParams: TStringList;
-        var ResponseHeaders: TStringList;
-        var ResponseData: TMemoryStream;
-        out ResponseCode: Integer
-      ): Boolean; override;
-
-      function ProcessPOSTRequest(
-        const Resource: String;
-        const Headers: TStringList;
-        const Payload: AnsiString;
-        var ResponseHeaders: TStringList;
-        var ResponseData: TMemoryStream;
-        out ResponseCode: Integer
-      ): Boolean; override;
-
-      procedure setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer; aWorkerTimeoutMs: Integer);
+      procedure setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer; aWorkerTimeoutMs: Integer; const ScriptsFolder: String);
 
       property isActive: boolean read get_isActive;
   end;
@@ -66,18 +69,16 @@ begin
   inherited Destroy;
 end;
 
-function TPyBridgeChainModule.ProcessGETRequest(const Resource: String;
-  const Headers: TStringList; const URIParams: TStringList;
-  var ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out
-  ResponseCode: Integer): Boolean;
+function TPyBridgeChainModule.DoProcessGETRequest(var Resource: String;
+  Headers: TStringList; URIParams: TStringList; ResponseHeaders: TStringList;
+  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := false;
 end;
 
-function TPyBridgeChainModule.ProcessPOSTRequest(const Resource: String;
-  const Headers: TStringList; const Payload: AnsiString;
-  var ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out
-  ResponseCode: Integer): Boolean;
+function TPyBridgeChainModule.DoProcessPOSTRequest(var Resource: String;
+  Headers: TStringList; var Payload: AnsiString; ResponseHeaders: TStringList;
+  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 var
   _Request : TRequestData;
   _ErrMsg : TJSONObject;
@@ -147,7 +148,7 @@ begin
   Result := True;
 end;
 
-procedure TPyBridgeChainModule.setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer; aWorkerTimeoutMs: Integer);
+procedure TPyBridgeChainModule.setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer; aWorkerTimeoutMs: Integer; const ScriptsFolder: String);
 begin
   if FOrchestrator <> nil then
   begin
@@ -156,7 +157,7 @@ begin
   end;
 
   if (aThreadPoolSize > 0) and (aSharedMemorySize > 0) then
-    FOrchestrator := TBridgeOrchestrator.Create(aThreadPoolSize, aSharedMemorySize, aWorkerTimeoutMs)
+    FOrchestrator := TBridgeOrchestrator.Create(aThreadPoolSize, aSharedMemorySize, aWorkerTimeoutMs, ScriptsFolder)
   else
     LBLogger.Write(1, 'TPyBridgeChainModule.setOrchestratorParams', lmt_Warning, 'Wrong values for the thread pool size or for the shared memory size!');
 end;

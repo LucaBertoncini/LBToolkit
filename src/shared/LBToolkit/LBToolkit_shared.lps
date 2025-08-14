@@ -1,0 +1,552 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Release"/>
+    <Units>
+      <Unit>
+        <Filename Value="LBToolkit_shared.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <TopLine Value="37"/>
+        <CursorPos X="22" Y="58"/>
+        <UsageCount Value="91"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uCallbackLogger.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="18"/>
+        <TopLine Value="35"/>
+        <CursorPos X="3" Y="35"/>
+        <UsageCount Value="91"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="toolkit_capi_microwebserver.pas"/>
+        <UnitName Value="Toolkit_CAPI_microWebServer"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="16"/>
+        <CursorPos X="68" Y="173"/>
+        <UsageCount Value="32"/>
+      </Unit>
+      <Unit>
+        <Filename Value="toolkit_capi_virtualkeyboard2.pas"/>
+        <UnitName Value="Toolkit_CAPI_VirtualKeyboard2"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="123"/>
+        <CursorPos X="29" Y="130"/>
+        <UsageCount Value="17"/>
+      </Unit>
+      <Unit>
+        <Filename Value="toolkit_capi_circularbuffer.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="13"/>
+        <CursorPos Y="34"/>
+        <UsageCount Value="14"/>
+        <Bookmarks Count="1">
+          <Item0 X="11" Y="170" Left="1" Top="154" ID="1"/>
+        </Bookmarks>
+      </Unit>
+      <Unit>
+        <Filename Value="toolkit_capi_logger.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="44"/>
+        <CursorPos Y="10"/>
+        <UsageCount Value="14"/>
+      </Unit>
+      <Unit>
+        <Filename Value="toolkit_capi_webserver.pas"/>
+        <UsageCount Value="13"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uNonFocusableForm.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="157"/>
+        <CursorPos X="37" Y="176"/>
+        <UsageCount Value="30"/>
+      </Unit>
+      <Unit>
+        <Filename Value="toolkit_capi_virtualkeyboard.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="58" Y="12"/>
+        <UsageCount Value="13"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBLogger/ULBLogger.pas"/>
+        <EditorIndex Value="16"/>
+        <TopLine Value="354"/>
+        <CursorPos X="40" Y="368"/>
+        <UsageCount Value="47"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../utils/uLBCircularBuffer.pas"/>
+        <EditorIndex Value="13"/>
+        <CursorPos X="5" Y="8"/>
+        <UsageCount Value="30"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Toolkit_CAPI_Logger.pas"/>
+        <EditorIndex Value="19"/>
+        <TopLine Value="25"/>
+        <CursorPos X="3" Y="29"/>
+        <UsageCount Value="47"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Toolkit_CAPI_VirtualKeyboard.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="118"/>
+        <CursorPos X="48" Y="142"/>
+        <UsageCount Value="20"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/sysutils/sysutilh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="23"/>
+        <CursorPos X="4" Y="37"/>
+        <UsageCount Value="4"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/linux/sysosh.inc"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="3" Y="21"/>
+        <UsageCount Value="4"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.0.0/lcl/forms.pp"/>
+        <UnitName Value="Forms"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="719"/>
+        <CursorPos X="15" Y="731"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/x11/src/xlib.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1858"/>
+        <CursorPos X="10" Y="1871"/>
+        <UsageCount Value="3"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/x11/src/xatom.pp"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="9" Y="18"/>
+        <UsageCount Value="3"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBVirtualKeyboard/uLBVirtualKeyboard.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="617"/>
+        <CursorPos X="5" Y="641"/>
+        <UsageCount Value="18"/>
+        <Bookmarks Count="2">
+          <Item0 X="28" Y="864" Left="1" Top="846" ID="1"/>
+          <Item1 X="62" Y="809" Left="1" Top="803" ID="2"/>
+        </Bookmarks>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.0.0/lcl/lresources.pp"/>
+        <UnitName Value="LResources"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="485"/>
+        <CursorPos X="11" Y="499"/>
+        <UsageCount Value="5"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/classes/classesh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1130"/>
+        <CursorPos X="3" Y="1143"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBVirtualKeyboard/ulbvkcommons.pas"/>
+        <UnitName Value="uLBVKCommons"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="18"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBVirtualKeyboard/Base_KeyInput.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="13"/>
+        <CursorPos X="12" Y="20"/>
+        <UsageCount Value="16"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.0.0/lcl/imglist.pp"/>
+        <UnitName Value="ImgList"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="140"/>
+        <CursorPos X="19" Y="155"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.0.0/lcl/include/imglist.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="473"/>
+        <CursorPos X="3" Y="480"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.0.0/lcl/graphics.pp"/>
+        <UnitName Value="Graphics"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1413"/>
+        <CursorPos X="14" Y="1422"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.0.0/lcl/controls.pp"/>
+        <UnitName Value="Controls"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="209"/>
+        <CursorPos X="90" Y="223"/>
+        <UsageCount Value="6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/BGRABitmap/bgrabitmap/bgrabitmap.pas"/>
+        <UnitName Value="BGRABitmap"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="79"/>
+        <CursorPos X="9" Y="92"/>
+        <UsageCount Value="5"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/BGRABitmap/bgrabitmap/bgragtkbitmap.pas"/>
+        <UnitName Value="BGRAGtkBitmap"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="3" Y="17"/>
+        <UsageCount Value="5"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/BGRABitmap/bgrabitmap/bgralclbitmap.pas"/>
+        <UnitName Value="BGRALCLBitmap"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="3" Y="15"/>
+        <UsageCount Value="5"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/BGRABitmap/bgrabitmap/bgradefaultbitmap.pas"/>
+        <UnitName Value="BGRADefaultBitmap"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="22"/>
+        <CursorPos X="3" Y="36"/>
+        <UsageCount Value="5"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/BGRABitmap/bgrabitmap/bgracustombitmap.inc"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="3" Y="13"/>
+        <UsageCount Value="5"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.0.0/ide/lazarus.pp"/>
+        <UnitName Value="Lazarus"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos Y="170"/>
+        <UsageCount Value="5"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.2.0/ide/lazarus.pp"/>
+        <UnitName Value="Lazarus"/>
+        <EditorIndex Value="17"/>
+        <TopLine Value="142"/>
+        <CursorPos X="12" Y="160"/>
+        <UsageCount Value="36"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.2.0/lcl/forms.pp"/>
+        <UnitName Value="Forms"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="619"/>
+        <CursorPos X="24" Y="635"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.2.0/lcl/include/application.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="2263"/>
+        <CursorPos X="3" Y="2263"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.2.0/lcl/graphics.pp"/>
+        <UnitName Value="Graphics"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1079"/>
+        <CursorPos X="17" Y="1092"/>
+        <UsageCount Value="6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.2.0/lcl/include/canvas.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1845"/>
+        <CursorPos X="3" Y="1852"/>
+        <UsageCount Value="6"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.2.0/lcl/include/customform.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="2099"/>
+        <CursorPos X="3" Y="2109"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/lazarus/4.2.0/lcl/interfacebase.pp"/>
+        <UnitName Value="InterfaceBase"/>
+        <EditorIndex Value="15"/>
+        <UsageCount Value="32"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../utils/uLBBaseThread.pas"/>
+        <EditorIndex Value="14"/>
+        <TopLine Value="15"/>
+        <CursorPos X="3" Y="15"/>
+        <UsageCount Value="31"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Toolkit_CAPI_CircularBuffer.pas"/>
+        <EditorIndex Value="7"/>
+        <UsageCount Value="29"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="379"/>
+        <CursorPos X="60" Y="423"/>
+        <UsageCount Value="29"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBmicroWebServer/uWebSocketManagement.pas"/>
+        <EditorIndex Value="12"/>
+        <TopLine Value="26"/>
+        <CursorPos X="3" Y="39"/>
+        <UsageCount Value="26"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../utils/uHTTPConsts.pas"/>
+        <EditorIndex Value="11"/>
+        <CursorPos Y="6"/>
+        <UsageCount Value="24"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <EditorIndex Value="6"/>
+        <TopLine Value="53"/>
+        <CursorPos X="56" Y="130"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="toolkit_capi_webpybridge.pas"/>
+        <UnitName Value="Toolkit_CAPI_WebPyBridge"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="74" Y="17"/>
+        <UsageCount Value="18"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Toolkit_CAPI_WebPyBridge.pas"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="19"/>
+        <CursorPos X="37" Y="25"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBWebPyBridge/uLBWebPyBridgeApplication.pas"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="179"/>
+        <CursorPos X="92" Y="194"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="239"/>
+        <CursorPos X="27" Y="258"/>
+        <UsageCount Value="21"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBWebPyBridge/uPyBridgeChainModule.pas"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="143"/>
+        <CursorPos X="3" Y="159"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="327"/>
+        <CursorPos X="73" Y="334"/>
+        <UsageCount Value="10"/>
+        <Bookmarks Count="1">
+          <Item0 X="52" Y="573" Left="1" Top="562" ID="1"/>
+        </Bookmarks>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../utils/uLBSSLConfig.pas"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="33"/>
+        <CursorPos X="32" Y="35"/>
+        <UsageCount Value="16"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBmicroWebServer/uLBmWsDocumentsFolder.pas"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="10"/>
+        <CursorPos X="3" Y="13"/>
+        <UsageCount Value="16"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/synapse40.1/synacode.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="127"/>
+        <CursorPos X="10" Y="140"/>
+        <UsageCount Value="10"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="98" Column="20" TopLine="85"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="564" Column="32" TopLine="552"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="585" Column="147" TopLine="565"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="598" Column="16" TopLine="586"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="599" Column="19" TopLine="586"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="601" Column="18" TopLine="586"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="602" Column="122" TopLine="586"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="593" Column="53" TopLine="598"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="104" Column="20" TopLine="93"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="568" Column="52" TopLine="557"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="75" Column="25" TopLine="63"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="261" Column="7" TopLine="247"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="78" Column="22" TopLine="67"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="326" Column="57" TopLine="325"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="571" Column="82" TopLine="558"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="56" Column="19" TopLine="44"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="190" Column="33" TopLine="176"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="260" Column="20" TopLine="245"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="261" Column="19" TopLine="248"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="263" Column="26" TopLine="248"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="280" Column="48" TopLine="260"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="334" Column="15" TopLine="316"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="568" Column="86" TopLine="553"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="98" Column="20" TopLine="82"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="567" Column="32" TopLine="552"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="588" Column="147" TopLine="568"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="601" Column="17" TopLine="586"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="106" Column="31" TopLine="96"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="571" Column="18" TopLine="562"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <Caret Line="78" Column="21" TopLine="66"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

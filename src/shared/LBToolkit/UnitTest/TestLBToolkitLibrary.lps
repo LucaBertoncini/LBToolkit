@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="TestLBToolkitLibrary.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="3"/>
+        <CursorPos Y="25"/>
+        <UsageCount Value="55"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uLBToolkitLibraryTests"/>
+        <TopLine Value="13"/>
+        <CursorPos X="40" Y="28"/>
+        <UsageCount Value="55"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="196"/>
+        <CursorPos X="79" Y="209"/>
+        <UsageCount Value="55"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../Toolkit_CAPI_Logger.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="-1"/>
+        <TopLine Value="-1"/>
+        <CursorPos X="-1" Y="-1"/>
+        <UsageCount Value="55"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../Tester/Tester.lpr"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="17"/>
+        <CursorPos X="53" Y="31"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-fpcunit/src/consoletestrunner.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="74"/>
+        <CursorPos Y="78"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../utils/uLBFileUtils.pas"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="11"/>
+        <CursorPos X="5" Y="11"/>
+        <UsageCount Value="27"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/inc/dynlibs.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="85"/>
+        <CursorPos X="3" Y="88"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/inc/dynlibh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="38"/>
+        <CursorPos X="14" Y="61"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/inc/dynlib.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="119"/>
+        <CursorPos X="3" Y="121"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../utils/uExternalLibrariesManager.pas"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="161"/>
+        <CursorPos X="6" Y="130"/>
+        <UsageCount Value="7"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-fpcunit/src/fpcunit.pp"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="196"/>
+        <CursorPos Y="211"/>
+        <UsageCount Value="7"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="29">
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="95" Column="3" TopLine="94"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="163" Column="34" TopLine="76"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="34" Column="89" TopLine="11"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="28" Column="41" TopLine="11"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="89" Column="42" TopLine="85"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="15"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="95" TopLine="6"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="16" Column="5" TopLine="5"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="16" Column="18" TopLine="5"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="86" Column="20" TopLine="76"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="21" Column="24"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="121" Column="37" TopLine="97"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="76" Column="3" TopLine="62"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="40" Column="3" TopLine="26"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="106" Column="5" TopLine="100"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="76" Column="3" TopLine="62"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="40" Column="111" TopLine="26"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="22" Column="23" TopLine="4"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="149" Column="54" TopLine="137"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="23" Column="26" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="171" TopLine="79"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="21" Column="23" TopLine="9"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="23" Column="24" TopLine="13"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="40" Column="111" TopLine="14"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="16" Column="22" TopLine="8"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="50" Column="20" TopLine="33"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="23" Column="27" TopLine="9"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbtoolkitlibrarytests.pas"/>
+        <Caret Line="23" Column="23" TopLine="17"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="110" Column="32" TopLine="87"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBToolkitLoader.pas"/>
+        <Caret Line="210" Column="32" TopLine="201"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

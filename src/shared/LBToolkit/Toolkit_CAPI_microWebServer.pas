@@ -132,7 +132,7 @@ begin
   Result := nil;
 
   _WS := TLBmicroWebServer.Create();
-  if _WS.LoadFromXMLFile(StrPas(aConfigFilename)) then
+  if _WS.LoadFromINIFile(StrPas(aConfigFilename), '') then
   begin
 
     _CallbacksChainItem := TmicroWebServerCallbacks.Create();
@@ -145,6 +145,8 @@ begin
 
     _WS.OnWebSocketConnectionEstablished := @_CallbacksChainItem.NotifyWebSocketConnectionEstablished;
     _WS.OnElaborateWebSocketMessage := @_CallbacksChainItem.ProcessWebSocketMessage;
+
+    _WS.Activate(nil);
 
     Result := Pointer(_WS);
   end

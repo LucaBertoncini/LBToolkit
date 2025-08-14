@@ -357,8 +357,10 @@ begin
       begin
         if aUseTmpFolder then
           _LogPathName := getTemporaryFolder()
-        else
+        else begin
+          aLogFileName := ExpandFileName(aLogFileName);
           _LogPathName := ExtractFilePath(aLogFileName);
+        end;
         _LogFileName := ExtractFileName(aLogFileName);
         if ExtractFileExt(_LogFileName) <> cLogFileExt then
           _LogFileName := ExtractFileNameWithoutExt(_LogFileName) + cLogFileExt;

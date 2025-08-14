@@ -75,7 +75,7 @@ type
       procedure InternalExecute(); override;
 
     public
-      constructor Create(aWorkerTimeoutMs: Cardinal); reintroduce;
+      constructor Create(aWorkerTimeoutMs: Cardinal; const ScriptsPath: String); reintroduce;
       destructor Destroy; override;
 
       function prepareSharedMemory(aSize: Cardinal): Boolean;
@@ -96,6 +96,8 @@ type
       FWorkerTimeoutMs: Integer;
 
       FWorkerScript : String;
+      FScriptsFolder : String;
+
       FTerminating : Boolean;
 
       FBridges : array of TPyBridge;
@@ -257,7 +259,8 @@ var
 begin
   if FSharedMem <> nil then
   begin
-    FScriptsPath := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + cPythonScriptsSubfolder + PathDelim;
+    if FScriptsPath = '' then
+      FScriptsPath := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + cPythonScriptsSubfolder + PathDelim;
 
     _Path := FScriptsPath + cPythonMainWorker;
     if FileExists(_Path) then
@@ -322,13 +325,15 @@ begin
 
 end;
 
-constructor TPyBridge.Create(aWorkerTimeoutMs: Cardinal);
+constructor TPyBridge.Create(aWorkerTimeoutMs: Cardinal; const ScriptsPath: String);
 {$IFDEF Windows}
 var
   semNameRequest, semNameResponse: string;
 {$ENDIF}
 begin
   inherited Create;
+
+  FScriptsPath := IncludeTrailingPathDelimiter(ScriptsPath);
 
   FreeOnTerminate := True;
   FThreadNum := InterlockedIncrement(gv_BridgeCounter);
@@ -565,7 +570,7 @@ begin
     begin
       if (aBridgeIndex >= 0) and (aBridgeIndex <= High(FBridges)) then
       begin
-        FBridges[aBridgeIndex] := TPyBridge.Create(FWorkerTimeoutMs);
+        FBridges[aBridgeIndex] := TPyBridge.Create(FWorkerTimeoutMs, FScriptsFolder);
         if FBridges[aBridgeIndex].prepareSharedMemory(FInitialSharedMemorySize) then
         begin
           FBridges[aBridgeIndex].AddReference(@FBridges[aBridgeIndex]);
@@ -595,11 +600,14 @@ begin
   inherited Create;
   FTerminating := False;
 
-  FWorkerScript := ScriptsFolder;
-  if FWorkerScript = '' then
-    FWorkerScript := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + cPythonScriptsSubfolder + PathDelim + cPythonMainWorker
-  else
-    FWorkerScript := IncludeTrailingPathDelimiter(FWorkerScript) + cPythonMainWorker;
+  FScriptsFolder := ScriptsFolder;
+  if FScriptsFolder = '' then
+  begin
+    FScriptsFolder := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + cPythonScriptsSubfolder;
+    LBLogger.Write(1, 'TBridgeOrchestrator.Create', lmt_Debug, 'No script folder set, using default <%s>', [FScriptsFolder]);
+  end;
+
+  FWorkerScript := IncludeTrailingPathDelimiter(FScriptsFolder) + cPythonMainWorker;
 
   FInitialBridgesCount := aBridgesCount;
   FInitialSharedMemorySize := aSharedMemorySize;

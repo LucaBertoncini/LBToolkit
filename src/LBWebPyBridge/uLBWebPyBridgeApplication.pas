@@ -141,6 +141,7 @@ function TLBWebPyBridgeApplication.extractPythonFilesFromResources(): Boolean;
 var
   _Stream : TResourceStream;
   _DestFolder : String;
+  _Path : String;
   i : Integer;
 
 type
@@ -174,7 +175,13 @@ begin
       begin
         _Stream := TResourceStream.Create(HINSTANCE, _Files[i].Code, RT_RCDATA);
         if (_Stream <> nil) and (_Stream.Size > 0) then
+        begin
+          _Path := ExtractFilePath(_DestFolder + _Files[i].Filename);
+          if not DirectoryExists(_Path) then
+            ForceDirectories(_Path);
+
           _Stream.SaveToFile(_DestFolder + _Files[i].Filename);
+        end;
       end;
     end;
 

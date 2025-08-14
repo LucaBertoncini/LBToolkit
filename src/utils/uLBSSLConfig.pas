@@ -5,9 +5,12 @@ unit uLBSSLConfig;
 interface
 
 uses
-  Classes, SysUtils, Laz2_DOM;
+  Classes, SysUtils, Laz2_DOM, IniFiles;
 
 type
+
+  { TSSLConnectionData }
+
   TSSLConnectionData = class(TObject)
   strict private
     FCertificateFile   : String;
@@ -23,6 +26,7 @@ type
     function SaveIntoXMLNode(aDoc: TXMLDocument; aParentNode: TDOMNode): Boolean;
 
     function LoadFromINIFile(const aINIPath, aSection: String): Boolean;
+    function LoadFromINISection(aINIFile: TIniFile; const aSection: String): Boolean;
     function SaveToINIFile(const aINIPath, aSection: String): Boolean;
 
     property hasValidData: Boolean read get_hasValidData;
@@ -33,6 +37,7 @@ type
     property KeyPassword       : String read FKeyPassword       write FKeyPassword;
 
     const
+      cDEFAULT_INI_SECTION       = 'SSLData';
       cRootNodeName              = 'SSLConnection';
       cSSLCertificateNodeName    = 'SSLCertificateFile';
       cSSLCACertificateNodeName  = 'SSLCACertificateFile';
@@ -43,7 +48,7 @@ type
 implementation
 
 uses
-  uLBLogger, IniFiles;
+  uLBLogger;
 
 procedure TSSLConnectionData.Clear;
 begin
@@ -137,23 +142,41 @@ begin
   if FileExists(aINIPath) then
   begin
     _IniFile := TIniFile.Create(aINIPath);
-    try
-      FCertificateFile   := _IniFile.ReadString(aSection, cSSLCertificateNodeName, '');
-      FCACertificateFile := _IniFile.ReadString(aSection, cSSLCACertificateNodeName, '');
-      FPrivateKeyFile    := _IniFile.ReadString(aSection, cSSLPrivateKeyNodeName, '');
-      FKeyPassword       := _IniFile.ReadString(aSection, cSSLKeyPasswordNodeName, '');
-
-      Result := Self.hasValidData;
-      if not Result then
-        LBLogger.Write(1, 'TSSLConnectionData.LoadFromINIFile', lmt_Warning, 'No valid SSL configuration from INI');
-    except
-      on E: Exception do
-        LBLogger.Write(1, 'TSSLConnectionData.LoadFromINIFile', lmt_Error, E.message);
-    end;
+    Result := Self.LoadFromINISection(_IniFile, aSection);
     _IniFile.Free;
   end
   else
     LBLogger.Write(1, 'TSSLConnectionData.LoadFromINIFile', lmt_Warning, 'File <%s> not found!', [aINIPath]);
+end;
+
+function TSSLConnectionData.LoadFromINISection(aINIFile: TIniFile; const aSection: String): Boolean;
+var
+  _Section : String;
+
+begin
+  Result := False;
+
+  if aINIFile <> nil then
+  begin
+    try
+      _Section := aSection;
+      if _Section = '' then
+        _Section := cDEFAULT_INI_SECTION;
+
+      FCertificateFile   := aIniFile.ReadString(_Section, cSSLCertificateNodeName, '');
+      FCACertificateFile := aIniFile.ReadString(_Section, cSSLCACertificateNodeName, '');
+      FPrivateKeyFile    := aIniFile.ReadString(_Section, cSSLPrivateKeyNodeName, '');
+      FKeyPassword       := aIniFile.ReadString(_Section, cSSLKeyPasswordNodeName, '');
+
+      Result := Self.hasValidData;
+      if not Result then
+        LBLogger.Write(1, 'TSSLConnectionData.LoadFromINISection', lmt_Warning, 'No valid SSL configuration from INI');
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'TSSLConnectionData.LoadFromINISection', lmt_Error, E.message);
+    end;
+  end;
+
 end;
 
 function TSSLConnectionData.SaveToINIFile(const aINIPath, aSection: String): Boolean;

@@ -254,7 +254,8 @@ begin
           FWebServer.DocumentsFolder.DocumentFolder := _DocRoot;
       end;
       Self.startingWebServer();
-      FWebServer.Activate(aConfiguration^.Port, nil);
+      FWebServer.ListeningPort := aConfiguration^.Port;
+      FWebServer.Activate(nil);
     end;
   end;
 end;

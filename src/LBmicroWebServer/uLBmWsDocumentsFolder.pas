@@ -120,21 +120,26 @@ var
 begin
   Result := '';
 
-  _RawURI := Trim(anURI);
-  if _RawURI <> '' then
+  if FDocumentFolder <> '' then
   begin
+    _RawURI := Trim(anURI);
+    if _RawURI <> '' then
+    begin
 
-    if _RawURI[1] = '/' then
-      Delete(_RawURI, 1, 1);
+      if _RawURI[1] = '/' then
+        Delete(_RawURI, 1, 1);
 
-    _Decoded := DecodeURL(_RawURI);
-    _LocalPath := ExpandFileName(FDocumentFolder + _Decoded);
+      _Decoded := DecodeURL(_RawURI);
+      _LocalPath := ExpandFileName(FDocumentFolder + _Decoded);
 
-    if Pos(FDocumentFolder, _LocalPath) = 1 then
-      Result := _LocalPath
-    else
-      LBLogger.Write(1, 'TLBmWsDocumentsFolder.RetrieveFilename', lmt_Warning, 'Path traversal rilevato: <%s>', [_LocalPath]);
-  end;
+      if Pos(FDocumentFolder, _LocalPath) = 1 then
+        Result := _LocalPath
+      else
+        LBLogger.Write(1, 'TLBmWsDocumentsFolder.RetrieveFilename', lmt_Warning, 'Path traversal rilevato: <%s>', [_LocalPath]);
+    end;
+  end
+  else
+    LBLogger.Write(1, 'TLBmWsDocumentsFolder.RetrieveFilename', lmt_Warning, 'Document folder not set!');
 end;
 
 end.

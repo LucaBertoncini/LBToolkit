@@ -96,7 +96,7 @@ type
 implementation
 
 uses
-  ULBLogger;
+  ULBLogger, uLBWebServerConfigurationLoader;
 
 // Return the string length
 function insertStringIntoBuffer(const aString: String; aBuffer: pByte; aBufferLen: Integer): Integer;
@@ -126,34 +126,52 @@ function WebServer_Create(aConfigFilename: PChar;
                           WebSocketMessageCallback: TWebSocketMessageCallback): Pointer; export; cdecl;
 var
   _CallbacksChainItem : TmicroWebServerCallbacks;
-  _WS : TLBmicroWebServer;
+  _WS : TLBmicroWebServer = nil;
+  _Loader : TINIConfigLoader = nil;
 
 begin
   Result := nil;
 
-  _WS := TLBmicroWebServer.Create();
-  if _WS.LoadFromINIFile(StrPas(aConfigFilename), '') then
-  begin
+  try
+    _Loader := TINIConfigLoader.Create;
+    _Loader.Filename := StrPas(aConfigFilename);
 
-    _CallbacksChainItem := TmicroWebServerCallbacks.Create();
-    _CallbacksChainItem.GETCallback := GETCallback;
-    _CallbacksChainItem.POSTCallback := POSTCallback;
-    _CallbacksChainItem.WebSocketConnectedCallback := WebSocketConnectedCallback;
-    _CallbacksChainItem.WebSocketMessageCallback := WebSocketMessageCallback;
+    _WS := TLBmicroWebServer.Create();
+    if _Loader.LoadConfig(_WS) then
+    begin
 
-    _WS.addChainProcessor(_CallbacksChainItem, True);
+      _CallbacksChainItem := TmicroWebServerCallbacks.Create();
+      _CallbacksChainItem.GETCallback := GETCallback;
+      _CallbacksChainItem.POSTCallback := POSTCallback;
+      _CallbacksChainItem.WebSocketConnectedCallback := WebSocketConnectedCallback;
+      _CallbacksChainItem.WebSocketMessageCallback := WebSocketMessageCallback;
 
-    _WS.OnWebSocketConnectionEstablished := @_CallbacksChainItem.NotifyWebSocketConnectionEstablished;
-    _WS.OnElaborateWebSocketMessage := @_CallbacksChainItem.ProcessWebSocketMessage;
+      _WS.addChainProcessor(_CallbacksChainItem, True);
 
-    _WS.Activate(nil);
+      _WS.OnWebSocketConnectionEstablished := @_CallbacksChainItem.NotifyWebSocketConnectionEstablished;
+      _WS.OnElaborateWebSocketMessage := @_CallbacksChainItem.ProcessWebSocketMessage;
 
-    Result := Pointer(_WS);
-  end
-  else begin
-    _WS.Free;
-    LBLogger.Write(1, 'WebServer_Create', lmt_Warning, 'Error loading configuration');
+      _WS.Activate();
+
+      Result := Pointer(_WS);
+      _WS := nil;
+
+    end
+    else begin
+      _WS.Free;
+      LBLogger.Write(1, 'WebServer_Create', lmt_Warning, 'Error loading configuration');
+    end;
+
+  except
+    on E: Exception do
+      LBLogger.Write(1, 'WebServer_Create', lmt_Error, E.Message);
   end;
+
+  if _Loader <> nil then
+    _Loader.Free;
+
+  if _WS <> nil then
+    _WS.Free;
 end;
 
 function WebServer_Destroy(aWebServer: Pointer): Boolean; export; cdecl;

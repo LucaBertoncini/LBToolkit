@@ -27,7 +27,6 @@ type
       cINI_DOCUMENTS_FOLDER = 'DocumentFolder';
 
   public
-    function setParams(const aFilename, aSection: String): Boolean;
     function LoadConfig(aWebServer: TLBmicroWebServer): Boolean; override;
 
     property Section  : String            write FSection;
@@ -81,18 +80,6 @@ uses
 
 { TINIConfigLoader }
 
-function TINIConfigLoader.setParams(const aFilename, aSection: String): Boolean;
-begin
-  FFileName := aFileName;
-
-  if aSection = '' then
-    FSection := cINI_DEFAULT_SECTION
-  else
-    FSection := aSection;
-
-  Result := True;
-end;
-
 function TINIConfigLoader.LoadConfig(aWebServer: TLBmicroWebServer): Boolean;
 var
   _IniFile: TIniFile;
@@ -121,6 +108,9 @@ begin
 
       if _IniFile <> nil then
       begin
+        if FSection = '' then
+          FSection := cINI_DEFAULT_SECTION;
+
         _Port := _IniFile.ReadInteger(FSection, cINI_LISTENING_PORT, 0);
         if _Port > 0 then
         begin
@@ -142,7 +132,7 @@ begin
           end;
 
           if aWebServer.SSLData <> nil then
-            _WaWebServerS.SSLData.LoadFromINISection(_IniFile, FSection);
+            aWebServer.SSLData.LoadFromINISection(_IniFile, FSection);
 
         end
         else

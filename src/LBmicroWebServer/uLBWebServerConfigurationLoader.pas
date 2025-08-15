@@ -57,6 +57,23 @@ type
 
   end;
 
+  { TCallbackDataConfigLoader }
+  TCallbackDataConfigLoader = class(TWebServerConfigurationLoader)
+  private
+    FFillDataCallback: TNotifyEvent;
+    // Internal fields to hold the data pushed by the callback
+    FPort: Integer;
+    FDocFolder: string;
+    FSSLCertFile: string;
+    FSSLKeyFile: string;
+    FSSLKeyPass: string;
+  public
+    constructor Create(aCallback: TNotifyEvent);
+    function LoadConfig(aWebServer: TLBmicroWebServer): Boolean; override;
+    procedure SetData(aPort: Integer; const aDocFolder, aCertFile, aKeyFile, aKeyPass: String);
+  end;
+
+
 implementation
 
 uses
@@ -224,5 +241,80 @@ begin
   else
     LBLogger.Write(1, 'TXMLConfigLoader.LoadConfig', lmt_Warning, 'WebServer not set!');
 end;
+
+{ TCallbackDataConfigLoader }
+constructor TCallbackDataConfigLoader.Create(aCallback: TNotifyEvent);
+begin
+  inherited Create;
+  FFillDataCallback := aCallback;
+  FPort := 0;
+end;
+
+procedure TCallbackDataConfigLoader.SetData(aPort: Integer; const aDocFolder, aCertFile, aKeyFile, aKeyPass: String);
+begin
+  FPort        := aPort;
+  FDocFolder   := aDocFolder;
+  FSSLCertFile := aCertFile;
+  FSSLKeyFile  := aKeyFile;
+  FSSLKeyPass  := aKeyPass;
+end;
+
+function TCallbackDataConfigLoader.LoadConfig(aWebServer: TLBmicroWebServer): Boolean;
+begin
+  Result := False;
+
+  if FFillDataCallback <> nil then
+  begin
+    if aWebServer <> nil then
+    begin
+
+      try
+        FFillDataCallback(Self);
+
+        // use the data that the callback has pushed into this object.
+        if FPort > 0 then
+        begin
+          aWebServer.ListeningPort := FPort;
+
+          if (FDocFolder <> '') then
+          begin
+            if DirectoryExists(FDocFolder) then
+            begin
+              aWebServer.createDocumentFolder;
+              aWebServer.DocumentsFolder.DocumentFolder := FDocFolder;
+            end
+            else
+              LBLogger.Write(1, 'TCallbackDataConfigLoader.LoadConfig', lmt_Warning, 'Document folder <%s> not found!', [FDocFolder]);
+          end;
+
+          if (FSSLCertFile <> '') and (FSSLKeyFile <> '') then
+          begin
+            if aWebServer.SSLData <> nil then
+            begin
+              aWebServer.SSLData.CertificateFile := FSSLCertFile;
+              aWebServer.SSLData.PrivateKeyFile := FSSLKeyFile;
+              aWebServer.SSLData.KeyPassword := FSSLKeyPass;
+            end;
+          end;
+
+          Result := True;
+        end
+        else
+          LBLogger.Write(1, 'TCallbackDataConfigLoader.LoadConfig', lmt_Warning, 'Wrong port value %d', [FPort]);
+
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'TCallbackDataConfigLoader.LoadConfig', lmt_Error, 'Callback data loading failed: %s', [E.Message]);
+      end;
+    end
+    else
+      LBLogger.Write(1, 'TCallbackDataConfigLoader.LoadConfig', lmt_Warning, 'WebServer not set!');
+
+  end
+  else
+    LBLogger.Write(1, 'TCallbackDataConfigLoader.LoadConfig', lmt_Warning, 'Fill data callback not set!');
+end;
+
+end.
 
 end.

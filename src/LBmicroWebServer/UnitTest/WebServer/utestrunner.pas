@@ -69,10 +69,11 @@ begin
   InitLogger(5, 'Test_mWs.log');
 
   FWebServer := TLBmicroWebServer.Create;
-  FWebServer.DocumentsFolder := TLBmWsDocumentsFolder.Create;
+  FWebServer.createDocumentFolder();
   FWebServer.DocumentsFolder.DocumentFolder := GetTempDir;
-  FWebServer.addChainProcessor(TTestChainProcessor.Create(FWebServer), True);
-  FWebServer.Activate(10320, nil);
+  FWebServer.addChainProcessor(TTestChainProcessor.Create, True);
+  FWebServer.ListeningPort := 10320;
+  FWebServer.Activate();
   Sleep(10);
 end;
 

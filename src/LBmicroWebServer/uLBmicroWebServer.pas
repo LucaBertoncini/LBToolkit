@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, blcksock, synsock, contnrs, Laz2_DOM,
   uWebSocketManagement, uLBBaseThread, uTimedoutCriticalSection, uLBTimers,
   fpjson, jsonparser, uLBmWsFileManager, uLBmWsDocumentsFolder, uLBSSLConfig,
-  uHTTPRequestParser, uLBCircularBuffer, fgl, IniFiles;
+  uHTTPRequestParser, uLBCircularBuffer, fgl;
 
 type
   TLBmicroWebServer = class;
@@ -259,16 +259,9 @@ type
 
       FAdditionalData    : TObject;
 
-//      function get_DocumentsFolder: TLBmWsDocumentsFolder;
-//      procedure set_DocumentsFolder(AValue: TLBmWsDocumentsFolder);
-      function StartListeningThread(aRequestManagerType: THTTPRequestManagerClass): Boolean;
+      function StartListeningThread(): Boolean;
 
       procedure UpdateChain();
-
-      const
-        cINI_DEFAULT_SECTION = 'LBWebServer';
-        cINI_LISTENING_PORT = 'Port';
-        cINI_DOCUMENTS_FOLDER = 'DocumentFolder';
 
     private
       function ProcessGETRequest(
@@ -296,17 +289,13 @@ type
 
       class function getClassDescription(): String;
 
-      procedure Activate(aRequestManagerType: THTTPRequestManagerClass);
+      procedure Activate();
 
       procedure Stop();
 
       function addChainProcessor(aProcessor: TRequestChainProcessor; asFirst: Boolean): Boolean;
 
-      function LoadFromINIFile(const aINIPath, aSection: String): Boolean;
-      function LoadFromINISection(aIniFile: TIniFile; const aSection: String): Boolean;
-
-      function LoadFromXMLFile(const aFilename: String): Boolean;
-      function LoadFromXMLNode(aNode: TDOMNode): Boolean;
+      procedure createDocumentFolder();
 
       property OnElaborateWebSocketMessage: TWebSocketDataReceivedEvent read FOnElaborateWebSocketMessage write FOnElaborateWebSocketMessage;
       property OnWebSocketConnectionEstablished: TNotifyEvent read FOnWebSocketConnectionEstablished write FOnWebSocketConnectionEstablished;
@@ -360,7 +349,7 @@ end;
 
 { TLBmicroWebServer }
 
-function TLBmicroWebServer.StartListeningThread(aRequestManagerType: THTTPRequestManagerClass): Boolean;
+function TLBmicroWebServer.StartListeningThread: Boolean;
 begin
   Result := False;
 
@@ -369,7 +358,7 @@ begin
     if FListeningPort > 0 then
     begin
       FListener := TLBmWsListener.Create(FListeningPort, Self);
-      FListener.RequestManagerType := aRequestManagerType;
+//      FListener.RequestManagerType := aRequestManagerType;
       FListener.AddReference(@FListener);
       FListener.Start();
       Result := True;
@@ -450,48 +439,15 @@ begin
   inherited Destroy;
 end;
 
-procedure TLBmicroWebServer.Activate(aRequestManagerType: THTTPRequestManagerClass);
+procedure TLBmicroWebServer.Activate;
 begin
-  Self.StartListeningThread(aRequestManagerType);
+  Self.StartListeningThread();
 end;
 
-function TLBmicroWebServer.LoadFromXMLNode(aNode: TDOMNode): Boolean;
-var
-  _Node : TDOMNode;
-
-
+procedure TLBmicroWebServer.createDocumentFolder;
 begin
-  Result := False;
-
-  try
-
-    if (aNode <> nil) then
-    begin
-      if (aNode.NodeName = Self.getClassDescription()) then
-      begin
-
-        FSSLData.LoadFromXMLNode(aNode.FindNode(TSSLConnectionData.cRootNodeName));
-
-        _Node := aNode.FindNode(TLBmWsDocumentsFolder.cRootNodeName);
-        if _Node <> nil then
-        begin
-          if FDocumentsFolder = nil then
-            FDocumentsFolder := TLBmWsDocumentsFolder.Create;
-
-          FDocumentsFolder.LoadFromXMLNode(aNode.FindNode(TLBmWsDocumentsFolder.cRootNodeName));
-        end;
-
-        Result := True;
-
-      end
-      else
-        LBLogger.Write(1, 'TLBmicroWebServer.LoadFromXMLNode', lmt_Warning, 'Wrong parent node name <%s>', [aNode.NodeName]);
-    end;
-
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'TLBmicroWebServer.LoadFromXMLNode', lmt_Error, E.Message);
-  end;
+  if FDocumentsFolder = nil then
+    FDocumentsFolder := TLBmWsDocumentsFolder.Create;
 end;
 
 procedure TLBmicroWebServer.Stop();
@@ -513,92 +469,6 @@ begin
 
     Self.UpdateChain();
   end;
-end;
-
-function TLBmicroWebServer.LoadFromINIFile(const aINIPath, aSection: String): Boolean;
-var
-  _IniFile : TIniFile = nil;
-
-begin
-  Result := False;
-
-  if FileExists(aINIPath) then
-  begin
-    try
-      _IniFile := TIniFile.Create(aINIPath);
-      Result := Self.LoadFromINISection(_IniFile, aSection);
-    except
-      on E: Exception do
-        LBLogger.Write(1, 'TLBmicroWebServer.LoadFromINIFile', lmt_Error, E.Message);
-    end;
-
-    if _IniFile <> nil then
-      _IniFile.Free;
-  end
-  else
-    LBLogger.Write(1, 'TLBmicroWebServer.LoadFromINIFile', lmt_Warning, 'Configuration file <%s> not found!', [aINIPath]);
-end;
-
-function TLBmicroWebServer.LoadFromINISection(aIniFile: TIniFile; const aSection: String): Boolean;
-var
-  _DocumentFolder : String;
-  _Section : String;
-
-begin
-  Result := False;
-
-  try
-    _Section := aSection;
-    if _Section = '' then
-      _Section := cINI_DEFAULT_SECTION;
-
-    FListeningPort := aIniFile.ReadInteger(_Section, cINI_LISTENING_PORT, 0);
-    if FListeningPort > 0 then
-    begin
-
-      _DocumentFolder := aIniFile.ReadString(_Section, cINI_DOCUMENTS_FOLDER, '');
-      if (_DocumentFolder <> '') then
-      begin
-        if DirectoryExists(_DocumentFolder) then
-        begin
-          if FDocumentsFolder = nil then
-            FDocumentsFolder := TLBmWsDocumentsFolder.Create;
-
-          FDocumentsFolder.DocumentFolder := _DocumentFolder;
-        end
-        else
-          LBLogger.Write(1, 'TLBmicroWebServer.LoadFromINISection', lmt_Warning, 'Document folder <%s> not found', [_DocumentFolder]);
-      end;
-
-      Result := True;
-
-      FSSLData.LoadFromINISection(aIniFile, aSection);
-    end
-    else
-      LBLogger.Write(1, 'TLBmicroWebServer.LoadFromINISection', lmt_Warning, 'Listening port not set!');
-
-  except
-    on E: Exception do
-
-  end;
-end;
-
-function TLBmicroWebServer.LoadFromXMLFile(const aFilename: String): Boolean;
-var
-  _Doc : TXMLDocument = nil;
-
-begin
-  try
-    if OpenXMLFile(aFilename, _Doc) then
-      Result := Self.LoadFromXMLNode(_Doc.DocumentElement);
-
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'TLBmicroWebServer.LoadFromXMLFile', lmt_Error, E.Message);
-  end;
-
-  if _Doc <> nil then
-    _Doc.Free;
 end;
 
 

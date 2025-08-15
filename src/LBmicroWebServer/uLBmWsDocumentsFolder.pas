@@ -35,7 +35,7 @@ type
       cNodeName_EnableUpload = DOMString('EnableUpload');
   end;
 
-  TDocumentsFolderClass = class of TLBmWsDocumentsFolder;
+//  TDocumentsFolderClass = class of TLBmWsDocumentsFolder;
 
 implementation
 

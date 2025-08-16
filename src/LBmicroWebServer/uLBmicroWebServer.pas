@@ -79,9 +79,6 @@ type
         FOutputHeaders: TStringList;
         FOutputData: TMemoryStream;
 
-        FURI_Resource : String;
-        FURI_Params   : TStringList;
-
         FSendingFile : TLBmWsFileManager;
         FRecvBuffer: TLBCircularBufferThreaded;
         FParser: THTTPRequestParser;
@@ -93,8 +90,6 @@ type
       procedure setErrorAnswer(ErrorMessage: String);
 
       function setSSLConnection(aSSLData: TSSLConnectionData): Boolean;
-
-      function SplitURIIntoResourceAndParameters(const anURI: String): Boolean;
 
       function SendData(): Boolean; virtual;
       function ProcessHttpRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer; virtual;
@@ -139,17 +134,14 @@ type
 
 
       function DoProcessGETRequest(
-        var Resource: String;
-        Headers: TStringList;
-        URIParams: TStringList;
+        HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
       ): Boolean; virtual; abstract;
 
       function DoProcessPOSTRequest(
-        var Resource: String;
-        Headers: TStringList;
+        HTTPParser: THTTPRequestParser;
         Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -164,17 +156,14 @@ type
     public
 
       function ProcessGETRequest(
-        var Resource: String;
-        Headers: TStringList;
-        URIParams: TStringList;
+        HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
       ): Boolean;
 
       function ProcessPOSTRequest(
-        var Resource: String;
-        Headers: TStringList;
+        HTTPParser: THTTPRequestParser;
         Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -259,17 +248,14 @@ type
 
     private
       function ProcessGETRequest(
-        var Resource: String;
-        Headers: TStringList;
-        URIParams: TStringList;
+        HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
       ): Boolean;
 
       function ProcessPOSTRequest(
-        var Resource: String;
-        Headers: TStringList;
+        HTTPParser: THTTPRequestParser;
         Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -374,22 +360,21 @@ begin
     FProcessors.Last.NextStep := nil;
 end;
 
-function TLBmicroWebServer.ProcessGETRequest(var Resource: String;
-  Headers: TStringList; URIParams: TStringList; ResponseHeaders: TStringList;
-  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TLBmicroWebServer.ProcessGETRequest(HTTPParser: THTTPRequestParser;
+  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := False;
   if FProcessors.First <> nil then
-    Result := FProcessors.First.ProcessGETRequest(Resource, Headers, URIParams, ResponseHeaders, ResponseData, ResponseCode);
+    Result := FProcessors.First.ProcessGETRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 end;
 
-function TLBmicroWebServer.ProcessPOSTRequest(var Resource: String;
-  Headers: TStringList; Payload: TMemoryStream; ResponseHeaders: TStringList;
+function TLBmicroWebServer.ProcessPOSTRequest(HTTPParser: THTTPRequestParser;
+  Payload: TMemoryStream; ResponseHeaders: TStringList;
   var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := False;
   if FProcessors.First <> nil then
-    Result := FProcessors.First.ProcessPOSTRequest(Resource, Headers, Payload, ResponseHeaders, ResponseData, ResponseCode);
+    Result := FProcessors.First.ProcessPOSTRequest(HTTPParser, Payload, ResponseHeaders, ResponseData, ResponseCode);
 end;
 
 class function TLBmicroWebServer.getClassDescription(): String;
@@ -620,36 +605,6 @@ end;
 
 
 
-function THTTPRequestManager.SplitURIIntoResourceAndParameters(const anURI: String): Boolean;
-var
-  i: integer;
-  _tokens: TStringArray;
-
-begin
-  Result := False;
-
-  FURI_Resource := anURI;
-  FURI_Params.Clear;
-
-  _tokens := anURI.Split(['?']);
-
-  if High(_tokens) = 0 then Exit(True);
-
-  FURI_Resource := _tokens[0].Trim;
-
-  if Length(_tokens) >= 2 then
-  begin
-    _tokens := _tokens[1].Split('&');
-    for i := 0 to High(_tokens) do
-      FURI_Params.Add(_tokens[i].Trim);
-  end;
-
-  Result := True;
-
-  LBLogger.Write(5, 'THTTPRequestManager.SplitURIIntoResourceAndParameters', lmt_Debug, 'Resource: <%s>  -  Params: <%s>', [FURI_Resource, FURI_Params.CommaText]);
-
-end;
-
 function THTTPRequestManager.ProcessGETRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
 var
   _DocFolder: TLBmWsDocumentsFolder;
@@ -709,7 +664,7 @@ begin
 
     // Custom GET handler (fallback)
     Result := HTTP_STATUS_NOT_FOUND;
-    if FWebServerOwner.ProcessGETRequest(FURI_Resource, FParser.Headers, FURI_Params, FOutputHeaders, FOutputData, Result) then
+    if FWebServerOwner.ProcessGETRequest(FParser, FOutputHeaders, FOutputData, Result) then
       NextState := rms_SendHTTPAnswer;
   end;
 end;
@@ -752,7 +707,7 @@ begin
 
   if (FWebServerOwner <> nil) then
   begin
-    if FWebServerOwner.ProcessPOSTRequest(FURI_Resource, FParser.Headers, FParser.Body, FOutputHeaders, FOutputData, Result) then
+    if FWebServerOwner.ProcessPOSTRequest(FParser, FParser.Body, FOutputHeaders, FOutputData, Result) then
     begin
       NextState := rms_SendHTTPAnswer;
       KeepConnection := False;
@@ -784,7 +739,7 @@ var
   _InternalState          : THTTPRequestManagerState = rms_ReadIncomingHTTPRequest;
   _SSLData                : TSSLConnectionData;
   _SocketError            : Boolean;
-  _BodySize               : Int64;
+//  _BodySize               : Int64;
 begin
   if (FWebServerOwner <> nil) then
   begin
@@ -813,9 +768,6 @@ begin
           begin
             if self.ReceiveAndParseRequest(_SocketError) then
             begin
-              // Request parsed correctly, populate fields
-              Self.SplitURIIntoResourceAndParameters(FParser.URI);
-
               if FOutputData <> nil then
                 FOutputData.Clear;
 
@@ -962,9 +914,6 @@ begin
 
   FAllowCrossOrigin := False;
 
-  FURI_Params := TStringList.Create;
-  FURI_Params.NameValueSeparator := '=';
-
   FOutputHeaders := TStringList.Create;
   FOutputData := nil;
 
@@ -990,9 +939,6 @@ begin
     FreeAndNil(FSendingFile);
 
     FreeAndNil(FSocket);
-
-    FreeAndNil(FURI_Params);
-
 
     FreeAndNil(FOutputHeaders);
 
@@ -1048,26 +994,24 @@ end;
 
 { TRequestChainProcessor }
 
-function TRequestChainProcessor.ProcessGETRequest(var Resource: String;
-  Headers: TStringList; URIParams: TStringList; ResponseHeaders: TStringList;
-  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TRequestChainProcessor.ProcessGETRequest(HTTPParser: THTTPRequestParser;
+  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
-  Result := Self.DoProcessGETRequest(Resource, Headers, URIParams, ResponseHeaders, ResponseData, ResponseCode);
+  Result := Self.DoProcessGETRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 
   // if Result = True the chain is blocked
   if (not Result) and (FNext <> nil) then
-    Result := FNext.ProcessGETRequest(Resource, Headers, URIParams, ResponseHeaders, ResponseData, ResponseCode);
+    Result := FNext.ProcessGETRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 end;
 
-function TRequestChainProcessor.ProcessPOSTRequest(var Resource: String;
-  Headers: TStringList; Payload: TMemoryStream; ResponseHeaders: TStringList;
+function TRequestChainProcessor.ProcessPOSTRequest(HTTPParser: THTTPRequestParser; Payload: TMemoryStream; ResponseHeaders: TStringList;
   var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
-  Result := Self.DoProcessPOSTRequest(Resource, Headers, Payload, ResponseHeaders, ResponseData, ResponseCode);
+  Result := Self.DoProcessPOSTRequest(HTTPParser, Payload, ResponseHeaders, ResponseData, ResponseCode);
 
   // if Result = True the chain is blocked
   if (not Result) and (FNext <> nil) then
-    Result := FNext.ProcessPOSTRequest(Resource, Headers, Payload, ResponseHeaders, ResponseData, ResponseCode);
+    Result := FNext.ProcessPOSTRequest(HTTPParser, Payload, ResponseHeaders, ResponseData, ResponseCode);
 end;
 
 { TLBmWsListener }

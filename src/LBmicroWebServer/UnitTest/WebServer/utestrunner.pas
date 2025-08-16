@@ -5,7 +5,8 @@ unit uTestRunner;
 interface
 
 uses
-  Classes, SysUtils, consoletestrunner, uLBmicroWebServer, uLBmWsDocumentsFolder;
+  Classes, SysUtils, consoletestrunner, uLBmicroWebServer, uLBmWsDocumentsFolder,
+  uHTTPRequestParser;
 
 type
   { TTestChainProcessor }
@@ -13,18 +14,15 @@ type
   TTestChainProcessor = class(TRequestChainProcessor)
     strict protected
       function DoProcessGETRequest(
-        var Resource: String;
-        Headers: TStringList;
-        URIParams: TStringList;
+        HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
       ): Boolean; override;
 
       function DoProcessPOSTRequest(
-        var Resource: String;
-        Headers: TStringList;
-        var Payload: AnsiString;
+        HTTPParser: THTTPRequestParser;
+        Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -87,20 +85,23 @@ end;
 
 { TTestChainProcessor }
 
-function TTestChainProcessor.DoProcessGETRequest(var Resource: String;
-  Headers: TStringList; URIParams: TStringList; ResponseHeaders: TStringList;
-  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TTestChainProcessor.DoProcessGETRequest(HTTPParser: THTTPRequestParser;
+  ResponseHeaders: TStringList; var ResponseData: TMemoryStream;
+  out ResponseCode: Integer): Boolean;
 var
   _Text : String;
 
 begin
   Result := False;
-  LBLogger.Write(1, 'TTestChainProcessor.DoProcessGETRequest', lmt_Debug, 'Resource: <%s>', [Resource]);
 
-  if Resource = '/hello' then
+  HTTPParser.SplitURIIntoResourceAndParameters();
+
+  LBLogger.Write(1, 'TTestChainProcessor.DoProcessGETRequest', lmt_Debug, 'Raw request: <%s>', [HTTPParser.RawRequestLine]);
+  LBLogger.Write(1, 'TTestChainProcessor.DoProcessGETRequest', lmt_Debug, 'Resource: <%s>', [HTTPParser.Resource]);
+
+  if HTTPParser.Resource = '/hello' then
   begin
-    URIParams.NameValueSeparator := '=';
-    _Text := Format(cHelloAnswer, [URIParams.Values['name'], URIParams.Values['id']]);
+    _Text := Format(cHelloAnswer, [HTTPParser.Params.Values['name'], HTTPParser.Params.Values['id']]);
 
     LBLogger.Write(1, 'TTestChainProcessor.DoProcessGETRequest', lmt_Debug, 'Answer: %s', [_Text]);
 
@@ -112,11 +113,11 @@ begin
     Result := True;
   end
   else
-    LBLogger.Write(1, 'TTestChainProcessor.DoProcessGETRequest', lmt_Warning, 'Unknown resource: %s', [Resource]);
+    LBLogger.Write(1, 'TTestChainProcessor.DoProcessGETRequest', lmt_Warning, 'Unknown resource: %s', [HTTPParser.Resource]);
 end;
 
-function TTestChainProcessor.DoProcessPOSTRequest(var Resource: String;
-  Headers: TStringList; var Payload: AnsiString; ResponseHeaders: TStringList;
+function TTestChainProcessor.DoProcessPOSTRequest(HTTPParser: THTTPRequestParser;
+  Payload: TMemoryStream; ResponseHeaders: TStringList;
   var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 var
   _Obj : TJSONObject = nil;
@@ -125,12 +126,19 @@ var
   _Value : TJSONData = nil;
 
 begin
-  LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'Payload: %s', [Payload]);
+  // LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'Payload: %s', [Payload]);
 
-  if Payload <> '' then
+  if (Payload <> nil) and (Payload.Size > 0) then
   begin
     try
-      _Obj := TJSONObject(GetJSON(Payload));
+      LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'Payload size: %d', [Payload.Size]);
+
+      SetLength(_s, Payload.Size);
+      Payload.Read(_s[1], Length(_s));
+
+      LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'JSON request: %s', [_s]);
+
+      _Obj := TJSONObject(GetJSON(_s));
       _Answer := TJSONObject.Create;
 
       if _Obj.Find('Code', _Value) then

@@ -5,7 +5,7 @@ unit uHTTPRequestParser;
 interface
 
 uses
-  Classes, SysUtils, contnrs, uLBCircularBuffer, uHTTPConsts;
+  Classes, SysUtils, uLBCircularBuffer;
 
 type
   TParserResult = (prIncomplete, prComplete, prError);
@@ -30,6 +30,7 @@ type
   THTTPRequestParser = class(TObject)
   private
     FBuffer: TLBCircularBuffer;
+    FParams: TStringList;
     FState: TParserState;
     FHeaders: TStringList;
     FMethod: String;
@@ -41,6 +42,8 @@ type
     FMaxBodySize: Cardinal;
     FCurrentHeaderSize: Cardinal;
     FCurrentLine: AnsiString;
+    FRawRequestLine : String;
+    FResource: String;
 
     procedure ProcessRequestLine;
     procedure ProcessHeaderLine;
@@ -55,6 +58,11 @@ type
     function Parse: TParserResult;
     procedure Reset;
 
+    function SplitURIIntoResourceAndParameters(): Boolean;
+
+    property Resource: String read FResource;
+    property Params: TStringList read FParams;
+
     property Method: String read FMethod;
     property URI: String read FURI;
     property HTTPVersion: String read FHTTPVersion;
@@ -62,6 +70,8 @@ type
     property Body: TMemoryStream read FBody;
     property MaxHeaderSize: Cardinal read FMaxHeaderSize write FMaxHeaderSize;
     property MaxBodySize: Cardinal read FMaxBodySize write FMaxBodySize;
+
+    property RawRequestLine: String read FRawRequestLine;
   end;
 
 implementation
@@ -81,6 +91,11 @@ begin
   FHeaders.CaseSensitive := False;
   FHeaders.NameValueSeparator := ':';
 
+  FParams := TStringList.Create;
+  FParams.NameValueSeparator := '=';
+
+  FRawRequestLine := '';
+
   FBody := TMemoryStream.Create;
   FMaxHeaderSize := 16 * 1024; // 16KB default
   FMaxBodySize := 10 * 1024 * 1024; // 10MB default
@@ -92,6 +107,8 @@ destructor THTTPRequestParser.Destroy;
 begin
   FreeAndNil(FHeaders);
   FreeAndNil(FBody);
+  FreeAndNil(FParams);
+
   inherited Destroy;
 end;
 
@@ -106,6 +123,37 @@ begin
   FContentLength := -1;
   FCurrentHeaderSize := 0;
   FCurrentLine := '';
+  FResource := '';
+  FParams.Clear;
+end;
+
+function THTTPRequestParser.SplitURIIntoResourceAndParameters(): Boolean;
+var
+  i: integer;
+  _tokens: TStringArray;
+
+begin
+  Result := False;
+
+  FResource := FURI;
+  FParams.Clear;
+
+  _tokens := FURI.Split(['?']);
+
+  if High(_tokens) = 0 then Exit(True);
+
+  FResource := _tokens[0].Trim;
+
+  if Length(_tokens) >= 2 then
+  begin
+    _tokens := _tokens[1].Split('&');
+    for i := 0 to High(_tokens) do
+      FParams.Add(_tokens[i].Trim);
+  end;
+
+  Result := True;
+
+  LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Resource: <%s>  -  Params: <%s>', [FResource, FParams.CommaText]);
 end;
 
 function THTTPRequestParser.FindCRLF(out aPos: Integer): Boolean;
@@ -141,7 +189,9 @@ begin
   begin
     FState := psError;
     LBLogger.Write(1, 'THTTPRequestParser', lmt_Warning, 'Invalid request line: ' + FCurrentLine);
-  end;
+  end
+  else
+    FRawRequestLine := FCurrentLine;
 end;
 
 procedure THTTPRequestParser.ProcessHeaderLine;
@@ -245,6 +295,7 @@ begin
     begin
       FState := psComplete;
       Result := prComplete;
+      FBody.Position := 0;
     end;
   end
   else begin

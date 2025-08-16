@@ -14,18 +14,14 @@ type
   TLBmicroWebServer = class;
 
   TOnGETRequest = function(
-    var Resource: String;
-    Headers: TStringList;
-    URIParams: TStringList;
+    HTTPParser: THTTPRequestParser;
     ResponseHeaders: TStringList;
     var ResponseData: TMemoryStream;
     out ResponseCode: Integer
   ): Boolean of object;
 
   TOnPOSTRequest = function(
-    var Resource: String;
-    Headers: TStringList;
-    Payload: TMemoryStream;
+    HTTPParser: THTTPRequestParser;
     ResponseHeaders: TStringList;
     var ResponseData: TMemoryStream;
     out ResponseCode: Integer
@@ -142,7 +138,6 @@ type
 
       function DoProcessPOSTRequest(
         HTTPParser: THTTPRequestParser;
-        Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -164,7 +159,6 @@ type
 
       function ProcessPOSTRequest(
         HTTPParser: THTTPRequestParser;
-        Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -256,7 +250,6 @@ type
 
       function ProcessPOSTRequest(
         HTTPParser: THTTPRequestParser;
-        Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -280,7 +273,7 @@ type
       property OnElaborateWebSocketMessage: TWebSocketDataReceivedEvent read FOnElaborateWebSocketMessage write FOnElaborateWebSocketMessage;
       property OnWebSocketConnectionEstablished: TNotifyEvent read FOnWebSocketConnectionEstablished write FOnWebSocketConnectionEstablished;
 
-      property DocumentsFolder  : TLBmWsDocumentsFolder  read FDocumentsFolder; // get_DocumentsFolder   write set_DocumentsFolder;
+      property DocumentsFolder  : TLBmWsDocumentsFolder  read FDocumentsFolder;
       property SSLData          : TSSLConnectionData     read FSSLData;
       property ListeningPort    : Integer                read FListeningPort        write FListeningPort;
 
@@ -369,12 +362,11 @@ begin
 end;
 
 function TLBmicroWebServer.ProcessPOSTRequest(HTTPParser: THTTPRequestParser;
-  Payload: TMemoryStream; ResponseHeaders: TStringList;
-  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := False;
   if FProcessors.First <> nil then
-    Result := FProcessors.First.ProcessPOSTRequest(HTTPParser, Payload, ResponseHeaders, ResponseData, ResponseCode);
+    Result := FProcessors.First.ProcessPOSTRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 end;
 
 class function TLBmicroWebServer.getClassDescription(): String;
@@ -720,7 +712,7 @@ begin
 
   if (FWebServerOwner <> nil) then
   begin
-    if FWebServerOwner.ProcessPOSTRequest(FParser, FParser.Body, FOutputHeaders, FOutputData, Result) then
+    if FWebServerOwner.ProcessPOSTRequest(FParser, {FParser.Body,} FOutputHeaders, FOutputData, Result) then
     begin
       NextState := rms_SendHTTPAnswer;
       KeepConnection := False;
@@ -752,7 +744,7 @@ var
   _InternalState          : THTTPRequestManagerState = rms_ReadIncomingHTTPRequest;
   _SSLData                : TSSLConnectionData;
   _SocketError            : Boolean;
-//  _BodySize               : Int64;
+
 begin
   if (FWebServerOwner <> nil) then
   begin
@@ -1020,14 +1012,14 @@ begin
     Result := FNext.ProcessGETRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 end;
 
-function TRequestChainProcessor.ProcessPOSTRequest(HTTPParser: THTTPRequestParser; Payload: TMemoryStream; ResponseHeaders: TStringList;
-  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TRequestChainProcessor.ProcessPOSTRequest(HTTPParser: THTTPRequestParser;
+  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
-  Result := Self.DoProcessPOSTRequest(HTTPParser, Payload, ResponseHeaders, ResponseData, ResponseCode);
+  Result := Self.DoProcessPOSTRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 
   // if Result = True the chain is blocked
   if (not Result) and (FNext <> nil) then
-    Result := FNext.ProcessPOSTRequest(HTTPParser, Payload, ResponseHeaders, ResponseData, ResponseCode);
+    Result := FNext.ProcessPOSTRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 end;
 
 { TLBmWsListener }

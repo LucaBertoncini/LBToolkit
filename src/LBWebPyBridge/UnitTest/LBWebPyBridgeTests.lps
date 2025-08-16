@@ -148,7 +148,7 @@
       <Unit>
         <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
         <EditorIndex Value="4"/>
-        <CursorPos X="66" Y="1467"/>
+        <CursorPos X="66" Y="1389"/>
         <UsageCount Value="19"/>
         <Loaded Value="True"/>
       </Unit>
@@ -211,7 +211,8 @@
         <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="5"/>
-        <CursorPos X="26" Y="300"/>
+        <TopLine Value="49"/>
+        <CursorPos X="44" Y="10"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>

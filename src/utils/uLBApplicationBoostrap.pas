@@ -255,7 +255,7 @@ begin
       end;
       Self.startingWebServer();
       FWebServer.ListeningPort := aConfiguration^.Port;
-      FWebServer.Activate(nil);
+      FWebServer.Activate();
     end;
   end;
 end;

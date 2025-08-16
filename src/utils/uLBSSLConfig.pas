@@ -38,7 +38,7 @@ type
 
     const
       cDEFAULT_INI_SECTION       = 'SSLData';
-      cRootNodeName              = 'SSLConnection';
+      cDEFAULT_XML_NODENAME      = 'SSLData';
       cSSLCertificateNodeName    = 'SSLCertificateFile';
       cSSLCACertificateNodeName  = 'SSLCACertificateFile';
       cSSLPrivateKeyNodeName     = 'SSLPrivateKeyFile';

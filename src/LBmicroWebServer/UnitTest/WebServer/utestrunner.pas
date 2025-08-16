@@ -55,7 +55,7 @@ const
 implementation
 
 uses
-  ULBLogger,fpjson;
+  ULBLogger,fpjson, uHTTPConsts;
 
 
 
@@ -109,6 +109,8 @@ begin
       ResponseData := TMemoryStream.Create;
     ResponseData.Write(_Text[1], Length(_Text));
     ResponseHeaders.Add('Content-Type: text/html');
+    ResponseHeaders.Add(HTTP_HEADER_CONTENT_LENGTH + ': ' + IntToStr(Length(_Text)));
+
     ResponseCode := 200;
     Result := True;
   end

@@ -518,15 +518,28 @@ begin
     try
       _code_desc := FAnswerDescription[IntTostr(aResultCode)];
       FSocket.SendString(FParser.HTTPVersion + ' ' + IntTostr(aResultCode) + _code_desc + CRLF);
-      FOutputHeaders.Add('Date: ' + Rfc822DateTime(Now));
-      FOutputHeaders.Add('Server: micro WS by Luca Bertoncini');
+
+      if FOutputHeaders.IndexOfName(HTTP_HEADER_DATE) = -1 then
+        FOutputHeaders.Add(HTTP_HEADER_DATE + ': ' + Rfc822DateTime(Now));
+
+      if FOutputHeaders.IndexOfName(HTTP_HEADER_SERVER) = -1 then
+        FOutputHeaders.Add(HTTP_HEADER_SERVER + ': micro WS by Luca Bertoncini');
+
       if FAllowCrossOrigin then
-        FOutputHeaders.Add('Access-Control-Allow-Origin: *');
+      begin
+        if FOutputHeaders.IndexOfName(HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN) = -1 then
+          FOutputHeaders.Add(HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN + ': *');
+      end;
 
       if FSendingFile <> nil then
         FSendingFile.addResponseHeaders(FOutputHeaders)
       else if FOutputData <> nil then
-        FOutputHeaders.Add(HTTP_HEADER_CONTENT_LENGTH + ': ' + IntTostr(FOutputData.Size));
+      begin
+        if FOutputHeaders.IndexOfName(HTTP_HEADER_CONTENT_LENGTH) = -1 then
+          FOutputHeaders.Add(HTTP_HEADER_CONTENT_LENGTH + ': ' + IntTostr(FOutputData.Size))
+        else
+          LBLogger.Write(5, 'THTTPRequestManager.SendHeaders', lmt_Debug, 'Header <%s> already present', [HTTP_HEADER_CONTENT_LENGTH]);
+      end;
 
       FOutputHeaders.Add('');
 
@@ -915,6 +928,9 @@ begin
   FAllowCrossOrigin := False;
 
   FOutputHeaders := TStringList.Create;
+  FOutputHeaders.CaseSensitive := False;
+  FOutputHeaders.NameValueSeparator := ':';
+
   FOutputData := nil;
 
   FConnectionExecuted := False;

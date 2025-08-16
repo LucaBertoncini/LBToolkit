@@ -39,13 +39,6 @@ implementation
 uses
   ULBLogger, httpsend, uTestRunner, fpjson;
 
-//const
-//  cHelloWord = String('HELLO WORLD!');
-//  cHelloAnswer = String('<!DOCTYPE html><html><head></head><body><br>Hello %s, your ID is %s</body></html>');
-//  cUnknownResource = String('Unknown resource %s');
-//  cCodeValueNotFound = String('Code value not found');
-
-
 procedure THTTPRequestManagerTests.CreateDummyFile;
 var
   fs: TFileStream;
@@ -71,8 +64,6 @@ end;
 
 procedure THTTPRequestManagerTests.TearDown;
 begin
-
-//  DeleteDummyFile;
 end;
 
 procedure THTTPRequestManagerTests.Test_TestRequest;

@@ -475,7 +475,7 @@ begin
   inherited Destroy;
 end;
 
-procedure TLBBaseLogger.set_MaxLogLevel(AValue: Byte); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+procedure TLBBaseLogger.set_MaxLogLevel(AValue: Byte); cdecl;
 begin
   Self.setMaxLogLevel(AValue);
 end;
@@ -486,7 +486,7 @@ begin
     FMaxLogLevel := AValue;
 end;
 
-procedure TLBBaseLogger.set_EnabledMessageTypes(AList: PChar); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+procedure TLBBaseLogger.set_EnabledMessageTypes(AList: PChar); cdecl;
 var
   _sMessages : String;
   _Messages : TStringList = nil;
@@ -529,12 +529,12 @@ begin
   Result := False;
 end;
 
-procedure TLBBaseLogger.set_DateTimeFormat(AValue: PChar); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+procedure TLBBaseLogger.set_DateTimeFormat(AValue: PChar); cdecl;
 begin
   FDateTimeFormat := StrPas(AValue);
 end;
 
-procedure TLBBaseLogger.set_SourceMaxLength(AValue: Integer); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+procedure TLBBaseLogger.set_SourceMaxLength(AValue: Integer); cdecl;
 begin
   FSourceMaxLength := AValue;
 end;
@@ -825,7 +825,7 @@ begin
   end;
 end;
 
-function TLBLogger.logWrite(LogLevel: Byte; Sender: PChar; MsgType: TLBLoggerMessageType; MsgText: PChar): Boolean; {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+function TLBLogger.logWrite(LogLevel: Byte; Sender: PChar; MsgType: TLBLoggerMessageType; MsgText: PChar): Boolean; cdecl;
 var
   _Sender : String;
   _Msg : String;
@@ -871,7 +871,7 @@ begin
   end;
 end;
 
-procedure TLBLogger.set_MaxFileSize(ASize: Int64); {$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
+procedure TLBLogger.set_MaxFileSize(ASize: Int64); cdecl;
 begin
   if Self <> nil then
   begin

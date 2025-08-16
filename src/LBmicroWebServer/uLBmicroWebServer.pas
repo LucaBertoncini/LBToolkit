@@ -25,7 +25,7 @@ type
   TOnPOSTRequest = function(
     var Resource: String;
     Headers: TStringList;
-    var Payload: AnsiString;
+    Payload: TMemoryStream;
     ResponseHeaders: TStringList;
     var ResponseData: TMemoryStream;
     out ResponseCode: Integer
@@ -76,15 +76,9 @@ type
 
         FAnswerDescription: TFPStringHashTable;
 
-        FInputHeaders: TStringList;
-        FInputData : AnsiString;
-
         FOutputHeaders: TStringList;
         FOutputData: TMemoryStream;
 
-        FProtocol : String;
-        FRequestMethod : String;
-        FURI : String;
         FURI_Resource : String;
         FURI_Params   : TStringList;
 
@@ -156,7 +150,7 @@ type
       function DoProcessPOSTRequest(
         var Resource: String;
         Headers: TStringList;
-        var Payload: AnsiString;
+        Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -181,7 +175,7 @@ type
       function ProcessPOSTRequest(
         var Resource: String;
         Headers: TStringList;
-        var Payload: AnsiString;
+        Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -276,7 +270,7 @@ type
       function ProcessPOSTRequest(
         var Resource: String;
         Headers: TStringList;
-        var Payload: AnsiString;
+        Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -332,7 +326,7 @@ const
 implementation
 
 uses
-  uHTTPConsts, uLBFileUtils, synautil, laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
+  uHTTPConsts, synautil, laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
 
 { TAnswerError }
 
@@ -358,7 +352,6 @@ begin
     if FListeningPort > 0 then
     begin
       FListener := TLBmWsListener.Create(FListeningPort, Self);
-//      FListener.RequestManagerType := aRequestManagerType;
       FListener.AddReference(@FListener);
       FListener.Start();
       Result := True;
@@ -391,7 +384,7 @@ begin
 end;
 
 function TLBmicroWebServer.ProcessPOSTRequest(var Resource: String;
-  Headers: TStringList; var Payload: AnsiString; ResponseHeaders: TStringList;
+  Headers: TStringList; Payload: TMemoryStream; ResponseHeaders: TStringList;
   var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := False;
@@ -539,7 +532,7 @@ begin
 
     try
       _code_desc := FAnswerDescription[IntTostr(aResultCode)];
-      FSocket.SendString(FProtocol + ' ' + IntTostr(aResultCode) + _code_desc + CRLF);
+      FSocket.SendString(FParser.HTTPVersion + ' ' + IntTostr(aResultCode) + _code_desc + CRLF);
       FOutputHeaders.Add('Date: ' + Rfc822DateTime(Now));
       FOutputHeaders.Add('Server: micro WS by Luca Bertoncini');
       if FAllowCrossOrigin then
@@ -600,17 +593,17 @@ begin
   KeepConnection := False;
   NextState := rms_CloseSocket;
 
-  if Pos('HTTP/', FProtocol) = 1 then
+  if Pos('HTTP/', FParser.HTTPVersion) = 1 then
   begin
 
     try
 
-      case FRequestMethod of
+      case FParser.Method of
         HTTP_METHOD_GET    : Result := Self.ProcessGETRequest(KeepConnection, NextState);
         HTTP_METHOD_HEAD   : Result := Self.ProcessHEADRequest(KeepConnection, NextState);
         HTTP_METHOD_POST   : Result := Self.ProcessPOSTRequest(KeepConnection, NextState);
         else
-          LBLogger.Write(1, 'THTTPRequestManager.ProcessHttpRequest', lmt_Warning, Format('Unknown request method <%s>', [FRequestMethod]));
+          LBLogger.Write(1, 'THTTPRequestManager.ProcessHttpRequest', lmt_Warning, Format('Unknown request method <%s>', [FParser.Method]));
       end;
 
     except
@@ -620,7 +613,7 @@ begin
 
   end
   else begin
-    LBLogger.Write(1, 'THTTPRequestManager.ProcessHttpRequest', lmt_Warning, 'Wrong protocol <%s>!', [FProtocol]);
+    LBLogger.Write(1, 'THTTPRequestManager.ProcessHttpRequest', lmt_Warning, 'Wrong protocol <%s>!', [FParser.HTTPVersion]);
     Self.setErrorAnswer('Unknown request!');
   end;
 end;
@@ -670,8 +663,8 @@ begin
   NextState := rms_CloseSocket;
 
   // Check for WebSocket Upgrade
-  if (Trim(FInputHeaders.Values[HTTP_HEADER_UPGRADE]) = HTTP_UPGRADE_WEBSOCKET) and
-     (Pos(HTTP_CONNECTION_UPGRADE, FInputHeaders.Values[HTTP_HEADER_CONNECTION]) > 0) then
+  if (Trim(FParser.Headers.Values[HTTP_HEADER_UPGRADE]) = HTTP_UPGRADE_WEBSOCKET) and
+     (Pos(HTTP_CONNECTION_UPGRADE, FParser.Headers.Values[HTTP_HEADER_CONNECTION]) > 0) then
   begin
     Result := HTTP_STATUS_OK;
     KeepConnection := True;
@@ -679,7 +672,7 @@ begin
     Exit;
   end;
 
-  if FURI = cTestURI then
+  if FParser.URI = cTestURI then
   begin
     LBLogger.Write(5, 'THTTPRequestManager.ProcessGETRequest', lmt_Debug, 'Test request');
 
@@ -701,10 +694,10 @@ begin
   if (FWebServerOwner <> nil) then
   begin
     _DocFolder := FWebServerOwner.DocumentsFolder;
-    if (_DocFolder <> nil) and _DocFolder.isValidSubpath(FURI) then
+    if (_DocFolder <> nil) and _DocFolder.isValidSubpath(FParser.URI) then
     begin
       FSendingFile := TLBmWsFileManager.Create;
-      if FSendingFile.setFile(_DocFolder.RetrieveFilename(FURI), Trim(FInputHeaders.Values[HTTP_HEADER_RANGE])) then
+      if FSendingFile.setFile(_DocFolder.RetrieveFilename(FParser.URI), Trim(FParser.Headers.Values[HTTP_HEADER_RANGE])) then
       begin
         Result := FSendingFile.answerStatus;
         NextState := rms_SendHTTPAnswer;
@@ -716,7 +709,7 @@ begin
 
     // Custom GET handler (fallback)
     Result := HTTP_STATUS_NOT_FOUND;
-    if FWebServerOwner.ProcessGETRequest(FURI_Resource, FInputHeaders, FURI_Params, FOutputHeaders, FOutputData, Result) then
+    if FWebServerOwner.ProcessGETRequest(FURI_Resource, FParser.Headers, FURI_Params, FOutputHeaders, FOutputData, Result) then
       NextState := rms_SendHTTPAnswer;
   end;
 end;
@@ -733,12 +726,12 @@ begin
   if (FWebServerOwner <> nil) then
   begin
     _DocFolder := FWebServerOwner.DocumentsFolder;
-    if (_DocFolder <> nil) and (Length(FURI) > 1) and _DocFolder.isValidSubpath(FURI) then
+    if (_DocFolder <> nil) and (Length(FParser.URI) > 1) and _DocFolder.isValidSubpath(FParser.URI) then
     begin
       FSendingFile := TLBmWsFileManager.Create;
     FSendingFile.SendHeadersOnly := True;
 
-    if FSendingFile.setFile(_DocFolder.RetrieveFilename(FURI), Trim(FInputHeaders.Values[HTTP_HEADER_RANGE])) then
+    if FSendingFile.setFile(_DocFolder.RetrieveFilename(FParser.URI), Trim(FParser.Headers.Values[HTTP_HEADER_RANGE])) then
     begin
       Result := FSendingFile.answerStatus;
       NextState := rms_SendHTTPAnswer;
@@ -747,7 +740,7 @@ begin
       FreeAndNil(FSendingFile);
     end
     else
-      LBLogger.Write(1, 'THTTPRequestManager.ProcessHEADRequest', lmt_Warning, 'File not found for HEAD <%s>', [FURI]);
+      LBLogger.Write(1, 'THTTPRequestManager.ProcessHEADRequest', lmt_Warning, 'File not found for HEAD <%s>', [FParser.URI]);
   end;
 end;
 
@@ -759,7 +752,7 @@ begin
 
   if (FWebServerOwner <> nil) then
   begin
-    if FWebServerOwner.ProcessPOSTRequest(FURI_Resource, FInputHeaders, FInputData, FOutputHeaders, FOutputData, Result) then
+    if FWebServerOwner.ProcessPOSTRequest(FURI_Resource, FParser.Headers, FParser.Body, FOutputHeaders, FOutputData, Result) then
     begin
       NextState := rms_SendHTTPAnswer;
       KeepConnection := False;
@@ -821,22 +814,7 @@ begin
             if self.ReceiveAndParseRequest(_SocketError) then
             begin
               // Request parsed correctly, populate fields
-              FRequestMethod := FParser.Method;
-              FURI := FParser.URI;
-              FProtocol := FParser.HTTPVersion;
-              FInputHeaders.Clear;
-              FInputHeaders.AddStrings(FParser.Headers);
-              Self.SplitURIIntoResourceAndParameters(FURI);
-
-              // Handle body
-              SetLength(FInputData, 0);
-              _BodySize := FParser.Body.Size;
-              if _BodySize > 0 then
-              begin
-                SetLength(FInputData, _BodySize);
-                FParser.Body.Position := 0;
-                FParser.Body.ReadBuffer(FInputData[1], _BodySize);
-              end;
+              Self.SplitURIIntoResourceAndParameters(FParser.URI);
 
               if FOutputData <> nil then
                 FOutputData.Clear;
@@ -868,7 +846,7 @@ begin
             end;
 
             try
-              if FWebSocketManager.PerformHandshake(FInputHeaders) then
+              if FWebSocketManager.PerformHandshake(FParser.Headers) then
               begin
                 if (FWebServerOwner <> nil) and Assigned(FWebServerOwner.OnWebSocketConnectionEstablished) then
                   FWebServerOwner.OnWebSocketConnectionEstablished(Self);
@@ -983,9 +961,6 @@ begin
   FAnswerDescription.Add('404', ' NOT FOUND');
 
   FAllowCrossOrigin := False;
-  FInputHeaders := TStringList.Create;
-  FInputHeaders.CaseSensitive := False;
-  FInputHeaders.NameValueSeparator := ':';
 
   FURI_Params := TStringList.Create;
   FURI_Params.NameValueSeparator := '=';
@@ -1010,15 +985,11 @@ begin
     if FWebSocketManager <> nil then
       FreeAndNil(FWebSocketManager);
 
-    SetLength(FInputData, 0);
-
     FreeAndNil(FParser);
     FreeAndNil(FRecvBuffer);
     FreeAndNil(FSendingFile);
 
     FreeAndNil(FSocket);
-
-    FreeAndNil(FInputHeaders);
 
     FreeAndNil(FURI_Params);
 
@@ -1076,14 +1047,6 @@ begin
 end;
 
 { TRequestChainProcessor }
-(*
-constructor TRequestChainProcessor.Create;
-begin
-  inherited Create;
-
-  FWebServerOwner := aWebserverOwner;
-end;
-*)
 
 function TRequestChainProcessor.ProcessGETRequest(var Resource: String;
   Headers: TStringList; URIParams: TStringList; ResponseHeaders: TStringList;
@@ -1097,7 +1060,7 @@ begin
 end;
 
 function TRequestChainProcessor.ProcessPOSTRequest(var Resource: String;
-  Headers: TStringList; var Payload: AnsiString; ResponseHeaders: TStringList;
+  Headers: TStringList; Payload: TMemoryStream; ResponseHeaders: TStringList;
   var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := Self.DoProcessPOSTRequest(Resource, Headers, Payload, ResponseHeaders, ResponseData, ResponseCode);

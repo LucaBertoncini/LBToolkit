@@ -76,13 +76,16 @@ constructor THTTPRequestParser.Create(aBuffer: TLBCircularBuffer);
 begin
   inherited Create;
   FBuffer := aBuffer;
+
   FHeaders := TStringList.Create;
   FHeaders.CaseSensitive := False;
   FHeaders.NameValueSeparator := ':';
+
   FBody := TMemoryStream.Create;
   FMaxHeaderSize := 16 * 1024; // 16KB default
   FMaxBodySize := 10 * 1024 * 1024; // 10MB default
-  Reset;
+
+  Self.Reset;
 end;
 
 destructor THTTPRequestParser.Destroy;
@@ -299,7 +302,7 @@ begin
   end;
 
   if FState = psBody_Identity then
-    Result := ParseBody;
+    Result := Self.ParseBody;
 
   if FState = psComplete then
     Result := prComplete;

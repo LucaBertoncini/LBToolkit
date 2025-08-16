@@ -29,7 +29,7 @@ type
       function DoProcessPOSTRequest(
         var Resource: String;
         Headers: TStringList;
-        var Payload: AnsiString;
+        Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -77,7 +77,7 @@ begin
 end;
 
 function TPyBridgeChainModule.DoProcessPOSTRequest(var Resource: String;
-  Headers: TStringList; var Payload: AnsiString; ResponseHeaders: TStringList;
+  Headers: TStringList; Payload: TMemoryStream; ResponseHeaders: TStringList;
   var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 var
   _Request : TRequestData;
@@ -95,10 +95,10 @@ begin
   else
     _Request.Script := Resource;
 
-  if Payload <> '' then
+  if (Payload <> nil) and (Payload.Size > 0) then
   begin
-    _Request.Params := @Payload[1];
-    _Request.ParamsLen := Length(Payload);
+    _Request.Params := Payload.Memory;
+    _Request.ParamsLen := Payload.Size;
   end;
 
   if FOrchestrator.insertRequest(@_Request) then

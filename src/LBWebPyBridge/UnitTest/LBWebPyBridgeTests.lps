@@ -8,7 +8,7 @@
         <Filename Value="LBWebPyBridgeTests.lpr"/>
         <IsPartOfProject Value="True"/>
         <CursorPos Y="7"/>
-        <UsageCount Value="77"/>
+        <UsageCount Value="78"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -17,7 +17,7 @@
         <EditorIndex Value="1"/>
         <TopLine Value="190"/>
         <CursorPos X="60" Y="278"/>
-        <UsageCount Value="77"/>
+        <UsageCount Value="78"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -26,7 +26,7 @@
         <EditorIndex Value="9"/>
         <TopLine Value="55"/>
         <CursorPos X="31" Y="55"/>
-        <UsageCount Value="77"/>
+        <UsageCount Value="78"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -35,7 +35,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="10"/>
         <CursorPos X="19" Y="35"/>
-        <UsageCount Value="59"/>
+        <UsageCount Value="60"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -43,7 +43,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="24" Y="3"/>
-        <UsageCount Value="54"/>
+        <UsageCount Value="55"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -52,7 +52,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="44"/>
         <CursorPos X="31" Y="65"/>
-        <UsageCount Value="54"/>
+        <UsageCount Value="55"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -60,7 +60,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="25" Y="4"/>
-        <UsageCount Value="50"/>
+        <UsageCount Value="51"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -68,7 +68,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="9" Y="7"/>
-        <UsageCount Value="46"/>
+        <UsageCount Value="47"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -76,7 +76,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="3"/>
         <CursorPos X="3" Y="13"/>
-        <UsageCount Value="46"/>
+        <UsageCount Value="47"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -211,25 +211,12 @@
         <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="5"/>
-        <TopLine Value="203"/>
-        <CursorPos X="23" Y="8"/>
+        <CursorPos X="26" Y="300"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
     <JumpHistory HistoryIndex="29">
-      <Position>
-        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
-        <Caret Line="299" Column="22" TopLine="288"/>
-      </Position>
-      <Position>
-        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
-        <Caret Line="515" Column="5" TopLine="502"/>
-      </Position>
-      <Position>
-        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
-        <Caret Line="1143" Column="43" TopLine="1130"/>
-      </Position>
       <Position>
         <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
         <Caret Line="171" Column="22" TopLine="150"/>
@@ -337,6 +324,18 @@
       <Position>
         <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
         <Caret Line="214" Column="54" TopLine="204"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
+        <Caret Line="77" Column="17" TopLine="56"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
+        <Caret Line="281" Column="22" TopLine="268"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
+        <Caret Line="71" Column="18" TopLine="52"/>
       </Position>
     </JumpHistory>
     <RunParams>

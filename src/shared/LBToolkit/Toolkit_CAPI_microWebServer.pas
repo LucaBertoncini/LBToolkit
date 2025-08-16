@@ -5,7 +5,7 @@ unit Toolkit_CAPI_microWebServer;
 interface
 
 uses
-  Classes, SysUtils, uLBmicroWebServer, uWebSocketManagement;
+  Classes, SysUtils, uLBmicroWebServer, uWebSocketManagement, uHTTPRequestParser;
 
 type
   TGETCallback = function (RequestElaborator: Pointer; aResource: pChar; aResponseCode: pInteger): Boolean; cdecl;
@@ -24,10 +24,10 @@ type
       FWebSocketMessageCallback : TWebSocketMessageCallback;
       FWebSocketConnectedCallback : TWebSocketConnectedCallback;
 
-      FRequestHeaders : TStringList;
       FResponseHeaders : TStringList;
       FResponseData : pMemoryStream;
-      FURIParams : TStringList;
+
+      FHTTPParser : THTTPRequestParser;
 
       function get_RequestHeaderName(Index: Integer): String;
       function get_RequestHeadersCount: Integer;
@@ -37,18 +37,14 @@ type
 
     strict protected
       function DoProcessGETRequest(
-        var Resource: String;
-        Headers: TStringList;
-        URIParams: TStringList;
+        HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
       ): Boolean; override;
 
       function DoProcessPOSTRequest(
-        var Resource: String;
-        Headers: TStringList;
-        var Payload: AnsiString;
+        HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -250,57 +246,53 @@ end;
 function TmicroWebServerCallbacks.get_RequestHeaderName(Index: Integer): String;
 begin
   Result := '';
-  if (Index >= 0) and (Index < FRequestHeaders.Count) then
-    Result := FRequestHeaders.Names[Index];
+  if (Index >= 0) and (Index < FHTTPParser.Headers.Count) then
+    Result := FHTTPParser.Headers.Names[Index];
 end;
 
 function TmicroWebServerCallbacks.get_RequestHeadersCount: Integer;
 begin
-  Result := 0;
-  if FRequestHeaders <> nil then
-    Result := FRequestHeaders.Count;
+  Result := FHTTPParser.Headers.Count;
 end;
 
 function TmicroWebServerCallbacks.get_RequetsHeaderValue(Index: Integer): String;
 begin
   Result := '';
-  if (Index >= 0) and (Index < FRequestHeaders.Count) then
-    Result := FRequestHeaders.ValueFromIndex[Index];
+  if (Index >= 0) and (Index < FHTTPParser.Headers.Count) then
+    Result := FHTTPParser.Headers.ValueFromIndex[Index];
 end;
 
 function TmicroWebServerCallbacks.get_URIParam(Index: Integer): String;
 begin
   Result := '';
-  if (Index >= 0) and (Index < FURIParams.Count) then
-    Result := FURIParams.Strings[Index];
+  if (Index >= 0) and (Index < FHTTPParser.Params.Count) then
+    Result := FHTTPParser.Params.Strings[Index];
 end;
 
 function TmicroWebServerCallbacks.get_URIParamsCount: Integer;
 begin
-  if FURIParams <> nil then
-    Result := FURIParams.Count
+  if FHTTPParser.Params <> nil then
+    Result := FHTTPParser.Params.Count
   else
     Result := 0;
 end;
 
-function TmicroWebServerCallbacks.DoProcessGETRequest(var Resource: String;
-  Headers: TStringList; URIParams: TStringList; ResponseHeaders: TStringList;
-  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TmicroWebServerCallbacks.DoProcessGETRequest(HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := False;
 
-  FRequestHeaders  := Headers;
+  FHTTPParser      := HTTPParser;
+  FHTTPParser.SplitURIIntoResourceAndParameters();
+
   FResponseHeaders := ResponseHeaders;
   FResponseData    := @ResponseData;
-  FURIParams       := URIParams;
 
   if FGETCallback <> nil then
-    Result := FGETCallback(Pointer(Self), PChar(Resource), @ResponseCode)
+    Result := FGETCallback(Pointer(Self), PChar(FHTTPParser.Resource), @ResponseCode)
 end;
 
-function TmicroWebServerCallbacks.DoProcessPOSTRequest(var Resource: String;
-  Headers: TStringList; var Payload: AnsiString; ResponseHeaders: TStringList;
-  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TmicroWebServerCallbacks.DoProcessPOSTRequest(HTTPParser: THTTPRequestParser;
+  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 var
   _Data : pByte;
   _DataLen : Integer;
@@ -308,20 +300,21 @@ var
 begin
   Result := False;
 
-  FRequestHeaders  := Headers;
+  FHTTPParser  := HTTPParser;
+  FHTTPParser.SplitURIIntoResourceAndParameters();
+
   FResponseHeaders := ResponseHeaders;
   FResponseData    := @ResponseData;
-  FURIParams       := nil;
 
   if FPOSTCallback <> nil then
   begin
-    _DataLen := Length(Payload);
+    _DataLen := FHTTPParser.Body.Size;
     if _DataLen > 0 then
-      _Data := @Payload[1]
+      _Data := FHTTPParser.Body.Memory
     else
       _Data := nil;
 
-    Result := FPOSTCallback(Pointer(Self), PChar(Resource), _Data, _DataLen, @ResponseCode);
+    Result := FPOSTCallback(Pointer(Self), PChar(FHTTPParser.Resource), _Data, _DataLen, @ResponseCode);
   end;
 end;
 

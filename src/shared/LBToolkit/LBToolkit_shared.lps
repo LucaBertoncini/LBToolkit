@@ -7,19 +7,27 @@
       <Unit>
         <Filename Value="LBToolkit_shared.lpr"/>
         <IsPartOfProject Value="True"/>
-        <TopLine Value="37"/>
-        <CursorPos X="22" Y="58"/>
-        <UsageCount Value="91"/>
+        <TopLine Value="26"/>
+        <CursorPos X="54" Y="41"/>
+        <UsageCount Value="102"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uCallbackLogger.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="18"/>
-        <TopLine Value="35"/>
+        <EditorIndex Value="20"/>
+        <TopLine Value="10"/>
         <CursorPos X="3" Y="35"/>
-        <UsageCount Value="91"/>
+        <UsageCount Value="102"/>
         <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBmicroWebServer/ufphttprequestprocessor.pas"/>
+        <UnitName Value="uFPHTTPRequestProcessor"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="42"/>
+        <CursorPos X="73" Y="48"/>
+        <UsageCount Value="24"/>
       </Unit>
       <Unit>
         <Filename Value="toolkit_capi_microwebserver.pas"/>
@@ -73,25 +81,25 @@
       </Unit>
       <Unit>
         <Filename Value="../../LBLogger/ULBLogger.pas"/>
-        <EditorIndex Value="16"/>
-        <TopLine Value="354"/>
-        <CursorPos X="40" Y="368"/>
-        <UsageCount Value="47"/>
+        <EditorIndex Value="19"/>
+        <TopLine Value="585"/>
+        <CursorPos X="62" Y="588"/>
+        <UsageCount Value="53"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBCircularBuffer.pas"/>
-        <EditorIndex Value="13"/>
+        <EditorIndex Value="17"/>
         <CursorPos X="5" Y="8"/>
-        <UsageCount Value="30"/>
+        <UsageCount Value="36"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="Toolkit_CAPI_Logger.pas"/>
-        <EditorIndex Value="19"/>
+        <EditorIndex Value="21"/>
         <TopLine Value="25"/>
         <CursorPos X="3" Y="29"/>
-        <UsageCount Value="47"/>
+        <UsageCount Value="53"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -252,11 +260,10 @@
       <Unit>
         <Filename Value="/usr/share/lazarus/4.2.0/ide/lazarus.pp"/>
         <UnitName Value="Lazarus"/>
-        <EditorIndex Value="17"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="142"/>
         <CursorPos X="12" Y="160"/>
-        <UsageCount Value="36"/>
-        <Loaded Value="True"/>
+        <UsageCount Value="40"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/lazarus/4.2.0/lcl/forms.pp"/>
@@ -298,53 +305,54 @@
       <Unit>
         <Filename Value="/usr/share/lazarus/4.2.0/lcl/interfacebase.pp"/>
         <UnitName Value="InterfaceBase"/>
-        <EditorIndex Value="15"/>
-        <UsageCount Value="32"/>
-        <Loaded Value="True"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="36"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBBaseThread.pas"/>
-        <EditorIndex Value="14"/>
+        <EditorIndex Value="18"/>
         <TopLine Value="15"/>
         <CursorPos X="3" Y="15"/>
-        <UsageCount Value="31"/>
+        <UsageCount Value="37"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="Toolkit_CAPI_CircularBuffer.pas"/>
-        <EditorIndex Value="7"/>
-        <UsageCount Value="29"/>
+        <EditorIndex Value="8"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
-        <EditorIndex Value="8"/>
-        <TopLine Value="379"/>
-        <CursorPos X="60" Y="423"/>
-        <UsageCount Value="29"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="236"/>
+        <CursorPos X="80" Y="276"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uWebSocketManagement.pas"/>
-        <EditorIndex Value="12"/>
+        <EditorIndex Value="16"/>
         <TopLine Value="26"/>
         <CursorPos X="3" Y="39"/>
-        <UsageCount Value="26"/>
+        <UsageCount Value="32"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uHTTPConsts.pas"/>
-        <EditorIndex Value="11"/>
-        <CursorPos Y="6"/>
-        <UsageCount Value="24"/>
+        <EditorIndex Value="15"/>
+        <TopLine Value="79"/>
+        <CursorPos X="66" Y="87"/>
+        <UsageCount Value="30"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
         <EditorIndex Value="6"/>
-        <TopLine Value="53"/>
-        <CursorPos X="56" Y="130"/>
-        <UsageCount Value="22"/>
+        <TopLine Value="73"/>
+        <CursorPos Y="48"/>
+        <UsageCount Value="28"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -357,61 +365,57 @@
       <Unit>
         <Filename Value="Toolkit_CAPI_WebPyBridge.pas"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="19"/>
+        <TopLine Value="31"/>
         <CursorPos X="37" Y="25"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="28"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBWebPyBridge/uLBWebPyBridgeApplication.pas"/>
         <EditorIndex Value="3"/>
-        <TopLine Value="179"/>
         <CursorPos X="92" Y="194"/>
-        <UsageCount Value="22"/>
+        <UsageCount Value="28"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="239"/>
         <CursorPos X="27" Y="258"/>
-        <UsageCount Value="21"/>
+        <UsageCount Value="27"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBWebPyBridge/uPyBridgeChainModule.pas"/>
         <EditorIndex Value="4"/>
-        <TopLine Value="143"/>
-        <CursorPos X="3" Y="159"/>
-        <UsageCount Value="20"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="5"/>
-        <TopLine Value="327"/>
-        <CursorPos X="73" Y="334"/>
-        <UsageCount Value="10"/>
+        <TopLine Value="55"/>
+        <CursorPos Y="29"/>
+        <UsageCount Value="26"/>
         <Bookmarks Count="1">
-          <Item0 X="52" Y="573" Left="1" Top="562" ID="1"/>
+          <Item0 X="41" Y="147" Left="1" Top="128" ID="1"/>
         </Bookmarks>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../../utils/uLBSSLConfig.pas"/>
-        <EditorIndex Value="10"/>
-        <TopLine Value="33"/>
-        <CursorPos X="32" Y="35"/>
+        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
+        <EditorIndex Value="5"/>
+        <CursorPos X="73" Y="334"/>
         <UsageCount Value="16"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="../../utils/uLBSSLConfig.pas"/>
+        <EditorIndex Value="14"/>
+        <TopLine Value="33"/>
+        <CursorPos X="32" Y="35"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="../../LBmicroWebServer/uLBmWsDocumentsFolder.pas"/>
-        <EditorIndex Value="9"/>
+        <EditorIndex Value="13"/>
         <TopLine Value="10"/>
         <CursorPos X="3" Y="13"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -421,127 +425,188 @@
         <CursorPos X="10" Y="140"/>
         <UsageCount Value="10"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
+        <EditorIndex Value="7"/>
+        <CursorPos X="17" Y="30"/>
+        <UsageCount Value="15"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBmicroWebServer/uHTTPRequestParser.pas"/>
+        <EditorIndex Value="12"/>
+        <TopLine Value="13"/>
+        <CursorPos X="21" Y="30"/>
+        <UsageCount Value="15"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-web/src/base/fphttp.pp"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="75" Y="8"/>
+        <UsageCount Value="12"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-web/src/base/httpdefs.pp"/>
+        <UnitName Value="HTTPDefs"/>
+        <EditorIndex Value="11"/>
+        <TopLine Value="415"/>
+        <CursorPos X="26" Y="441"/>
+        <UsageCount Value="14"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-web/src/base/httpprotocol.pp"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="3" Y="12"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-base/src/uriparser.pp"/>
+        <UnitName Value="URIParser"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="58" Y="13"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/synapse40.1/ssl_openssl.pas"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/synapse40.1/synautil.pas"/>
+        <EditorIndex Value="-1"/>
+        <CursorPos X="57" Y="6"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBmicroWebServer/uFPHTTPRequestProcessor.pas"/>
+        <EditorIndex Value="10"/>
+        <CursorPos X="61" Y="5"/>
+        <UsageCount Value="12"/>
+        <Loaded Value="True"/>
+      </Unit>
     </Units>
     <JumpHistory HistoryIndex="29">
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="98" Column="20" TopLine="85"/>
+        <Filename Value="LBToolkit_shared.lpr"/>
+        <Caret Line="41" Column="54"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="564" Column="32" TopLine="552"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="48" Column="29" TopLine="35"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="585" Column="147" TopLine="565"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="322" Column="61" TopLine="299"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="598" Column="16" TopLine="586"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="35" Column="29" TopLine="30"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="599" Column="19" TopLine="586"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="259" Column="21" TopLine="248"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="601" Column="18" TopLine="586"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="41" Column="26" TopLine="37"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="602" Column="122" TopLine="586"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="285" Column="115" TopLine="282"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="593" Column="53" TopLine="598"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="43" TopLine="28"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="104" Column="20" TopLine="93"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="35" Column="30" TopLine="18"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="568" Column="52" TopLine="557"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="259" Column="21" TopLine="241"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="75" Column="25" TopLine="63"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="43" Column="18" TopLine="34"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="261" Column="7" TopLine="247"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="292" TopLine="278"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="78" Column="22" TopLine="67"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="34" Column="32" TopLine="15"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="326" Column="57" TopLine="325"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="265" Column="34" TopLine="240"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="571" Column="82" TopLine="558"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="43" Column="22" TopLine="25"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="56" Column="19" TopLine="44"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="321" Column="70" TopLine="285"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="190" Column="33" TopLine="176"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="49" Column="52" TopLine="38"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="260" Column="20" TopLine="245"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="278" Column="27" TopLine="237"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="261" Column="19" TopLine="248"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="29" TopLine="29"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="263" Column="26" TopLine="248"/>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="16" Column="16" TopLine="7"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="280" Column="48" TopLine="260"/>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="725" Column="67" TopLine="709"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="334" Column="15" TopLine="316"/>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="261" Column="3" TopLine="237"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="568" Column="86" TopLine="553"/>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="374" Column="33" TopLine="360"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="98" Column="20" TopLine="82"/>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="378" Column="64" TopLine="359"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="567" Column="32" TopLine="552"/>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="1031" Column="50" TopLine="1010"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="588" Column="147" TopLine="568"/>
+        <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
+        <Caret Line="1027" Column="51" TopLine="1013"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="601" Column="17" TopLine="586"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="48" Column="12" TopLine="33"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="106" Column="31" TopLine="96"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="296" Column="33" TopLine="282"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="571" Column="18" TopLine="562"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <Caret Line="314" Column="32" TopLine="299"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uPyBridge.pas"/>
-        <Caret Line="78" Column="21" TopLine="66"/>
+        <Filename Value="../../LBWebPyBridge/uPyBridgeChainModule.pas"/>
+        <Caret Line="29" Column="3" TopLine="13"/>
       </Position>
     </JumpHistory>
     <RunParams>

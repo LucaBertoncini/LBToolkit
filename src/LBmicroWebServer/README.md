@@ -8,7 +8,7 @@ LBmicroWebServer is a lightweight, modular web server written in Object Pascal (
 
 This project is composed of several clearly defined units:
 
-### 🔹 `uHTTPConst.pas`
+### 🔹 `uHTTPConst.pas` (../utils/uHTTPConst.pas)
 Centralized declaration of constants used across the framework.
 
 **Includes:**

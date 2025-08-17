@@ -5,7 +5,7 @@ unit uFPHTTPRequestProcessor;
 interface
 
 uses
-  Classes, SysUtils, uLBmicroWebServer, HTTPDefs;
+  Classes, SysUtils, uLBmicroWebServer, HTTPDefs, uHTTPRequestParser, fphttp;
 
 type
 
@@ -13,16 +13,20 @@ type
 
   TRequestEx = class(TRequest)
     public
-      procedure InitContentFromStream(aStream: TStream);
-      function setupRequest(): Boolean;
+      function setupRequest(ARequest: THTTPRequestParser): Boolean;
   end;
 
   { TResponseEx }
 
   TResponseEx = class(TResponse)
+    private
+      FAnswerHeaders: TStrings;
+      FAnswerData: TStream;
     public
-      procedure retrieveHeaders(Headers: TStringList);
-      procedure retrieveContent(aContentStream: TStream);
+      procedure SetInternalData(AnswerHeaders: TStrings; AnswerData: TStream);
+
+      Procedure DoSendHeaders(Headers : TStrings); override;
+      Procedure DoSendContent; override;
   end;
 
   { TFPHTTPRequestProcessor }
@@ -34,30 +38,28 @@ type
     strict protected
       FRequest : TRequestEx;
       FResponse : TResponseEx;
+      FOnWebAction: TWebActionEvent;
 
-      function DoProcessGETRequest(
-        var Resource: String;
-        Headers: TStringList;
-        URIParams: TStringList;
+     function DoProcessGETRequest(
+        HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
       ): Boolean; override;
 
       function DoProcessPOSTRequest(
-        var Resource: String;
-        Headers: TStringList;
-        Payload: TMemoryStream;
+        HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
       ): Boolean; override;
 
-      function elaborateRequest(): Boolean; virtual; abstract;
 
     public
       constructor Create;
       destructor Destroy; override;
+
+      property OnWebAction: TWebActionEvent read FOnWebAction write FOnWebAction;
 
   end;
 
@@ -68,73 +70,94 @@ uses
 
 { TRequestEx }
 
-procedure TRequestEx.InitContentFromStream(aStream: TStream);
+function TRequestEx.setupRequest(ARequest: THTTPRequestParser): Boolean;
 var
   _Content : AnsiString;
 
 begin
-  SetLength(_Content, aStream.Size);
-  aStream.Read(_Content[1], Length(_Content));
-  Self.InitContent(_Content);
-end;
-
-function TRequestEx.setupRequest(): Boolean;
-begin
   Result := False;
 
+
   try
+    ParseFirstHeaderLine(ARequest.RawRequestLine);
+
+    SetLength(_Content, ARequest.Body.Size);
+    ARequest.Body.Read(_Content[1], Length(_Content));
+
+    SetContentFromString(_Content);
     Self.InitRequestVars;
+
     Result := True;
   except
     on E: Exception do
       LBLogger.Write(1, 'TRequestEx.setupRequest', lmt_Error, E.Message);
   end;
+
+end;
+
+procedure TResponseEx.SetInternalData(AnswerHeaders: TStrings; AnswerData: TStream);
+begin
+  FAnswerHeaders:= AnswerHeaders;
+  FAnswerData:= AnswerData;
 end;
 
 { TResponseEx }
 
-procedure TResponseEx.retrieveHeaders(Headers: TStringList);
+procedure TResponseEx.DoSendHeaders(Headers: TStrings);
 begin
-  if Headers <> nil then
-    Self.CollectHeaders(Headers);
+  FAnswerHeaders.AddStrings(Headers);
 end;
 
-procedure TResponseEx.retrieveContent(aContentStream: TStream);
+procedure TResponseEx.DoSendContent;
+var
+  _Buff: RawByteString;
 begin
-  if aContentStream <> nil then
+  if ContentStream <> nil then
   begin
-    if (Self.ContentStream <> nil) and (Self.ContentStream.Size > 0) then
+    if ContentStream.Size > 0 then
     begin
-      aContentStream.Position := 0;
-      aContentStream.CopyFrom(Self.ContentStream, Self.ContentStream.Size);
+      ContentStream.Seek(0, soFromBeginning);
+      FAnswerData.CopyFrom(ContentStream, 0);
     end;
   end
   else
-    LBLogger.Write(1, 'TResponseEx.retrieveContent', lmt_Warning, 'Destination stream not set!');
+  begin
+    if Length(Content) > 0 then
+    begin
+      _Buff:= Content;
+      FAnswerData.Write(_Buff[1], Length(_Buff));
+    end;
+  end;
 end;
 
 { TFPHTTPRequestProcessor }
 
-function TFPHTTPRequestProcessor.getAnswer(aResponseHeaders: TStringList;
-  var aResponseData: TMemoryStream; out aResponseCode: Integer): Boolean;
+function TFPHTTPRequestProcessor.getAnswer(aResponseHeaders: TStringList; var aResponseData: TMemoryStream; out aResponseCode: Integer): Boolean;
+var
+  _GoAhead: boolean;
 begin
   Result := False;
+  _GoAhead:= false;
 
   try
-    if Self.elaborateRequest() then
-    begin
-      if FResponse <> nil then
-      begin
-        Result := True;
-        if aResponseData = nil then
-          aResponseData := TMemoryStream.Create
-        else
-          aResponseData.Clear;
+    if aResponseData = nil then
+      aResponseData := TMemoryStream.Create
+    else
+      aResponseData.Clear;
 
-        aResponseCode := FResponse.Code;
-        FResponse.retrieveHeaders(aResponseHeaders);
-        FResponse.retrieveContent(aResponseData);
-      end;
+    FResponse:= TResponseEx.Create(FRequest);
+
+    FResponse.SetInternalData(aResponseHeaders, aResponseData);
+
+    if Assigned(FOnWebAction) then
+      FOnWebAction(Self, FRequest, FResponse, _GoAhead);
+
+    if _GoAhead then
+    begin
+      aResponseCode := FResponse.Code;
+      Result := True;
+
+      FResponse.SendContent();
     end;
 
   except
@@ -143,26 +166,21 @@ begin
   end;
 end;
 
-function TFPHTTPRequestProcessor.DoProcessGETRequest(var Resource: String;
-  Headers: TStringList; URIParams: TStringList; ResponseHeaders: TStringList;
-  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TFPHTTPRequestProcessor.DoProcessGETRequest(HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList;
+                                                     var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
-  FRequest.Method := 'GET';
-  FRequest.LoadFromStrings(Headers, True);  // Loading Headers
-  FRequest.setupRequest();
+  FRequest.setupRequest(HTTPParser);
   Result := Self.getAnswer(ResponseHeaders, ResponseData, ResponseCode);
 end;
 
-function TFPHTTPRequestProcessor.DoProcessPOSTRequest(var Resource: String;
-  Headers: TStringList; Payload: TMemoryStream; ResponseHeaders: TStringList;
+function TFPHTTPRequestProcessor.DoProcessPOSTRequest(
+  HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList;
   var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
- FRequest.Method := 'POST';
- FRequest.LoadFromStrings(Headers, True);  // Loading Headers
- FRequest.InitContentFromStream(PayLoad);  // Loading Content
- FRequest.setupRequest();
+ FRequest.setupRequest(HTTPParser);
  Result := Self.getAnswer(ResponseHeaders, ResponseData, ResponseCode);
 end;
+
 
 constructor TFPHTTPRequestProcessor.Create;
 begin

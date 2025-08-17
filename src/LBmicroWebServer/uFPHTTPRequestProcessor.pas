@@ -8,6 +8,8 @@ uses
   Classes, SysUtils, uLBmicroWebServer, HTTPDefs, uHTTPRequestParser, fphttp;
 
 type
+  // Check if the HTTPDefs unit has the SetContentFromString procedure for the TRequest class
+  {.$DEFINE useContentFromString}
 
   { TRequestEx }
 
@@ -84,7 +86,11 @@ begin
     SetLength(_Content, ARequest.Body.Size);
     ARequest.Body.Read(_Content[1], Length(_Content));
 
-    SetContentFromString(_Content);
+    {$IFDEF useContentFromString}
+    Self.SetContentFromString(_Content);
+    {$ELSE}
+    Self.InitContent(_Content);
+    {$ENDIF}
     Self.InitRequestVars;
 
     Result := True;

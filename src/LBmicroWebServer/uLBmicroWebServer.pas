@@ -506,8 +506,10 @@ begin
 
   if (not Self.Terminated) then
   begin
-
     try
+      if (FOutputHeaders.Count > 0) and (FOutputHeaders[FOutputHeaders.Count - 1] = '') then
+        FOutputHeaders.Delete(FOutputHeaders.Count - 1);
+
       _code_desc := FAnswerDescription[IntTostr(aResultCode)];
       FSocket.SendString(FParser.HTTPVersion + ' ' + IntTostr(aResultCode) + _code_desc + CRLF);
 
@@ -551,9 +553,7 @@ begin
       on E: Exception do
         LBLogger.Write(1, 'THTTPRequestManager.SendHeaders', lmt_Error, E.Message);
     end;
-
   end;
-
 end;
 
 procedure THTTPRequestManager.setErrorAnswer(ErrorMessage: String);

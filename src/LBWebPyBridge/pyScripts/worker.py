@@ -1,71 +1,110 @@
+# --- Example of a User Script ---
+# The worker will dynamically run user scripts found on the filesystem.
+# Those scripts are expected to have access to two global objects, which are
+# injected by this worker at runtime: 'bridge' and 'request'.
+#
+# A typical user script (e.g., /api/process_data.py) would look like this:
+#
+# """
+# # This code runs inside the script located at `request.script_name`
+#
+# def some_business_logic(payload, params):
+#     # ... do something important ...
+#     user_id = params.get('user_id', 'default')
+#     return {'status': 'processed', 'user': user_id, 'original_payload': payload}
+#
+# try:
+#     # 1. Get metadata from the 'request' object
+#     content_type = request.headers.get('Content-Type')
+#     user_params = request.uri_params
+#
+#     # 2. Get the payload 'on-demand' from the 'bridge' object
+#     if content_type == 'application/json':
+#         payload = bridge.getPayloadAsJSON()
+#     else:
+#         payload = bridge.getRawPayload()
+#
+#     # 3. Execute logic
+#     result = some_business_logic(payload, user_params)
+#
+#     # 4. Write a success response back to the orchestrator
+#     bridge.writeResponseAsJSON(result, status=1)
+#
+# except Exception as e:
+#     # 5. On error, write an error response
+#     bridge.writeResponseAsJSON({'error': str(e)}, status=0)
+# """
 import sys
 import runpy
 import os
 import gc
-from LBBridge import LBBridge
-from lb_logger import logger, set_web_env
+import platform
+from lb_logger import logger, disable_logger
 
-set_web_env(False)
-logger.info(f"Worker started")
+disable_logger(False)
+
+# --- Example of a User Script ---
+# ... (comment block as added before) ...
 
 def main():
+    """
+    Main worker entry point.
+    Initializes the correct platform-specific bridge and enters the main loop
+    to process requests from the Pascal orchestrator.
+    """
+    bridge = None
     try:
+        # --- 1. Initialize the correct bridge for the current OS ---
+        if platform.system() == "Linux":
+            from LBBridge.bridge_sysv import SysVBridge
+            if len(sys.argv) < 5:
+                logger.error("[Worker] Missing arguments for Linux (shm_key, shm_size, sem_req_key, sem_res_key)")
+                return
+            shm_key, shm_size, sem_req_key, sem_res_key = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+            bridge = SysVBridge(shm_key, shm_size, sem_req_key, sem_res_key)
+            logger.info(f"Linux worker started with System V IPC keys: {shm_key}, {sem_req_key}, {sem_res_key}")
 
-        if len(sys.argv) < 4:
-            logger.warning("[Worker] Missing arguments. Usage: worker.py <shm_key> <shm_size> <sem_req> <sem_res>")
-            return
+        else: # Assuming Windows
+            from LBBridge.bridge_win import WindowsBridge
+            if len(sys.argv) < 5:
+                logger.error("[Worker] Missing arguments for Windows (shm_name, shm_size, sem_req_name, sem_res_name)")
+                return
+            shm_name, shm_size, sem_req_name, sem_res_name = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
+            bridge = WindowsBridge(shm_name, shm_size, sem_req_name, sem_res_name)
+            logger.info(f"Windows worker started with names: {shm_name}, {sem_req_name}, {sem_res_name}")
 
-        shm_key  = sys.argv[1]
-        shm_size = int(sys.argv[2])
-        sem_req = sys.argv[3]
-        sem_res = sys.argv[4]
-
-        logger.info(f"Starting parameter: shm_key={shm_key}, shm_size={shm_size}, sem_req={sem_req}, sem_res={sem_res}")
-
-        # POSIX: shm_key/sem_id is int → IPC key
-        # Windows: shm_key/sem_id is string → name
-        if shm_key.isdigit():
-            import sysv_ipc
-            shm = sysv_ipc.SharedMemory(int(shm_key), sysv_ipc.IPC_CREAT, size=shm_size, mode=0o666)
-            bridge = LBBridge(shm, shm_size, int(sem_req), int(sem_res))
-        else:
-            bridge = LBBridge(shm_key, shm_size, sem_req, sem_res)
-
+        # --- 2. Main processing loop ---
         while True:
             try:
-                logger.info(f"[Workey.py] - Waiting request ...")
+                logger.info("[Worker] Waiting for request...")
                 request = bridge.read_request()
+                logger.info(f"[Worker] Processing script: {request.script_name}")
+
+                script_full_path = os.path.join(os.path.dirname(__file__), request.script_name)
+                if not os.path.isfile(script_full_path):
+                    raise FileNotFoundError(f"Script file not found: {script_full_path}")
                 
-                script_rel = request.filename.strip()
-
-                base_dir = os.path.dirname(__file__)
-                script_path = os.path.join(base_dir, script_rel)
-
-                if not os.path.isfile(script_path):
-                    logger.warning(f"Script file not found: {script_path}")
-                    raise FileNotFoundError(f"Script file not found: {script_path}")
-
-                logger.info(f"Elaborating script {script_path}")
-                script_dir = os.path.dirname(script_path)
+                script_dir = os.path.dirname(script_full_path)
                 os.chdir(script_dir)
                 if script_dir not in sys.path:
                     sys.path.insert(0, script_dir)
 
-                runpy.run_path(script_path, init_globals={
+                runpy.run_path(script_full_path, init_globals={
                     "bridge": bridge,
                     "request": request
                 })
 
             except Exception as e:
-                logger.error(f"Execution failed: {str(e)}")
-                bridge.write_error(f"Execution failed: {str(e)}")
-
+                logger.error(f"[Worker] Execution failed: {str(e)}")
+                bridge.writeResponseAsJSON({'wpbError': f"Execution failed: {str(e)}"}, success=False)
             finally:
                 bridge.signal_completion()
                 gc.collect()
 
-    except Exception as outer:
-        print(f"[Worker] Startup error: {outer}")
+    except ConnectionError as e:
+        logger.error(f"[Worker] IPC Connection Error: {e}")
+    except Exception as e:
+        logger.error(f"[Worker] Unhandled startup error: {e}")
 
 if __name__ == '__main__':
     main()

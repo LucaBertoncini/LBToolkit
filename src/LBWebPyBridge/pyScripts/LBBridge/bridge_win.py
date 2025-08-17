@@ -1,79 +1,59 @@
-# bridge_win.py
-import struct, json, sys, time
-from multiprocessing import shared_memory
-from .LBBridge_constants import *
-from . import sem_win
+from multiprocessing import shared_memory, Semaphore
+from .bridge_base import BridgeBase
 
-class Request:
-    def __init__(self, filename, params_raw):
-        self.filename = filename
-        self.params_raw = params_raw
-        
-    def get_json(self):
+class WindowsBridge(BridgeBase):
+    """
+    A bridge implementation for Windows using the standard 'multiprocessing' module.
+    """
+    def __init__(self, shm_name, shm_size, sem_req_name, sem_res_name):
+        self._shm_instance = None
+        self._sem_req_instance = None
+        self._sem_res_instance = None
         try:
-            return json.loads(self.params_raw.decode('utf-8'))
-        except Exception:
-            return {}
+            # Create or attach to a shared memory segment using the standard library
+            self._shm_instance = shared_memory.SharedMemory(name=shm_name, create=True, size=shm_size)
+            
+            # The 'buf' attribute is a memoryview, which has a compatible interface
+            # (it can be sliced and written to). We need a small wrapper for read/write methods.
+            shm_wrapper = self._SharedMemoryWrapper(self._shm_instance.buf)
 
+            # Create named semaphores for cross-process communication
+            self._sem_req_instance = Semaphore(value=0, name=sem_req_name)
+            self._sem_res_instance = Semaphore(value=0, name=sem_res_name)
 
-class LBBridge:
-    def __init__(self, shm_name, shm_size, req_sem_name=None, res_sem_name=None):
-        self.shm = shared_memory.SharedMemory(name=shm_name)
-        self.shm_size = shm_size
-        self.buffer = self.shm.buf
-        self.req_sem = sem_win.Semaphore(req_sem_name) if req_sem_name else None
-        self.res_sem = sem_win.Semaphore(res_sem_name) if res_sem_name else None
-
-    def wait_for_request(self):
-        # This call will now block until the Pascal host signals the request semaphore.
-        if self.req_sem:
-            self.req_sem.acquire()
-
-        # Once woken up, read the header from shared memory
-        raw = bytes(self.buffer[:1 + HEADER_SIZE_IN])
-        file_len, params_len = struct.unpack(HEADER_FORMAT_IN, raw[1:1 + HEADER_SIZE_IN])
-        return file_len, params_len
-
-    def read_request(self):
-        file_len, params_len = self.wait_for_request()
-        offset = 1 + HEADER_SIZE_IN
-        raw = bytes(self.buffer[offset:offset + file_len + params_len])
-
-        filename_bytes = raw[:file_len]
-        params_raw = raw[file_len:]
-
-        filename = filename_bytes.decode('utf-8', errors='replace').strip()
-        return Request(filename, params_raw)
-
-    def write_response(self, success, data: bytes):
-        status = STATUS_SUCCESS if success else STATUS_FAILURE
-        required = HEADER_SIZE_OUT + len(data)
-        if required > self.shm_size:
-            fallback = b"Out of memory"
-            header = struct.pack(HEADER_FORMAT_OUT, 0, STATUS_FAILURE, len(fallback))
-            self.buffer[:len(header) + len(fallback)] = header + fallback
-            self._trigger()
-            return False
-        header = struct.pack(HEADER_FORMAT_OUT, 0, status, len(data))
-        self.buffer[:len(header) + len(data)] = header + data
-        self._trigger()
-        return True
-
-    def write_json(self, success, obj: dict):
-        try:
-            payload = json.dumps(obj).encode('utf-8')
-            return self.write_response(success, payload)
         except Exception as e:
-            return self.write_error(f"JSON serialization failed: {str(e)}")
+            self.cleanup()
+            raise ConnectionError(f"Failed to create Windows IPC objects: {e}")
 
-    def write_error(self, msg: str):
-        return self.write_json(False, { "wpbError": msg })
+        super().__init__((shm_wrapper, self._sem_req_instance, self._sem_res_instance))
 
-    def _trigger(self):
-        self.buffer[0] = TRIGGER_RESPONSE
+    def cleanup(self):
+        """Releases and unlinks the shared memory and semaphores."""
+        if self._shm_instance:
+            self._shm_instance.close()
+            self._shm_instance.unlink()
+            self._shm_instance = None
+        if self._sem_req_instance:
+            self._sem_req_instance.close()
+        if self._sem_res_instance:
+            self._sem_res_instance.close()
 
-    def signal_completion(self):
-        if self.res_sem:
-            self.res_sem.release()
+    def __del__(self):
+        self.cleanup()
 
+    class _SharedMemoryWrapper:
+        """
+        A small wrapper to make the memoryview object from multiprocessing.shared_memory
+        have the same .read() and .write() methods as the sysv_ipc object,
+        to provide a consistent interface to BridgeBase.
+        """
+        def __init__(self, memview):
+            self.buf = memview
+
+        def read(self, size, offset=0):
+            return self.buf[offset:offset+size]
+
+        def write(self, data, offset=0):
+            size = len(data)
+            self.buf[offset:offset+size] = data
 

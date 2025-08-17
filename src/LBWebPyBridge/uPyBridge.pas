@@ -6,7 +6,8 @@ unit uPyBridge;
 interface
 
 uses
-  Classes, SysUtils, uLBBaseThread, uIPCUtils, uTimedoutCriticalSection, process;
+  Classes, SysUtils, uLBBaseThread, uIPCUtils, uTimedoutCriticalSection, process,
+  uHTTPRequestParser;
 
 type
 
@@ -15,8 +16,7 @@ type
   TRequestData = record
     // Input
     Script: String;
-    Params: pByte;
-    ParamsLen : Integer;
+    HTTPParser : THTTPRequestParser;
 
     TerminateEvent : PRTLEvent;
 
@@ -38,16 +38,16 @@ type
     strict private
       type
         TRequestHeader = packed record
-          Trigger     : Byte;     // 19 = segnala richiesta esecuzione
-          FilenameLen : Byte;     // Lunghezza nome del file
-          ParamsLen   : Cardinal; // Lunghezza dei parametri
+          ScriptNameLen : Byte;
+          URIParamsLen  : Word;
+          HeadersLen    : Word;
+          PayloadLen    : Cardinal;
         end;
         pRequestHeader = ^TRequestHeader;
 
         TAnswerHeader = packed record
-          Trigger    : Byte;     // 175 = elaborazione terminata
           Successful : Byte;     // 0 = false, 1 = true
-          PayloadLen : Cardinal; // lunghezza risposta
+          PayloadLen : Cardinal; // Answer len
         end;
         pAnswerHeader = ^TAnswerHeader;
 
@@ -66,10 +66,6 @@ type
 
       procedure cleanupSharedMemory();
       function elaborateRequest(): Boolean;
-
-      const
-        cStartPythonElaborator = Byte(19);
-        cPythonElaborationTerminated = Byte(175);
 
     protected
       procedure InternalExecute(); override;
@@ -142,8 +138,7 @@ var
 
 procedure TRequestData.initialize();
 begin
-  Params := nil;
-  ParamsLen := 0;
+  HTTPParser := nil;
   TerminateEvent := RTLEventCreate;
   Aborted := False;
   Success := False;
@@ -172,7 +167,8 @@ var
   _RequestHeader : pRequestHeader;
   _AnswerHeader : pAnswerHeader;
   _Dest : pByte = nil;
-  _ScriptFile : String;
+  _tmpStr : String;
+
 begin
   Result := False;
   _RequestHeader := FSharedMem^.mem;
@@ -188,16 +184,18 @@ begin
   if FRequest^.Script <> '' then
   begin
     try
-      _ScriptFile := ChangeFileExt(FRequest^.Script, '.py');
-      if FileExists(FScriptsPath + _ScriptFile) then
+
+      _tmpStr := ChangeFileExt(FRequest^.Script, '.py');
+      if FileExists(FScriptsPath + _tmpStr) then
       begin
-        _RequestHeader^.FilenameLen := Byte(Length(_ScriptFile));
+        _RequestHeader^.ScriptNameLen := Byte(Length(_tmpStr));
         _Dest := pByte(FSharedMem^.mem) + SizeOf(TRequestHeader);
-        Move(_ScriptFile[1], _Dest^, _RequestHeader^.FilenameLen);
-        Inc(_Dest, _RequestHeader^.FilenameLen);
+        Move(_tmpStr[1], _Dest^, _RequestHeader^.ScriptNameLen);
+        Inc(_Dest, _RequestHeader^.ScriptNameLen);
       end
       else
         FRequest^.Aborted := True;
+
     except
       on E: Exception do
       begin
@@ -205,29 +203,47 @@ begin
         FRequest^.Aborted := True;
         FRequest^.Payload := @cError_UnmanagedError[1];
         FRequest^.PayloadLen := Length(cError_UnmanagedError);
-        LBLogger.Write(1, 'TPyBridge.elaborateRequest', lmt_Error, 'Error writing file name <%s>!', [_ScriptFile]);
+        LBLogger.Write(1, 'TPyBridge.elaborateRequest', lmt_Error, 'Error writing file name <%s>!', [_tmpStr]);
       end;
     end;
 
     if _Dest <> nil then
     begin
-      if FRequest^.ParamsLen > 0 then
+      if FRequest^.HTTPParser <> nil then
       begin
-        _RequestHeader^.ParamsLen := FRequest^.ParamsLen;
-        Move(FRequest^.Params^, _Dest^, FRequest^.ParamsLen);
-      end;
+        if (FRequest^.HTTPParser.Params <> nil) and (FRequest^.HTTPParser.Params.Count > 0) then
+        begin
+          FRequest^.HTTPParser.Params.TextLineBreakStyle := tlbsCRLF;
+          _tmpStr := FRequest^.HTTPParser.Params.Text;
+          _RequestHeader^.URIParamsLen := Word(Length(_tmpStr));
+          Move(_tmpStr[1], _Dest^, _RequestHeader^.URIParamsLen);
+          Inc(_Dest, _RequestHeader^.URIParamsLen);
+        end;
 
-      // Signal Python worker that a request is ready
-      LBLogger.Write(5, 'TPyBridge.elaborateRequest', lmt_Debug, 'Activating semaphore for elaboration');
-      FRequestSem.Signal;
+        if (FRequest^.HTTPParser.Headers.Count > 0) then
+        begin
+          FRequest^.HTTPParser.Headers.TextLineBreakStyle := tlbsCRLF;
+          _tmpStr := FRequest^.HTTPParser.Headers.Text;
+          _RequestHeader^.HeadersLen := Word(Length(_tmpStr));
+          Move(_tmpStr[1], _Dest^, _RequestHeader^.HeadersLen);
+          Inc(_Dest, _RequestHeader^.HeadersLen);
+        end;
 
-      LBLogger.Write(5, 'TPyBridge.elaborateRequest', lmt_Debug, 'Waiting response');
-      // Wait for Python worker to signal completion
-      if FResponseSem.Wait(FWorkerTimeoutMs) then
-      begin
-        LBLogger.Write(5, 'TPyBridge.elaborateRequest', lmt_Debug, 'Answer received');
-        // if _AnswerHeader^.Trigger = cPythonElaborationTerminated then
-        //begin
+        if (FRequest^.HTTPParser.Body <> nil) and (FRequest^.HTTPParser.Body.Size > 0) then
+        begin
+          _RequestHeader^.PayloadLen := Cardinal(FRequest^.HTTPParser.Body.Size);
+          Move(FRequest^.HTTPParser.Body.Memory^, _Dest^, _RequestHeader^.PayloadLen);
+        end;
+
+        // Signal Python worker that a request is ready
+        LBLogger.Write(5, 'TPyBridge.elaborateRequest', lmt_Debug, 'Activating semaphore for elaboration');
+        FRequestSem.Signal;
+
+        LBLogger.Write(5, 'TPyBridge.elaborateRequest', lmt_Debug, 'Waiting response');
+        // Wait for Python worker to signal completion
+        if FResponseSem.Wait(FWorkerTimeoutMs) then
+        begin
+          LBLogger.Write(5, 'TPyBridge.elaborateRequest', lmt_Debug, 'Answer received');
           FRequest^.Success := _AnswerHeader^.Successful = 1;
           FRequest^.Aborted := False;
           FRequest^.PayloadLen := _AnswerHeader^.PayloadLen;
@@ -236,13 +252,17 @@ begin
           else
             FRequest^.Payload := pByte(FSharedMem^.mem) + SizeOf(TAnswerHeader);
           Result := True;
-        //end;
+        end
+        else begin // Timeout
+          LBLogger.Write(1, 'TPyBridge.elaborateRequest', lmt_Error, 'Python worker timed out. Terminating process.');
+          if (FProcess <> nil) then FProcess.Terminate(1);
+          FWorkerCrashed := True;
+          FRequest^.Aborted := True;
+        end;
       end
-      else begin // Timeout
-        LBLogger.Write(1, 'TPyBridge.elaborateRequest', lmt_Error, 'Python worker timed out. Terminating process.');
-        if (FProcess <> nil) then FProcess.Terminate(1);
-        FWorkerCrashed := True;
+      else begin
         FRequest^.Aborted := True;
+        LBLogger.Write(1, 'TPyBridge.elaborateRequest', lmt_Warning, 'Missing HTTP parser!');
       end;
     end;
   end
@@ -314,7 +334,7 @@ begin
       end;
 
       if FProcess <> nil then
-        FProcess.Free;
+        FreeAndNil(FProcess);
 
     end
     else
@@ -638,7 +658,6 @@ begin
       begin
         FBridges[i].OnAsyncTerminate := nil;
         FBridges[i].OnElaborationTerminated := nil;
-//        FBridges[i].Terminate;
         FreeAndNil(FBridges[i]);
       end;
     end;

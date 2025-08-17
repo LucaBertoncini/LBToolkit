@@ -1,9 +1,9 @@
 # sum_test.py
 def main(bridge, request):
-    p = request.get_json()
+    p = bridge.getPayloadAsJSON()
     a, b = p.get("a", 0), p.get("b", 0)
-    bridge.write_json(True, { "sum": a + b })
+    bridge.writeResponseAsJSON({ "sum": a + b }, True)
 
-# ⚠️ Needed for LBWebPyBridge    
+# Needed for LBWebPyBridge    
 main(bridge, request)
 

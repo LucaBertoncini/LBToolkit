@@ -108,7 +108,6 @@ end;
 
 procedure TLBWebPyBridgeTests.TearDown;
 begin
-//  Self.DeleteFakeWorkerPy;
 end;
 
 procedure TLBWebPyBridgeTests.Test_NoWorkerPy;

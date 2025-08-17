@@ -3,8 +3,7 @@ import datetime
 import inspect
 import os
 
-# Variabile globale interna
-IS_WEB_ENV = True  # di default assume ambiente web
+IS_LOG_DISABLED = True
 
 class Logger:
     def __init__(self):
@@ -24,7 +23,7 @@ class Logger:
         return filename
 
     def _write_to_file(self, level: str, message: str):
-        if IS_WEB_ENV:
+        if IS_LOG_DISABLED:
             return  # Salta la scrittura se siamo in ambiente web
         log_entry = f"[{self._timestamp()}] [{self._caller()}] {level}: {message}\n"
         try:
@@ -34,20 +33,20 @@ class Logger:
             pass  # Silenziosamente ignora errori di scrittura
 
     def info(self, message):
-        self._write_to_file("ℹ️ INFO", message)
+        self._write_to_file("#INF#", message)
 
     def warning(self, message):
-        self._write_to_file("⚠️ WARNING", message)
+        self._write_to_file("#WRN#", message)
 
     def error(self, exception):
-        self._write_to_file("❌ ERROR", str(exception))
-        self._write_to_file("❌ TRACE", traceback.format_exc())
+        self._write_to_file("#ERR#", str(exception))
+        self._write_to_file("#TRACE#", traceback.format_exc())
 
 # Istanza globale
 logger = Logger()
 
 # Funzione per modificare IS_WEB_ENV
-def set_web_env(value: bool):
-    global IS_WEB_ENV
-    IS_WEB_ENV = value
+def disable_logger(value: bool):
+    global IS_LOG_DISABLED
+    IS_LOG_DISABLED = value
 

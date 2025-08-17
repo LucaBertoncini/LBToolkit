@@ -4,7 +4,7 @@ library LBToolkit_shared;
 
 uses
   {$IFDEF UNIX}cthreads,{$ENDIF} Toolkit_CAPI_Logger, Toolkit_CAPI_CircularBuffer,
-  Toolkit_CAPI_microWebServer, Toolkit_CAPI_WebPyBridge;
+  Toolkit_CAPI_microWebServer, Toolkit_CAPI_WebPyBridge, uFPHTTPRequestProcessor;
 
 exports
   // Circular Buffer API

@@ -96,11 +96,7 @@ begin
     else
       _Request.Script := HTTPParser.Resource;
 
-    if (HTTPParser.Body <> nil) and (HTTPParser.Body.Size > 0) then
-    begin
-      _Request.Params := HTTPParser.Body.Memory;
-      _Request.ParamsLen := HTTPParser.Body.Size;
-    end;
+    _Request.HTTPParser := HTTPParser;
 
     if FOrchestrator.insertRequest(@_Request) then
       RTLEventWaitFor(_Request.TerminateEvent)

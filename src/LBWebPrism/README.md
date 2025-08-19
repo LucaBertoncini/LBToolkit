@@ -33,14 +33,13 @@ LBWebPrism/
 ├── pyScripts/
 │   └── AppHello/
 │       └── elaborateImage.py
-│
 ├── jsScripts/
 │   └── AppHello/
 │       ├── login.js
 │       └── search.js
-│
 ├── config.ini
-├── LBmicroWebServer.exe
+└── LBmicroWebServer.exe
+
 
 
 ### Routing Behavior

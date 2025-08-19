@@ -28,7 +28,7 @@ Each folder can be freely organized by developers. A common pattern is to group 
 
 
 ### Example Structure
-
+```
 LBWebPrism/
 ├── pyScripts/
 │   └── AppHello/
@@ -39,7 +39,7 @@ LBWebPrism/
 │       └── search.js
 ├── config.ini
 └── LBmicroWebServer.exe
-
+```
 
 
 ### Routing Behavior

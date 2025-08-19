@@ -1,90 +1,113 @@
-# 💡 LBWebPyBridge  
-A modular bridge between Pascal and Python — script-driven microservices with shared memory efficiency.
+# LBWebPrism
 
-LBWebPyBridge is a high-performance framework that connects a Pascal web server to Python scripts executed as microservices.
-Built on top of LBmicroWebServer, it enables dynamic request handling through a persistent Python thread pool, using shared memory for fast, low-overhead communication.
+LBWebPrism is part of **LBToolkit** and provides a lightweight, flexible way to integrate **Python** and **Node.js** scripting into a Pascal-powered HTTP/WebSocket server. Instead of forcing a single framework or architecture, LBWebPrism acts like a **prism**: it takes an incoming request and dispatches it to the correct scripting environment based on the available file.
 
-Compile the server once. Extend functionality with Python.
-Perfect for scalable, testable, multi-language architectures.
+## Why LBWebPrism
+
+LBWebPrism was born out of a personal need: combining the computational power of **Python** (e.g., image processing with YOLO and similar libraries) with the vast ecosystem of **Node.js**, where ready-to-use modules exist for many common problems. The result is a bridge that allows you to use both worlds seamlessly.
+
+LBWebPrism can run as a **stand-alone server** or be used as part of a larger application through its **C-style shared library interface**. This means it can be integrated in nearly any environment, even if the main project is not written in Pascal.
+
+## How it works (in short)
+
+LBWebPrism follows a **Chain of Responsibility**:
+
+1. `LBmicroWebServer` receives the HTTP request.
+2. The **Python Processor** checks if a matching script exists in the Python scripts folder.
+3. If found, it dispatches to the Python worker pool and **the chain stops**.
+4. Otherwise, the request **falls through** to the **Node.js Processor**, which checks for the script's existence in the Node.js scripts folder.
+5. If neither is found, the server returns `404`.
+
+This design allows you to structure your business logic in **Python**, **Node.js**, or a **hybrid** of both, without forcing a rewrite of your existing application.
+
+
+## Folder Structure and routing
+
+LBWebPrism uses a simple and flexible folder-based routing system. The two main script folders are defined in a configuration file.
+Each folder can be freely organized by developers. A common pattern is to group related scripts into subfolders representing logical modules or applications.
+
+
+### Example Structure
+
+LBWebPrism/
+├── pyScripts/
+│   └── AppHello/
+│       └── elaborateImage.py
+│
+├── jsScripts/
+│   └── AppHello/
+│       ├── login.js
+│       └── search.js
+│
+├── config.ini
+├── LBmicroWebServer.exe
+
+
+### Routing Behavior
+
+A request to `http://yoursite.com/AppHello/login` will be resolved as follows:
+
+1. Check for `pyScripts/AppHello/login.py`  
+2. If not found, check for `jsScripts/AppHello/login.js`  
+
+A request to `http://yoursite.com/AppHello/elaborateImage` will be resolved as:
+
+1. Check for `pyScripts/AppHello/elaborateImage.py`  
+2. If not found, check for `jsScripts/AppHello/elaborateImage.js`  
+
+This structure allows developers to split business logic across Python and Node.js, or keep it unified in one language. Each subfolder can represent a microservice, a feature, or a domain.
+
+
+
+## Configuration Example
+
+```ini
+[LBmicroWebServer]
+Port=10320
+
+[PythonBridge]
+ThreadPoolSize=2
+WorkerTimeout=10000
+ScriptsFolder=./pyScripts
+SharedMemorySize=1048576
+
+[NodeJSBridge]
+ThreadPoolSize=2
+WorkerTimeout=10000
+ScriptsFolder=./jsScripts
+SocketFilename=/tmp/PrismNodeJs.sock
+```
+
+These few lines are enough to enable a pool of Python and Node.js workers side by side.
+
+
+## Request processing (Chain of Responsibility)
+
+```mermaid
+flowchart LR
+    A[HTTP request => /AppHello/login] --> B[LBmicroWebServer]
+    B --> P1[[Processor: Python]]
+    P1 --> C{is there pyScripts/AppHello/login.py script?}
+    C -- Yes --> P1run[Dispatch to Python worker pool to run script & build payload]
+    P1run --> R[(HTTP Response)]
+    C -- No --> P2[[Processor: Node.js]]
+    P2 --> D{is there jsScripts/AppHello/login.js script??}
+    D -- Yes --> P2run[Dispatch to Node.js worker pool to run script & build payload]
+    P2run --> R
+    D -- No --> E[404 / No handler]
+    E --> R
+
+    %% The chain stops at the first processor that handles the request.
+```
+
+## Key Features
+
+- **Folder-based routing**: Simple mapping of URL paths to script files
+- **Hybrid scripting**: Seamlessly mix Python and Node.js business logic
+- **Thread-safe pools**: Efficient request processing with configurable thread pools
+- **C-style shared library interface**: Usable in virtually any host language
+- **Future-proof**: Can be extended with load-balancing processors for multi-server deployments
 
 ---
 
-
-
-## Why LBWebPyBridge Exists
-
-LBWebPyBridge began as a natural evolution of **LBmicroWebServer (LBmWS)** — a high-performance web engine written entirely in Pascal with just one dependency: the Ararat Synapse library. I've used LBmWS extensively and successfully as the backend for various desktop and web applications over the years.
-
-However, LBmWS had one limitation: every time a new request handler or change in business logic was needed, the entire server had to be recompiled. This created friction in agile development workflows, where flexibility and rapid iteration are essential.
-
-So I envisioned a better solution: compile the server once, extend its functionality dynamically using a scripting language.
-
-I chose **Python**, one of the most popular and widely supported scripting languages.
-My first implementation used `TProcess` to invoke Python scripts directly, passing the request data via standard input and reading results from standard output.
-
-It worked… but wasn’t efficient:
-each request spawned a new thread and launched a full Python process;
-startup time was costly and unsuitable for high-performance applications.
-
-So I rethought the model:
-💡 Pre-spawn a pool of Python workers
-💡 Keep each process alive and listening for new requests
-💡 Exchange data via **shared memory**, avoiding unnecessary data copying and improving speed
-
-And thus **LBWebPyBridge** was born — a robust framework where a Pascal web server communicates seamlessly with long-running Python workers.
-Requests are dispatched by an orchestrator, and responses are returned with ultra-low latency through shared memory.
-
-And here’s the beauty of it all: this transformation required only two additional Pascal units, elegantly extending **LBmicroWebServer** into a modular, scriptable, cross-language bridge between **Pascal’s performance** and **Python’s flexibility**.
-
-
-## Architecture 🏗️
-
-At its core, LBWebPyBridge orchestrates a seamless interaction between a Pascal web server and a pool of Python workers.
-Here's how it works from startup to request handling.
-
-### At Start-up:
-LBWebPyBridge begins by reading a configuration file. This file dictates the size of the Python worker thread pool, the allocated shared memory segment, and the web server's settings (like the listening port and the document folder for static files). Upon activation, the system dynamically creates the Python threads (TPyBridge), which are centrally managed by an orchestrator (TBridgeOrchestrator).
-
-### Request Flow:
-When the WebServer receives an incoming POST request, it doesn't process the business logic itself. Instead, it delegates this responsibility to the TBridgeOrchestrator. Once the request has been fully elaborated by a Python worker, the orchestrator retrieves the answer and sends it back to the client.
-
-### The Orchestrator's Role:
-The TBridgeOrchestrator is the brain of the operation. Its primary task is to wait for an available Python thread from its pool and assign the incoming request to it. Each request carries two crucial pieces of information: the name of the Python script to execute and the parameters that script needs to process. Importantly, the script's name is cleverly derived directly from the HTTP request URI. For instance, a request to http://127.0.0.1:8080/tests/AppHello/main will instruct the orchestrator to execute the Python script located at {executableFolder}/pyScripts/tests/AppHello/main.py.
-
-### The worker.py Script:
-On the Python side, each worker.py script (launched by a TPyBridge thread) constantly monitors a specific byte in its shared memory segment. When this byte signals a "start" value, the worker knows a new request is waiting. It then proceeds to execute the specified Python script using runpy.run_path. During execution, the Python script receives a request object, which provides a transparent API for reading the incoming parameters and and a bridge object used for sending back the response via shared memory. Once the Python script completes its task, the starting byte in shared memory is updated to a "termination" value, signaling Pascal that the elaboration is finished and the flow can return.
-
-### The worker.py Script:
-On the Python side, each worker.py script (launched by a TPyBridge thread) constantly monitors a specific byte in its shared memory segment. When this byte signals a "start" value, the worker knows a new request is waiting. It then proceeds to execute the specified Python script using runpy.run_path. During execution, the Python script receives a request object, which provides a transparent API for reading the incoming parameters, and a bridge object used for sending back the response via shared memory. Once the Python script completes its task, the starting byte in shared memory is updated to a "termination" value, signaling Pascal that the elaboration is finished and the flow can return.
-
-
-## 🧪 Testing and Usage Examples
-
-The robustness and functionality of LBWebPyBridge are ensured through a comprehensive suite of unit and integration tests. These tests are not merely designed to validate functionality — they serve as living examples of how the framework can be used in real-world scenarios, making them an invaluable resource for developers.
-
-Implemented in Pascal using the fpcunit framework, our test suite demonstrates:
-
-- How to configure and activate the web server and Python bridge.
-- How to build and send HTTP requests (e.g., POST with JSON payloads) that interact with the Python backend.
-- The precise mapping between HTTP routes and specific Python scripts.
-- How to properly verify responses, handle errors, and manage various output formats.
-- How the system behaves under special conditions, such as missing scripts or forced exceptions.
-
-This makes the Pascal test suite an invaluable resource for developers. Each test not only ensures the system works as intended, but also acts as a step-by-step usage tutorial. It provides a clear blueprint for integrating LBWebPyBridge into other applications — whether you're building a standalone web server or embedding the bridge inside a larger software system.
-
-In line with the LBToolkit philosophy, the tests are reusable, instructive, and modular, helping you understand not only how LBWebPyBridge performs, but also how you can shape it to meet your specific needs.
-
-### Testing Python Scripts Independently:
-
-Beyond the Pascal test suite, LBWebPyBridge offers a dedicated Python module (`test_launcher.py`) that significantly streamlines the development and debugging of your Python scripts. This tool allows you to:
-
-- **Unit Test Python Logic**: Develop and test your business logic (.py files) in isolation, ensuring their correctness before even involving the Pascal web server.
-- **Rapid Debugging**: Quickly identify and fix issues in your Python code by executing it directly, simulating the LBBridge environment.
-- **Simulate Bridge Interactions**: The `test_launcher.py` provides a FakeBridge object that replaces the real LBBridge during testing. This FakeBridge effectively simulates shared memory operations by printing outputs to the console, allowing you to verify your script's behavior without the full Pascal stack.
-
-You can simply run your Python script via the launcher with a command like this:
-
-```bash
-python3 test_launcher.py tests/AppHello/main.py '{"custom_message": "Test with launcher!"}'
-
-
+LBWebPrism is not a framework that dictates rules. It’s a **building block** that you can use standalone or integrate it without rewriting your code, and decide if your back-end logic belongs to Python, Node.js, or both.

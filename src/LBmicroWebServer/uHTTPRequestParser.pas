@@ -77,7 +77,7 @@ type
 implementation
 
 uses
-  strutils, ULBLogger;
+  ULBLogger;
 
 
 { THTTPRequestParser }
@@ -133,27 +133,32 @@ var
   _tokens: TStringArray;
 
 begin
-  Result := False;
+  Result := FResource <> '';
 
-  FResource := FURI;
-  FParams.Clear;
-
-  _tokens := FURI.Split(['?']);
-
-  if High(_tokens) = 0 then Exit(True);
-
-  FResource := _tokens[0].Trim;
-
-  if Length(_tokens) >= 2 then
+  if not Result then
   begin
-    _tokens := _tokens[1].Split('&');
-    for i := 0 to High(_tokens) do
-      FParams.Add(_tokens[i].Trim);
+
+    FResource := FURI;
+    FParams.Clear;
+
+    _tokens := FURI.Split(['?']);
+
+    if High(_tokens) = 0 then Exit(True);
+
+    FResource := _tokens[0].Trim;
+
+    if Length(_tokens) >= 2 then
+    begin
+      _tokens := _tokens[1].Split('&');
+      for i := 0 to High(_tokens) do
+        FParams.Add(_tokens[i].Trim);
+    end;
+
+    Result := True;
+
+    LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Resource: <%s>  -  Params: <%s>', [FResource, FParams.CommaText]);
+
   end;
-
-  Result := True;
-
-  LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Resource: <%s>  -  Params: <%s>', [FResource, FParams.CommaText]);
 end;
 
 function THTTPRequestParser.FindCRLF(out aPos: Integer): Boolean;

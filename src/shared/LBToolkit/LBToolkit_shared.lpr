@@ -4,7 +4,7 @@ library LBToolkit_shared;
 
 uses
   {$IFDEF UNIX}cthreads,{$ENDIF} Toolkit_CAPI_Logger, Toolkit_CAPI_CircularBuffer,
-  Toolkit_CAPI_microWebServer, Toolkit_CAPI_WebPyBridge, uFPHTTPRequestProcessor;
+  Toolkit_CAPI_microWebServer, Toolkit_CAPI_WebPrism, uFPHTTPRequestProcessor;
 
 exports
   // Circular Buffer API
@@ -52,10 +52,12 @@ exports
   ReqElab_addResponseHeader,
   ReqElab_URIParamsCount,
   ReqElab_URIParam,
+  ReqElab_BodySize,
+  ReqElab_Body,
 
-  // WebPyBridge API
-  WebPyBridge_Create,
-  WebPyBridge_Destroy;
+  // WebPrism API
+  WebPrism_Create,
+  WebPrism_Destroy;
 
 
 

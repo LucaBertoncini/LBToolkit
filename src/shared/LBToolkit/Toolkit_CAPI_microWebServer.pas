@@ -8,8 +8,7 @@ uses
   Classes, SysUtils, uLBmicroWebServer, uWebSocketManagement, uHTTPRequestParser;
 
 type
-  TGETCallback = function (RequestElaborator: Pointer; aResource: pChar; aResponseCode: pInteger): Boolean; cdecl;
-  TPOSTCallback = function (RequestElaborator: Pointer; aResource: pChar; aPayload: pByte; aPayloadLen: Integer; aResponseCode: pInteger): Boolean; cdecl;
+  TElaborateRequestCallback = function (RequestElaborator: Pointer; aResource: pChar; aResponseCode: pInteger): Boolean; cdecl;
   TWebSocketMessageCallback = procedure (aPayLoad: pByte; aPayloadLen: Integer); cdecl;
   TWebSocketConnectedCallback = procedure (); cdecl;
 
@@ -19,8 +18,8 @@ type
 
   TmicroWebServerCallbacks = class(TRequestChainProcessor)
     strict private
-      FGETCallback : TGETCallback;
-      FPOSTCallback : TPOSTCallback;
+      FElaborateCallback : TElaborateRequestCallback;
+      FElaborateRequestCallback: TElaborateRequestCallback;
       FWebSocketMessageCallback : TWebSocketMessageCallback;
       FWebSocketConnectedCallback : TWebSocketConnectedCallback;
 
@@ -29,6 +28,8 @@ type
 
       FHTTPParser : THTTPRequestParser;
 
+      function get_Payload: pByte;
+      function get_PayloadLen: Cardinal;
       function get_RequestHeaderName(Index: Integer): String;
       function get_RequestHeadersCount: Integer;
       function get_RequetsHeaderValue(Index: Integer): String;
@@ -36,14 +37,7 @@ type
       function get_URIParamsCount: Integer;
 
     strict protected
-      function DoProcessGETRequest(
-        HTTPParser: THTTPRequestParser;
-        ResponseHeaders: TStringList;
-        var ResponseData: TMemoryStream;
-        out ResponseCode: Integer
-      ): Boolean; override;
-
-      function DoProcessPOSTRequest(
+      function DoProcessRequest(
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -64,16 +58,17 @@ type
       property URIParamsCount: Integer read get_URIParamsCount;
       property URIParam[Index: Integer]: String read get_URIParam;
 
-      property GETCallback: TGETCallback write FGETCallback;
-      property POSTCallback: TPOSTCallback write FPOSTCallback;
+      property PayloadLen: Cardinal read get_PayloadLen;
+      property Payload: pByte read get_Payload;
+
+      property ElaborateRequestCallback: TElaborateRequestCallback write FElaborateRequestCallback;
       property WebSocketMessageCallback : TWebSocketMessageCallback write FWebSocketMessageCallback;
       property WebSocketConnectedCallback : TWebSocketConnectedCallback write FWebSocketConnectedCallback;
 
   end;
 
   function WebServer_Create(aConfigFilename: PChar;
-                            GETCallback: TGETCallback;
-                            POSTCallback: TPOSTCallback;
+                            ElaborateRequestCallback: TElaborateRequestCallback;
                             WebSocketConnectedCallback: TWebSocketConnectedCallback;
                             WebSocketMessageCallback: TWebSocketMessageCallback): Pointer; export; cdecl;
 
@@ -86,6 +81,8 @@ type
   function ReqElab_addResponseHeader(RequestElaborator: Pointer; aName: PChar; aValue: PChar): Boolean; export; cdecl;
   function ReqElab_URIParamsCount(RequestElaborator: Pointer): Integer; export; cdecl;
   function ReqElab_URIParam(RequestElaborator: Pointer; Index: Integer; aURIParamBuff: pByte; aURIParamLen: Integer): Integer; export; cdecl;
+  function ReqElab_BodySize(RequestElaborator: Pointer): Cardinal; export; cdecl;
+  function ReqElab_Body(RequestElaborator: Pointer): Pointer; export; cdecl;
 
 
 
@@ -116,10 +113,9 @@ begin
 end;
 
 function WebServer_Create(aConfigFilename: PChar;
-                          GETCallback: TGETCallback;
-                          POSTCallback: TPOSTCallback;
-                          WebSocketConnectedCallback: TWebSocketConnectedCallback;
-                          WebSocketMessageCallback: TWebSocketMessageCallback): Pointer; export; cdecl;
+  ElaborateRequestCallback: TElaborateRequestCallback;
+  WebSocketConnectedCallback: TWebSocketConnectedCallback;
+  WebSocketMessageCallback: TWebSocketMessageCallback): Pointer; cdecl;
 var
   _CallbacksChainItem : TmicroWebServerCallbacks;
   _WS : TLBmicroWebServer = nil;
@@ -137,8 +133,7 @@ begin
     begin
 
       _CallbacksChainItem := TmicroWebServerCallbacks.Create();
-      _CallbacksChainItem.GETCallback := GETCallback;
-      _CallbacksChainItem.POSTCallback := POSTCallback;
+      _CallbacksChainItem.ElaborateRequestCallback := ElaborateRequestCallback;
       _CallbacksChainItem.WebSocketConnectedCallback := WebSocketConnectedCallback;
       _CallbacksChainItem.WebSocketMessageCallback := WebSocketMessageCallback;
 
@@ -241,6 +236,16 @@ begin
     Result := insertStringIntoBuffer(TmicroWebServerCallbacks(RequestElaborator).URIParam[Index], aURIParamBuff, aURIParamLen);
 end;
 
+function ReqElab_BodySize(RequestElaborator: Pointer): Cardinal; cdecl;
+begin
+  Result := TmicroWebServerCallbacks(RequestElaborator).PayloadLen;
+end;
+
+function ReqElab_Body(RequestElaborator: Pointer): Pointer; cdecl;
+begin
+  Result := TmicroWebServerCallbacks(RequestElaborator).Payload;
+end;
+
 { TmicroWebServerCallbacks }
 
 function TmicroWebServerCallbacks.get_RequestHeaderName(Index: Integer): String;
@@ -248,6 +253,20 @@ begin
   Result := '';
   if (Index >= 0) and (Index < FHTTPParser.Headers.Count) then
     Result := FHTTPParser.Headers.Names[Index];
+end;
+
+function TmicroWebServerCallbacks.get_Payload: pByte;
+begin
+  Result := nil;
+  if (FHTTPParser.Body <> nil) and (FHTTPParser.Body.Size > 0) then
+    Result := pByte(FHTTPParser.Body.Memory)
+end;
+
+function TmicroWebServerCallbacks.get_PayloadLen: Cardinal;
+begin
+  Result := 0;
+  if (FHTTPParser.Body <> nil) then
+    Result := FHTTPParser.Body.Size;
 end;
 
 function TmicroWebServerCallbacks.get_RequestHeadersCount: Integer;
@@ -277,26 +296,9 @@ begin
     Result := 0;
 end;
 
-function TmicroWebServerCallbacks.DoProcessGETRequest(HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
-begin
-  Result := False;
-
-  FHTTPParser      := HTTPParser;
-  FHTTPParser.SplitURIIntoResourceAndParameters();
-
-  FResponseHeaders := ResponseHeaders;
-  FResponseData    := @ResponseData;
-
-  if FGETCallback <> nil then
-    Result := FGETCallback(Pointer(Self), PChar(FHTTPParser.Resource), @ResponseCode)
-end;
-
-function TmicroWebServerCallbacks.DoProcessPOSTRequest(HTTPParser: THTTPRequestParser;
-  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
-var
-  _Data : pByte;
-  _DataLen : Integer;
-
+function TmicroWebServerCallbacks.DoProcessRequest(
+  HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList;
+  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := False;
 
@@ -306,16 +308,8 @@ begin
   FResponseHeaders := ResponseHeaders;
   FResponseData    := @ResponseData;
 
-  if FPOSTCallback <> nil then
-  begin
-    _DataLen := FHTTPParser.Body.Size;
-    if _DataLen > 0 then
-      _Data := FHTTPParser.Body.Memory
-    else
-      _Data := nil;
-
-    Result := FPOSTCallback(Pointer(Self), PChar(FHTTPParser.Resource), _Data, _DataLen, @ResponseCode);
-  end;
+  if FElaborateCallback <> nil then
+    Result := FElaborateCallback(Pointer(Self), PChar(FHTTPParser.Resource), @ResponseCode);
 end;
 
 procedure TmicroWebServerCallbacks.ProcessWebSocketMessage(Sender: TObject; Opcode: TWebSocketDataType; PayloadBuffer: pByte; PayloadLen: Int64);

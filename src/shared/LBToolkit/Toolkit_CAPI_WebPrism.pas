@@ -1,15 +1,15 @@
-unit Toolkit_CAPI_WebPyBridge;
+unit Toolkit_CAPI_WebPrism;
 
 {$mode ObjFPC}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, uLBWebPyBridgeApplication;
+  Classes, SysUtils, uLBWebPrismApplication;
 
 
-function WebPyBridge_Create(aConfigurationFile: PChar): Pointer; export; cdecl;
-procedure WebPyBridge_Destroy(aWebPyBridge: Pointer); export; cdecl;
+function WebPrism_Create(aConfigurationFile: PChar): Pointer; export; cdecl;
+procedure WebPrism_Destroy(aWebPyBridge: Pointer); export; cdecl;
 
 
 implementation
@@ -17,10 +17,10 @@ implementation
 uses
   ULBLogger, LResources;
 
-function WebPyBridge_Create(aConfigurationFile: PChar): Pointer; cdecl;
+function WebPrism_Create(aConfigurationFile: PChar): Pointer; cdecl;
 var
   _ConfigFile : String;
-  _Application : TLBWebPyBridgeApplication;
+  _Application : TLBWebPrismApplication;
   _ErrMsg : String;
 
 begin
@@ -30,10 +30,11 @@ begin
     _ConfigFile := StrPas(aConfigurationFile);
     if FileExists(_ConfigFile) then
     begin
-      _Application := TLBWebPyBridgeApplication.Create;
+      _Application := TLBWebPrismApplication.Create;
       if _Application.LoadConfiguration(_ConfigFile, _ErrMsg) then
       begin
         _Application.extractPythonFilesFromResources();
+        _Application.extractNodeJsFilesFromResources();
         Result := Pointer(_Application);
         _Application.Activate();
       end
@@ -48,10 +49,10 @@ begin
     LBLogger.Write(1, 'WebPyBridge_Create', lmt_Warning, 'Configuration file not set!');
 end;
 
-procedure WebPyBridge_Destroy(aWebPyBridge: Pointer); cdecl;
+procedure WebPrism_Destroy(aWebPyBridge: Pointer); cdecl;
 begin
   if aWebPyBridge <> nil then
-    TLBWebPyBridgeApplication(aWebPyBridge).Free;
+    TLBWebPrismApplication(aWebPyBridge).Free;
 end;
 
 end.

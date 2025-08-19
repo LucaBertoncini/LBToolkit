@@ -1,30 +1,23 @@
-unit uPyBridgeChainModule;
+unit uBridgeChainModule;
 
 {$mode ObjFPC}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, uLBmicroWebServer, uPyBridge, uHTTPRequestParser;
+  Classes, SysUtils, uLBmicroWebServer, uBaseBridgeManager, uHTTPRequestParser;
 
 type
-  { TPyBridgeChainModule }
+  { TBridgeChainModule }
 
-  TPyBridgeChainModule = class(TRequestChainProcessor)
+  TBridgeChainModule = class(TRequestChainProcessor)
     strict private
       FOrchestrator : TBridgeOrchestrator;
 
       function get_isActive: boolean;
 
     strict protected
-      function DoProcessGETRequest(
-        HTTPParser: THTTPRequestParser;
-        ResponseHeaders: TStringList;
-        var ResponseData: TMemoryStream;
-        out ResponseCode: Integer
-      ): Boolean; override;
-
-      function DoProcessPOSTRequest(
+      function DoProcessRequest(
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -35,7 +28,7 @@ type
     public
       destructor Destroy; override;
 
-      procedure setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer; aWorkerTimeoutMs: Integer; const ScriptsFolder: String);
+      procedure setOrchestratorParams(ConfigParams: TBridgeConfigParams);  { ConfigParams must be destroyed from caller }
 
       property isActive: boolean read get_isActive;
   end;
@@ -50,14 +43,14 @@ implementation
 uses
   ULBLogger, fpjson, uHTTPConsts;
 
-{ TPyBridgeChainModule }
+{ TBridgeChainModule }
 
-function TPyBridgeChainModule.get_isActive: boolean;
+function TBridgeChainModule.get_isActive: boolean;
 begin
   Result := FOrchestrator <> nil;
 end;
 
-destructor TPyBridgeChainModule.Destroy;
+destructor TBridgeChainModule.Destroy;
 begin
   if FOrchestrator <> nil then
     FreeAndNil(FOrchestrator);
@@ -65,13 +58,7 @@ begin
   inherited Destroy;
 end;
 
-function TPyBridgeChainModule.DoProcessGETRequest(HTTPParser: THTTPRequestParser;
-  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
-begin
-  Result := false;
-end;
-
-function TPyBridgeChainModule.DoProcessPOSTRequest(HTTPParser: THTTPRequestParser;
+function TBridgeChainModule.DoProcessRequest(HTTPParser: THTTPRequestParser;
   ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 var
   _Request : TRequestData;
@@ -81,86 +68,112 @@ var
 begin
   Result := False;
   ResponseCode := HTTP_STATUS_INTERNAL_ERROR;
+//  LBLogger.Write(5, 'TBridgeChainModule.DoProcessRequest', lmt_Debug, 'Received request ...');
 
-  HTTPParser.SplitURIIntoResourceAndParameters();
-
-  LBLogger.Write(5, 'TPyBridgeChainModule.ProcessPOSTRequest', lmt_Debug, 'Resource <%s>', [HTTPParser.Resource]);
-
-  if HTTPParser.Resource <> '' then
+  if FOrchestrator <> nil then
   begin
-    // Called by THTTPRequestManager
-    // Used to insert request into orchestrator and waiting for answer
-    _Request.initialize();
-    if HTTPParser.Resource[1] = '/' then
-      _Request.Script := Copy(HTTPParser.Resource, 2, Length(HTTPParser.Resource) - 1)
-    else
-      _Request.Script := HTTPParser.Resource;
+    try
+      HTTPParser.SplitURIIntoResourceAndParameters();
 
-    _Request.HTTPParser := HTTPParser;
-
-    if FOrchestrator.insertRequest(@_Request) then
-      RTLEventWaitFor(_Request.TerminateEvent)
-    else
-      LBLogger.Write(1, 'TPyBridgeChainModule.ProcessPOSTRequest', lmt_Warning, 'Request <%s> not accepted', [HTTPParser.Resource]);
-
-
-    if not _Request.Aborted then
-    begin
-      if (_Request.Payload <> nil) and (_Request.PayloadLen > 0) then
+      if HTTPParser.Resource <> '' then
       begin
-        if ResponseData = nil then
-          ResponseData := TMemoryStream.Create
+        // Called by THTTPRequestManager
+        // Used to insert request into orchestrator and waiting for answer
+        _Request.initialize();
+        if HTTPParser.Resource[1] = '/' then
+          _Request.Script := Copy(HTTPParser.Resource, 2, Length(HTTPParser.Resource) - 1)
         else
-          ResponseData.Clear;
+          _Request.Script := HTTPParser.Resource;
 
-        ResponseData.Write(_Request.Payload^, _Request.PayloadLen);
-      end;
+        _Request.HTTPParser := HTTPParser;
+        // LBLogger.Write(5, 'TBridgeChainModule.DoProcessRequest', lmt_Debug, 'Adding request ...');
 
-    end
-    else begin
-      _ErrMsg := TJSONObject.Create();
+        if FOrchestrator.insertRequest(@_Request) then
+          RTLEventWaitFor(_Request.TerminateEvent)
+        else
+          LBLogger.Write(1, 'TBridgeChainModule.DoProcessRequest', lmt_Warning, 'Request <%s> not accepted', [HTTPParser.Resource]);
 
-      if (_Request.Payload <> nil) and (_Request.PayloadLen > 0) then
-      begin
-        SetLength(_sErrMsg, _Request.PayloadLen);
-        Move(_Request.Payload^, _sErrMsg[1], _Request.PayloadLen);
-        _ErrMsg.Add(cInvalidAnswer, _sErrMsg);
+
+        if not _Request.Aborted then
+        begin
+          if (_Request.Payload <> nil) and (_Request.PayloadLen > 0) then
+          begin
+            if ResponseData = nil then
+              ResponseData := TMemoryStream.Create
+            else
+              ResponseData.Clear;
+
+            ResponseData.Write(_Request.Payload^, _Request.PayloadLen);
+          end;
+
+          Result := True;
+        end
+        else begin
+          if FNext = nil then  // Last in chain
+          begin
+            _ErrMsg := TJSONObject.Create();
+
+            if (_Request.Payload <> nil) and (_Request.PayloadLen > 0) then
+            begin
+              SetLength(_sErrMsg, _Request.PayloadLen);
+              Move(_Request.Payload^, _sErrMsg[1], _Request.PayloadLen);
+              _ErrMsg.Add(cInvalidAnswer, _sErrMsg);
+            end
+            else
+              _ErrMsg.Add(cInvalidAnswer, cOperationAborted);
+
+            _ErrMsg.CompressedJSON := True;
+            _sErrMsg := _ErrMsg.AsJSON;
+            _ErrMsg.Free;
+
+            if ResponseData = nil then
+              ResponseData := TMemoryStream.Create
+            else
+              ResponseData.Clear;
+
+            ResponseData.Write(_sErrMsg[1], Length(_sErrMsg));
+
+            Result := True;
+          end
+          else
+            Result := False;
+        end;
+
+        ResponseCode := HTTP_STATUS_OK;
+
       end
       else
-        _ErrMsg.Add(cInvalidAnswer, cOperationAborted);
+        LBLogger.Write(1, 'TBridgeChainModule.DoProcessRequest', lmt_Warning, 'Resource not found!');
 
-      _ErrMsg.CompressedJSON := True;
-      _sErrMsg := _ErrMsg.AsJSON;
-      _ErrMsg.Free;
-
-      if ResponseData = nil then
-        ResponseData := TMemoryStream.Create
-      else
-        ResponseData.Clear;
-
-      ResponseData.Write(_sErrMsg[1], Length(_sErrMsg));
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'TBridgeChainModule.DoProcessRequest', lmt_Error, E.Message);
     end;
-
-    ResponseCode := HTTP_STATUS_OK;
-    Result := True;
 
   end
   else
-    LBLogger.Write(1, 'TPyBridgeChainModule.DoProcessPOSTRequest', lmt_Warning, 'Resource not found!');
+    LBLogger.Write(1, 'TBridgeChainModule.DoProcessRequest', lmt_Warning, 'Orchestrator doesn''t exist');
 end;
 
-procedure TPyBridgeChainModule.setOrchestratorParams(aThreadPoolSize: Integer; aSharedMemorySize: Integer; aWorkerTimeoutMs: Integer; const ScriptsFolder: String);
+procedure TBridgeChainModule.setOrchestratorParams(ConfigParams: TBridgeConfigParams);
 begin
   if FOrchestrator <> nil then
   begin
-    LBLogger.Write(5, 'TPyBridgeChainModule.setOrchestratorParams', lmt_Debug, 'Destroying old orchestrator ...');
+    LBLogger.Write(5, 'TBridgeChainModule.setOrchestratorParams', lmt_Debug, 'Destroying old orchestrator ...');
     FreeAndNil(FOrchestrator);
   end;
 
-  if (aThreadPoolSize > 0) and (aSharedMemorySize > 0) then
-    FOrchestrator := TBridgeOrchestrator.Create(aThreadPoolSize, aSharedMemorySize, aWorkerTimeoutMs, ScriptsFolder)
+  if ConfigParams <> nil then
+  begin
+    if ConfigParams.Completed then
+      FOrchestrator := TBridgeOrchestrator.Create(ConfigParams)
+    else
+      LBLogger.Write(1, 'TBridgeChainModule.setOrchestratorParams', lmt_Warning, 'Incomplete params! Orchestrator not created!');
+
+  end
   else
-    LBLogger.Write(1, 'TPyBridgeChainModule.setOrchestratorParams', lmt_Warning, 'Wrong values for the thread pool size or for the shared memory size!');
+    LBLogger.Write(1, 'TBridgeChainModule.setOrchestratorParams', lmt_Warning, 'No configuration parameters');
+
 end;
 
 

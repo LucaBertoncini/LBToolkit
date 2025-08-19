@@ -45,14 +45,12 @@ type
   TLogger_GetMsgType_Info         = function(): byte; cdecl;
 
   // WebServer API
-  TGETCallback = function (RequestElaborator: Pointer; aResource: pChar; aResponseCode: pInteger): Boolean; cdecl;
-  TPOSTCallback = function (RequestElaborator: Pointer; aResource: pChar; aPayload: pByte; aPayloadLen: Integer; aResponseCode: pInteger): Boolean; cdecl;
+  TElaborateRequestCallback = function (RequestElaborator: Pointer; aResource: pChar; aResponseCode: pInteger): Boolean; cdecl;
   TWebSocketMessageCallback = procedure (aPayLoad: pByte; aPayloadLen: Integer); cdecl;
   TWebSocketConnectedCallback = procedure (); cdecl;
 
   TWebServer_Create            = function (aConfigFilename: PChar;
-                                           GETCallback: TGETCallback;
-                                           POSTCallback: TPOSTCallback;
+                                           ElaborateRequestCallback: TElaborateRequestCallback;
                                            WebSocketConnectedCallback: TWebSocketConnectedCallback;
                                            WebSocketMessageCallback: TWebSocketMessageCallback): Pointer; cdecl;
 
@@ -65,10 +63,12 @@ type
   TReqElab_addResponseHeader   = function (RequestElaborator: Pointer; aName: PChar; aValue: PChar): Boolean; cdecl;
   TReqElab_URIParamsCount      = function (RequestElaborator: Pointer): Integer; cdecl;
   TReqElab_URIParam            = function (RequestElaborator: Pointer; Index: Integer; aURIParamBuff: pByte; aURIParamLen: Integer): Integer; cdecl;
+  TReqElab_BodySize            = function (RequestElaborator: Pointer): Cardinal; export; cdecl;
+  TReqElab_Body                = function (RequestElaborator: Pointer): Pointer; export; cdecl;
 
   // WebPyBridge API
-  TWebPyBridge_Create = function (aConfigurationFile: PChar): Pointer; cdecl;
-  TWebPyBridge_Destroy = procedure (aWebPyBridge: Pointer); cdecl;
+  TWebPrism_Create = function (aConfigurationFile: PChar): Pointer; cdecl;
+  TWebPrism_Destroy = procedure (aWebPyBridge: Pointer); cdecl;
 
 
 
@@ -118,10 +118,12 @@ var
   ReqElab_addResponseHeader   : TReqElab_addResponseHeader;
   ReqElab_URIParamsCount      : TReqElab_URIParamsCount;
   ReqElab_URIParam            : TReqElab_URIParam;
+  ReqElab_BodySize            : TReqElab_BodySize;
+  ReqElab_Body                : TReqElab_Body;
 
   // WebPyBridge API
-  WebPyBridge_Create  : TWebPyBridge_Create;
-  WebPyBridge_Destroy : TWebPyBridge_Destroy;
+  WebPrism_Create  : TWebPrism_Create;
+  WebPrism_Destroy : TWebPrism_Destroy;
 
 
 function LoadLBToolkit(const aFilePath: String): Boolean;
@@ -206,10 +208,12 @@ begin
     gv_LibraryManager.addFunction('ReqElab_addResponseHeader',   @ReqElab_addResponseHeader);
     gv_LibraryManager.addFunction('ReqElab_URIParamsCount',      @ReqElab_URIParamsCount);
     gv_LibraryManager.addFunction('ReqElab_URIParam',            @ReqElab_URIParam);
+    gv_LibraryManager.addFunction('ReqElab_BodySize',            @ReqElab_BodySize);
+    gv_LibraryManager.addFunction('ReqElab_Body',                @ReqElab_Body);
 
     // WebPyBridge functions
-    gv_LibraryManager.addFunction('WebPyBridge_Create',  @WebPyBridge_Create);
-    gv_LibraryManager.addFunction('WebPyBridge_Destroy', @WebPyBridge_Destroy);
+    gv_LibraryManager.addFunction('WebPrism_Create',  @WebPrism_Create);
+    gv_LibraryManager.addFunction('WebPrism_Destroy', @WebPrism_Destroy);
 
 
     Result := gv_LibraryManager.LoadLibrary(_LibFile, _ErrMsg);

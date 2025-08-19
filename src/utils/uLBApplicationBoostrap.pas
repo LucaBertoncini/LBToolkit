@@ -171,6 +171,8 @@ begin
   if FileExists(aFilename) then
   begin
     try
+      _WebCfg.Port := 0;
+
       _IniF := TIniFile.Create(aFilename);
 
       // LBLogger
@@ -188,11 +190,12 @@ begin
       begin
         _WebCfg.Port := _IniF.ReadInteger(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_PORT, 0);
         _WebCfg.DocumentRoot := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_DOCUMENTROOT, '');
-
-        Self.setUpWebServer(@_WebCfg);
       end;
 
       Result := Self.LoadConfigurationFromINIFileInternal(_IniF, anErrorMsg);
+
+      if Result and (_WebCfg.Port > 0) then
+        Self.setUpWebServer(@_WebCfg);
 
     except
       on E: Exception do

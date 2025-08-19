@@ -42,14 +42,7 @@ type
       FResponse : TResponseEx;
       FOnWebAction: TWebActionEvent;
 
-     function DoProcessGETRequest(
-        HTTPParser: THTTPRequestParser;
-        ResponseHeaders: TStringList;
-        var ResponseData: TMemoryStream;
-        out ResponseCode: Integer
-      ): Boolean; override;
-
-      function DoProcessPOSTRequest(
+      function DoProcessRequest(
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -172,14 +165,7 @@ begin
   end;
 end;
 
-function TFPHTTPRequestProcessor.DoProcessGETRequest(HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList;
-                                                     var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
-begin
-  FRequest.setupRequest(HTTPParser);
-  Result := Self.getAnswer(ResponseHeaders, ResponseData, ResponseCode);
-end;
-
-function TFPHTTPRequestProcessor.DoProcessPOSTRequest(
+function TFPHTTPRequestProcessor.DoProcessRequest(
   HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList;
   var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin

@@ -5,7 +5,7 @@ unit uIPCUtils;
 interface
 
 uses
-  Classes, SysUtils, {$IFDEF shmPOSIX}BaseUnix,{$ENDIF}{$IFDEF Windows} Windows{$ELSE}Unix{$ENDIF}, ipc;
+  Classes, SysUtils, {$IFDEF Windows} Windows{$ELSE}BaseUnix, Unix, UnixType, Sockets{$ENDIF}, ipc;
 
 type
   {$IFDEF Windows}
@@ -74,10 +74,71 @@ type
     property Name: String read FName;
   end;
 
+  { TLocalSocket }
+
+  TLocalSocket = class(TObject)
+  private
+    FHandle: THandle;
+    FLastError: Integer;
+    FTimeout: Integer;
+    function GetLastErrorDescr: string;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    function Connect(const Path: string): Boolean;
+    procedure Close;
+
+    procedure FlushRecvBuffer;
+    function SendBuffer(const Buffer: Pointer; Size: Integer): Integer;
+    function RecvBuffer(Buffer: Pointer; Size: Integer): Integer;
+
+    {
+      Sends a string over the socket or pipe without appending any termination characters.
+      The string is transmitted as a binary block, preceded by its length encoded
+      as a 32-bit integer. This ensures that the receiver knows exactly how many
+      bytes to read, regardless of the string content.
+
+      [4 bytes: string length] + [N bytes: string content]
+    }
+    function SendString(const S: string): Boolean;
+
+    {
+      Receives a string that was previously sent using the SendString format.
+      It first reads a 32-bit integer representing the length of the incoming string,
+      then reads exactly that number of bytes to reconstruct the original string.
+      No termination characters are expected or processed.
+    }
+    function RecvString: string;
+
+    property LastError: Integer read FLastError;
+    property LastErrorDescr: string read GetLastErrorDescr;
+    property Timeout: Integer read FTimeout write FTimeout;
+  end;
+
+  TLocalServerSocket = class(TObject)
+  private
+    FHandle: THandle;
+    FPath: string;
+    FLastError: Integer;
+    FTimeout: Integer;
+  public
+    constructor Create(const Path: string);
+    destructor Destroy; override;
+
+    function Listen: Boolean;
+    function Accept: TLocalSocket;
+
+    property LastError: Integer read FLastError;
+    property Timeout: Integer read FTimeout write FTimeout;
+  end;
+
+
+
 implementation
 
 uses
-  {$IFDEF Windows}Windows,{$ENDIF}ULBLogger, LazFileUtils;
+  ULBLogger, LazFileUtils;
 
 {$IFDEF Windows}
 function createSharedMemory(aShmInfo: pSharedMemory): Boolean;
@@ -422,6 +483,367 @@ begin
   sops.sem_flg := 0;
 
   semop(FSemId, @sops, 1);
+end;
+{$ENDIF}
+
+{ TLocalSocket }
+
+constructor TLocalSocket.Create;
+begin
+  inherited Create;
+  FHandle := -1;
+  FLastError := 0;
+  FTimeout := 5000;
+end;
+
+destructor TLocalSocket.Destroy;
+begin
+  Close;
+  inherited Destroy;
+end;
+
+procedure TLocalSocket.Close;
+begin
+  {$IFDEF UNIX}
+  if FHandle >= 0 then fpClose(FHandle);
+  {$ENDIF}
+  {$IFDEF WINDOWS}
+  if FHandle <> INVALID_HANDLE_VALUE then CloseHandle(FHandle);
+  {$ENDIF}
+  FHandle := -1;
+end;
+
+function TLocalSocket.Connect(const Path: string): Boolean;
+{$IFDEF UNIX}
+var
+  Addr: TUnixSockAddr;
+begin
+  FHandle := fpSocket(AF_UNIX, SOCK_STREAM, 0);
+  if FHandle < 0 then Exit(False);
+
+  FillChar(Addr, SizeOf(Addr), 0);
+  Addr.family := AF_UNIX;
+  StrPCopy(Addr.path, Path);
+
+  Result := fpConnect(FHandle, @Addr, SizeOf(Addr)) = 0;
+  if not Result then
+    FLastError := fpGetErrno;
+end;
+{$ENDIF}
+
+{$IFDEF WINDOWS}
+begin
+  FHandle := CreateFile(PChar(Path), GENERIC_READ or GENERIC_WRITE,
+                        0, nil, OPEN_EXISTING, 0, 0);
+  Result := FHandle <> INVALID_HANDLE_VALUE;
+  if not Result then
+    FLastError := GetLastError;
+end;
+{$ENDIF}
+
+function TLocalSocket.SendBuffer(const Buffer: Pointer; Size: Integer): Integer;
+{$IFDEF UNIX}
+begin
+  Result := fpSend(FHandle, Buffer, Size, 0);
+  if Result < 0 then FLastError := fpGetErrno;
+end;
+{$ENDIF}
+
+{$IFDEF WINDOWS}
+var
+  Written: DWORD;
+begin
+  if not WriteFile(FHandle, Buffer^, Size, Written, nil) then
+  begin
+    FLastError := GetLastError;
+    Result := -1;
+  end
+  else
+    Result := Written;
+end;
+{$ENDIF}
+
+function TLocalSocket.RecvBuffer(Buffer: Pointer; Size: Integer): Integer;
+{$IFDEF UNIX}
+var
+  FDSet: TFDSet;
+  TV: TTimeVal;
+  StartTime, Elapsed: QWord;
+  P: PByte;
+  Received, R: Integer;
+begin
+  Result := -1;
+  Received := 0;
+  P := Buffer;
+  StartTime := GetTickCount64;
+
+  repeat
+    fpFD_ZERO(FDSet);
+    fpFD_SET(FHandle, FDSet);
+    TV.tv_sec := 0;
+    TV.tv_usec := 100000;
+
+    if fpSelect(FHandle + 1, @FDSet, nil, nil, @TV) > 0 then
+    begin
+      R := fpRecv(FHandle, P, Size - Received, 0);
+      if R <= 0 then
+      begin
+        FLastError := fpGetErrno;
+        Exit(-1);
+      end;
+      Inc(Received, R);
+      Inc(P, R);
+    end;
+
+    Elapsed := GetTickCount64 - StartTime;
+  until (Received >= Size) or (Elapsed >= QWord(FTimeout));
+
+  if Received = Size then
+    Result := Received
+  else
+  begin
+    FLastError := -2;
+    Result := -1;
+  end;
+end;
+{$ENDIF}
+
+{$IFDEF WINDOWS}
+var
+  Read: DWORD;
+begin
+  if not ReadFile(FHandle, Buffer^, Size, Read, nil) then
+  begin
+    FLastError := GetLastError;
+    Result := -1;
+  end
+  else
+    Result := Read;
+end;
+{$ENDIF}
+
+
+procedure TLocalSocket.FlushRecvBuffer;
+{$IFDEF UNIX}
+var
+  FDSet: TFDSet;
+  TV: TTimeVal;
+  TempBuf: array[0..1023] of Byte;
+  R: Integer;
+begin
+  repeat
+    fpFD_ZERO(FDSet);
+    fpFD_SET(FHandle, FDSet);
+    TV.tv_sec := 0;
+    TV.tv_usec := 0;
+
+    if fpSelect(FHandle + 1, @FDSet, nil, nil, @TV) > 0 then
+    begin
+      R := fpRecv(FHandle, @TempBuf, SizeOf(TempBuf), 0);
+      if R <= 0 then Break;
+    end
+    else
+      Break;
+  until False;
+end;
+{$ENDIF}
+
+{$IFDEF WINDOWS}
+var
+  BytesAvailable: DWORD;
+  TempBuf: array[0..1023] of Byte;
+  Read: DWORD;
+begin
+  repeat
+    if not PeekNamedPipe(FHandle, nil, 0, nil, @BytesAvailable, nil) then
+      Break;
+
+    if BytesAvailable = 0 then
+      Break;
+
+    if not ReadFile(FHandle, @TempBuf, Min(BytesAvailable, SizeOf(TempBuf)), Read, nil) then
+      Break;
+  until False;
+end;
+{$ENDIF}
+
+
+function TLocalSocket.SendString(const S: string): Boolean;
+var
+  Len: Integer;
+begin
+  Len := Length(S);
+  Result := (SendBuffer(@Len, SizeOf(Len)) = SizeOf(Len)) and
+            (SendBuffer(PChar(S), Len) = Len);
+end;
+
+function TLocalSocket.RecvString: string;
+var
+  Len: Integer;
+  Buf: PChar;
+begin
+  Result := '';
+  if RecvBuffer(@Len, SizeOf(Len)) <> SizeOf(Len) then Exit;
+
+  GetMem(Buf, Len + 1);
+  try
+    if RecvBuffer(Buf, Len) = Len then
+    begin
+      Buf[Len] := #0;
+      Result := Buf;
+    end;
+  finally
+    FreeMem(Buf);
+  end;
+end;
+
+function TLocalSocket.GetLastErrorDescr: string;
+{$IFDEF UNIX}
+begin
+  Result := SysErrorMessage(FLastError);
+end;
+{$ENDIF}
+
+{$IFDEF WINDOWS}
+var
+  Msg: array[0..255] of Char;
+begin
+  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_IGNORE_INSERTS,
+                nil, FLastError, 0, Msg, Length(Msg), nil);
+  Result := Msg;
+end;
+{$ENDIF}
+
+{ TLocalServerSocket }
+
+constructor TLocalServerSocket.Create(const Path: string);
+begin
+  inherited Create;
+  FPath := Path;
+  FHandle := -1;
+  FTimeout := 5000;
+end;
+
+destructor TLocalServerSocket.Destroy;
+begin
+  {$IFDEF UNIX}
+  if FHandle >= 0 then fpClose(FHandle);
+  fpUnlink(FPath);
+  {$ENDIF}
+  {$IFDEF WINDOWS}
+  if FHandle <> INVALID_HANDLE_VALUE then CloseHandle(FHandle);
+  {$ENDIF}
+  inherited Destroy;
+end;
+
+function TLocalServerSocket.Listen: Boolean;
+{$IFDEF UNIX}
+var
+  Addr: TUnixSockAddr;
+begin
+  FHandle := fpSocket(AF_UNIX, SOCK_STREAM, 0);
+  if FHandle < 0 then Exit(False);
+
+  FillChar(Addr, SizeOf(Addr), 0);
+  Addr.family := AF_UNIX;
+  StrPCopy(Addr.path, FPath);
+  fpUnlink(FPath);
+
+  if fpBind(FHandle, @Addr, SizeOf(Addr)) <> 0 then
+  begin
+    FLastError := fpGetErrno;
+    Exit(False);
+  end;
+
+  Result := fpListen(FHandle, 5) = 0;
+end;
+{$ENDIF}
+
+{$IFDEF WINDOWS}
+begin
+  Result := True; // pipe created in Accept
+end;
+{$ENDIF}
+
+function TLocalServerSocket.Accept: TLocalSocket;
+{$IFDEF UNIX}
+var
+  ClientHandle: THandle;
+  FDSet: TFDSet;
+  TV: TTimeVal;
+begin
+  Result := nil;
+
+  fpFD_ZERO(FDSet);
+  fpFD_SET(FHandle, FDSet);
+  TV.tv_sec := FTimeout div 1000;
+  TV.tv_usec := (FTimeout mod 1000) * 1000;
+
+  if fpSelect(FHandle + 1, @FDSet, nil, nil, @TV) > 0 then
+  begin
+    ClientHandle := fpAccept(FHandle, nil, nil);
+    if ClientHandle >= 0 then
+    begin
+      Result := TLocalSocket.Create;
+      Result.FHandle := ClientHandle;
+      Exit;
+    end;
+  end;
+
+  FLastError := fpGetErrno;
+  Result := nil;
+end;
+{$ENDIF}
+
+{$IFDEF WINDOWS}
+var
+  Overlapped: TOverlapped;
+  Event: THandle;
+  WaitResult: DWORD;
+begin
+  Result := nil;
+  FHandle := CreateNamedPipe(PChar(FPath),
+              PIPE_ACCESS_DUPLEX or FILE_FLAG_OVERLAPPED,
+              PIPE_TYPE_BYTE or PIPE
+              _TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,
+              PIPE_UNLIMITED_INSTANCES,
+              4096, 4096, 0, nil);
+
+  if FHandle = INVALID_HANDLE_VALUE then
+  begin
+    FLastError := GetLastError;
+    Exit;
+  end;
+
+  FillChar(Overlapped, SizeOf(Overlapped), 0);
+  Event := CreateEvent(nil, True, False, nil);
+  Overlapped.hEvent := Event;
+
+  if not ConnectNamedPipe(FHandle, @Overlapped) then
+  begin
+    if GetLastError <> ERROR_IO_PENDING then
+    begin
+      FLastError := GetLastError;
+      CloseHandle(FHandle);
+      CloseHandle(Event);
+      Exit;
+    end;
+  end;
+
+  WaitResult := WaitForSingleObject(Event, FTimeout);
+  CloseHandle(Event);
+
+  if WaitResult = WAIT_OBJECT_0 then
+  begin
+    Result := TLocalSocket.Create;
+    Result.FHandle := FHandle;
+  end
+  else
+  begin
+    FLastError := ERROR_TIMEOUT;
+    CloseHandle(FHandle);
+    Result := nil;
+  end;
 end;
 {$ENDIF}
 

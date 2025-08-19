@@ -12,17 +12,20 @@
       <Title Value="LBToolkit_shared"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
-      <Resources Count="10">
-        <Resource_0 FileName="../../LBWebPyBridge/pyScripts/lb_logger.py" Type="RCDATA" ResourceName="LB_LOGGER"/>
-        <Resource_1 FileName="../../LBWebPyBridge/pyScripts/readme.txt" Type="RCDATA" ResourceName="README"/>
-        <Resource_2 FileName="../../LBWebPyBridge/pyScripts/test_launcher.py" Type="RCDATA" ResourceName="TEST_LAUNCHER"/>
-        <Resource_3 FileName="../../LBWebPyBridge/pyScripts/worker.py" Type="RCDATA" ResourceName="WORKER"/>
-        <Resource_4 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_sysv.py" Type="RCDATA" ResourceName="BRIDGE_SYSV"/>
-        <Resource_5 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_win.py" Type="RCDATA" ResourceName="BRIDGE_WIN"/>
-        <Resource_6 FileName="../../LBWebPyBridge/pyScripts/LBBridge/__init__.py" Type="RCDATA" ResourceName="__INIT__"/>
-        <Resource_7 FileName="../../LBWebPyBridge/pyScripts/LBBridge/LBBridge_constants.py" Type="RCDATA" ResourceName="LBBRIDGE_CONSTANTS"/>
-        <Resource_8 FileName="../../LBWebPyBridge/pyScripts/LBBridge/sem_sysv.py" Type="RCDATA" ResourceName="SEM_SYSV"/>
-        <Resource_9 FileName="../../LBWebPyBridge/pyScripts/LBBridge/sem_win.py" Type="RCDATA" ResourceName="SEM_WIN"/>
+      <Resources Count="13">
+        <Resource_0 FileName="../../LBWebPyBridge/pyScripts/lb_logger.py" Type="RCDATA" ResourceName="PY_LB_LOGGER"/>
+        <Resource_1 FileName="../../LBWebPyBridge/pyScripts/test_launcher.py" Type="RCDATA" ResourceName="PY_TEST_LAUNCHER"/>
+        <Resource_2 FileName="../../LBWebPyBridge/pyScripts/worker.py" Type="RCDATA" ResourceName="PY_WORKER"/>
+        <Resource_3 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_base.py" Type="RCDATA" ResourceName="PY_BRIDGE_BASE"/>
+        <Resource_4 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_sysv.py" Type="RCDATA" ResourceName="PY_BRIDGE_SYSV"/>
+        <Resource_5 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_win.py" Type="RCDATA" ResourceName="PY_BRIDGE_WIN"/>
+        <Resource_6 FileName="../../LBWebPyBridge/pyScripts/LBBridge/__init__.py" Type="RCDATA" ResourceName="PY__INIT__"/>
+        <Resource_7 FileName="../../LBWebPyBridge/pyScripts/LBBridge/sem_sysv.py" Type="RCDATA" ResourceName="PY_SEM_SYSV"/>
+        <Resource_8 FileName="../../LBWebPyBridge/pyScripts/LBBridge/sem_win.py" Type="RCDATA" ResourceName="PY_SEM_WIN"/>
+        <Resource_9 FileName="../../LBWebPyBridge/jsScripts/bridge.js" Type="RCDATA" ResourceName="JS_BRIDGE"/>
+        <Resource_10 FileName="../../LBWebPyBridge/jsScripts/logger.js" Type="RCDATA" ResourceName="JS_LOGGER"/>
+        <Resource_11 FileName="../../LBWebPyBridge/jsScripts/test_launcher.js" Type="RCDATA" ResourceName="JS_TEST_LAUNCHER"/>
+        <Resource_12 FileName="../../LBWebPyBridge/jsScripts/worker.js" Type="RCDATA" ResourceName="JS_WORKER"/>
       </Resources>
     </General>
     <BuildModes>
@@ -40,13 +43,7 @@
         <PackageName Value="laz_synapse"/>
       </Item>
       <Item>
-        <PackageName Value="BGRABitmapPack"/>
-      </Item>
-      <Item>
         <PackageName Value="LCLBase"/>
-      </Item>
-      <Item>
-        <PackageName Value="LCL"/>
       </Item>
     </RequiredPackages>
     <Units>

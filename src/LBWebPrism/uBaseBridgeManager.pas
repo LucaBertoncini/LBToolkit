@@ -1,4 +1,4 @@
-unit uPyBridge;
+unit uBaseBridgeManager;
 
 {$mode ObjFPC}{$H+}
 {$modeSwitch advancedRecords}
@@ -6,8 +6,8 @@ unit uPyBridge;
 interface
 
 uses
-  Classes, SysUtils, uLBBaseThread, uIPCUtils, uTimedoutCriticalSection, process,
-  uHTTPRequestParser;
+  Classes, SysUtils, uLBBaseThread, uTimedoutCriticalSection, process,
+  uHTTPRequestParser, IniFiles;
 
 type
 
@@ -31,11 +31,47 @@ type
   end;
   pRequestData = ^TRequestData;
 
+  TBaseBridge = class;
+  TBaseBridgeClass = class of TBaseBridge;
 
-  { TPyBridge }
+  { TBridgeConfigParams }
 
-  TPyBridge = class(TLBBaseThread)
-    strict private
+  TBridgeConfigParams = class(TObject)
+    const
+      INI_KEY_SHARED_MEMORY_SIZE   = 'SharedMemorySize';
+      INI_KEY_THREAD_POOL_SIZE     = 'ThreadPoolSize';
+      INI_KEY_WORKER_TIMEOUT       = 'WorkerTimeout';
+      INI_KEY_SCRIPTS_FOLDER       = 'ScriptsFolder';
+      INI_KEY_WORKER_FILE          = 'WorkerFilename';
+      INI_KEY_SOCKET_FILE          = 'SocketFilename';
+
+      DEFAULT_SHARED_MEMORY_SIZE   = 0;
+      DEFAULT_THREAD_POOL_SIZE     = 0;
+      DEFAULT_WORKER_TIMEOUT_MS    = 0;
+      DEFAULT_SCRIPTS_FOLDER       = '';
+      DEFAULT_WORKER_FILE          = '';
+      DEFAULT_SOCKET_FILE          = '';
+
+
+    var
+      BridgeClass     : TBaseBridgeClass;
+      SharedMemSize   : Cardinal;
+      WorkerTimeoutMs : Cardinal;
+      ScriptsFolder   : String;
+      ThreadPoolSize  : Integer;
+      WorkerFilename  : String;
+      SocketFile      : String;
+
+    function Completed(): Boolean;
+    procedure Clear();
+    function LoadFromINIFile(aINIFile: TIniFile; aINISection: String): Boolean;
+  end;
+
+
+  { TBaseBridge }
+
+  TBaseBridge = class(TLBBaseThread)
+    strict protected
       type
         TRequestHeader = packed record
           ScriptNameLen : Byte;
@@ -51,31 +87,26 @@ type
         end;
         pAnswerHeader = ^TAnswerHeader;
 
-    strict private
-      FOnElaborationTerminated : TNotifyEvent;
-      FScriptsPath : String;
-      FSharedMem : pSharedMemory;
-      FThreadNum : Integer;
-      FCSRequest : TTimedOutCriticalSection;
-      FRequest   : pRequestData;
-      FProcess   : TProcess;
-      FWorkerCrashed: Boolean;
-      FRequestSem: TLBNamedSemaphore;
-      FResponseSem: TLBNamedSemaphore;
-      FWorkerTimeoutMs: Cardinal;
-
-      procedure cleanupSharedMemory();
-      function elaborateRequest(): Boolean;
-
-    protected
-      procedure InternalExecute(); override;
+      var
+        FOnElaborationTerminated : TNotifyEvent;
+        FConfigParams            : TBridgeConfigParams;
+        FCSRequest               : TTimedOutCriticalSection;
+        FRequest                 : pRequestData;
+        FWorkerCrashed           : Boolean;
+        FThreadNum               : Integer;
+        FNewRequestAvailable     : PRTLEvent;
+        FErrorMessage            : String;
 
     public
-      constructor Create(aWorkerTimeoutMs: Cardinal; const ScriptsPath: String); reintroduce;
+      constructor Create(Params: TBridgeConfigParams); reintroduce; virtual;
       destructor Destroy; override;
 
-      function prepareSharedMemory(aSize: Cardinal): Boolean;
       function insertRequest(aRequest: pRequestData): Boolean;
+
+      function prepareIPCChannel(): Boolean; virtual; abstract;
+
+      class function verifyParams(Params: TBridgeConfigParams): Boolean; virtual;
+
 
       property OnElaborationTerminated: TNotifyEvent write FOnElaborationTerminated;
   end;
@@ -84,19 +115,16 @@ type
 
   TBridgeOrchestrator = class(TObject)
     strict private
+      FConfigParams : TBridgeConfigParams;
       FCS : TTimedOutCriticalSection;
       FRequests : TList;
       FAvailableElaborators : TList;
-      FInitialBridgesCount: Integer;
-      FInitialSharedMemorySize: Cardinal;
-      FWorkerTimeoutMs: Integer;
 
       FWorkerScript : String;
-      FScriptsFolder : String;
 
       FTerminating : Boolean;
 
-      FBridges : array of TPyBridge;
+      FBridges : array of TBaseBridge;
 
       function hasActiveBridges(): Boolean;
       procedure CreateAndStartNewBridge(aBridgeIndex: Integer);
@@ -107,15 +135,13 @@ type
       procedure BridgeTerminated(Sender: TObject);
 
     public
-      constructor Create(aBridgesCount: Integer; aSharedMemorySize: Cardinal; aWorkerTimeoutMs: Integer; const ScriptsFolder: String); reintroduce;
+      constructor Create(Params: TBridgeConfigParams); reintroduce;  // Params must be destroyed by the caller
       destructor Destroy; override;
 
       function insertRequest(aRequest: pRequestData): Boolean;
   end;
 
 const
-  cPythonScriptsSubfolder = String('pyScripts');
-  cPythonMainWorker       = String('worker.py');
   cError_ScriptNotFound   = String('Script not found!');
   cError_UnmanagedError   = String('Internal error!');
 
@@ -124,15 +150,8 @@ implementation
 uses
   ULBLogger {$IFDEF WINDOWS},Windows{$ENDIF};
 
-const
-  cShmStartingValue = Integer(1975);
-  cSemStartingValue = Integer(11975);
-  cSleepTime        = Integer(10);
-
-
 var
   gv_BridgeCounter : Integer = 0;
-  gv_SemCounter : Integer = 0;
 
 { TRequestData }
 
@@ -149,288 +168,33 @@ begin
   RTLEventDestroy(TerminateEvent);
 end;
 
+{ TBaseBridge }
 
-{ TPyBridge }
-
-procedure TPyBridge.cleanupSharedMemory();
+constructor TBaseBridge.Create(Params: TBridgeConfigParams);
 begin
-  if FSharedMem <> nil then
-  begin
-    closeSharedMemory(FSharedMem);
-    Dispose(FSharedMem);
-    FSharedMem := nil;
-  end;
-end;
+  inherited Create();
 
-function TPyBridge.elaborateRequest: Boolean;
-var
-  _RequestHeader : pRequestHeader;
-  _AnswerHeader : pAnswerHeader;
-  _Dest : pByte = nil;
-  _tmpStr : String;
-
-begin
-  Result := False;
-  _RequestHeader := FSharedMem^.mem;
-  _AnswerHeader := FSharedMem^.mem;
-
-  FRequest^.Success := False;
-  FRequest^.Aborted := False;
-  FRequest^.Payload := @cError_ScriptNotFound[1];
-  FRequest^.PayloadLen := Length(cError_ScriptNotFound);
-
-  FillChar(_RequestHeader^, SizeOf(TRequestHeader), 0);
-
-  if FRequest^.Script <> '' then
-  begin
-    try
-
-      _tmpStr := ChangeFileExt(FRequest^.Script, '.py');
-      if FileExists(FScriptsPath + _tmpStr) then
-      begin
-        _RequestHeader^.ScriptNameLen := Byte(Length(_tmpStr));
-        _Dest := pByte(FSharedMem^.mem) + SizeOf(TRequestHeader);
-        Move(_tmpStr[1], _Dest^, _RequestHeader^.ScriptNameLen);
-        Inc(_Dest, _RequestHeader^.ScriptNameLen);
-      end
-      else
-        FRequest^.Aborted := True;
-
-    except
-      on E: Exception do
-      begin
-        _Dest := nil;
-        FRequest^.Aborted := True;
-        FRequest^.Payload := @cError_UnmanagedError[1];
-        FRequest^.PayloadLen := Length(cError_UnmanagedError);
-        LBLogger.Write(1, 'TPyBridge.elaborateRequest', lmt_Error, 'Error writing file name <%s>!', [_tmpStr]);
-      end;
-    end;
-
-    if _Dest <> nil then
-    begin
-      if FRequest^.HTTPParser <> nil then
-      begin
-        if (FRequest^.HTTPParser.Params <> nil) and (FRequest^.HTTPParser.Params.Count > 0) then
-        begin
-          FRequest^.HTTPParser.Params.TextLineBreakStyle := tlbsCRLF;
-          _tmpStr := FRequest^.HTTPParser.Params.Text;
-          _RequestHeader^.URIParamsLen := Word(Length(_tmpStr));
-          Move(_tmpStr[1], _Dest^, _RequestHeader^.URIParamsLen);
-          Inc(_Dest, _RequestHeader^.URIParamsLen);
-        end;
-
-        if (FRequest^.HTTPParser.Headers.Count > 0) then
-        begin
-          FRequest^.HTTPParser.Headers.TextLineBreakStyle := tlbsCRLF;
-          _tmpStr := FRequest^.HTTPParser.Headers.Text;
-          _RequestHeader^.HeadersLen := Word(Length(_tmpStr));
-          Move(_tmpStr[1], _Dest^, _RequestHeader^.HeadersLen);
-          Inc(_Dest, _RequestHeader^.HeadersLen);
-        end;
-
-        if (FRequest^.HTTPParser.Body <> nil) and (FRequest^.HTTPParser.Body.Size > 0) then
-        begin
-          _RequestHeader^.PayloadLen := Cardinal(FRequest^.HTTPParser.Body.Size);
-          Move(FRequest^.HTTPParser.Body.Memory^, _Dest^, _RequestHeader^.PayloadLen);
-        end;
-
-        // Signal Python worker that a request is ready
-        LBLogger.Write(5, 'TPyBridge.elaborateRequest', lmt_Debug, 'Activating semaphore for elaboration');
-        FRequestSem.Signal;
-
-        LBLogger.Write(5, 'TPyBridge.elaborateRequest', lmt_Debug, 'Waiting response');
-        // Wait for Python worker to signal completion
-        if FResponseSem.Wait(FWorkerTimeoutMs) then
-        begin
-          LBLogger.Write(5, 'TPyBridge.elaborateRequest', lmt_Debug, 'Answer received');
-          FRequest^.Success := _AnswerHeader^.Successful = 1;
-          FRequest^.Aborted := False;
-          FRequest^.PayloadLen := _AnswerHeader^.PayloadLen;
-          if _AnswerHeader^.PayloadLen = 0 then
-            FRequest^.Payload := nil
-          else
-            FRequest^.Payload := pByte(FSharedMem^.mem) + SizeOf(TAnswerHeader);
-          Result := True;
-        end
-        else begin // Timeout
-          LBLogger.Write(1, 'TPyBridge.elaborateRequest', lmt_Error, 'Python worker timed out. Terminating process.');
-          if (FProcess <> nil) then FProcess.Terminate(1);
-          FWorkerCrashed := True;
-          FRequest^.Aborted := True;
-        end;
-      end
-      else begin
-        FRequest^.Aborted := True;
-        LBLogger.Write(1, 'TPyBridge.elaborateRequest', lmt_Warning, 'Missing HTTP parser!');
-      end;
-    end;
-  end
-  else
-    LBLogger.Write(1, 'TPyBridge.elaborateRequest', lmt_Warning, 'No script file!');
-
-  RTLEventSetEvent(FRequest^.TerminateEvent);
+  FNewRequestAvailable := RTLEventCreate;
+  FConfigParams := Params;
   FRequest := nil;
-end;
-
-procedure TPyBridge.InternalExecute;
-var
-  _Path : String;
-begin
-  if FSharedMem <> nil then
-  begin
-    if FScriptsPath = '' then
-      FScriptsPath := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + cPythonScriptsSubfolder + PathDelim;
-
-    _Path := FScriptsPath + cPythonMainWorker;
-    if FileExists(_Path) then
-    begin
-      // Starting worker.py and passing it shared memory code and size
-      FProcess := TProcess.Create(nil);
-      FProcess.Executable := 'python3';
-      FProcess.Parameters.Add(_Path);
-      FProcess.Parameters.Add(IntToStr(FSharedMem^.key));
-      FProcess.Parameters.Add(IntToStr(FSharedMem^.size));
-      {$IFDEF WINDOWS}
-      FProcess.Parameters.Add(FRequestSem.Name);
-      FProcess.Parameters.Add(FResponseSem.Name);
-      {$ELSE}
-      FProcess.Parameters.Add(IntToStr(FRequestSem.Key));
-      FProcess.Parameters.Add(IntToStr(FResponseSem.Key));
-      {$ENDIF}
-      FProcess.Options := [poNoConsole, poDetached];
-      FProcess.CurrentDirectory := FScriptsPath;
-      FProcess.Execute;
-
-      while not Self.Terminated do
-      begin
-        if FCSRequest.Acquire('TPyBridge.InternalExecute') then
-        begin
-          try
-            if FRequest <> nil then
-            begin
-              Self.elaborateRequest();
-              if Assigned(FOnElaborationTerminated) then
-                FOnElaborationTerminated(Self);
-              if FWorkerCrashed then
-                Break; // Exit loop to terminate thread
-            end;
-          except
-            on E: Exception do
-              LBLogger.Write(1, 'TPyBridge.InternalExecute', lmt_Error, 'Error elaborating request: %s', [E.Message]);
-          end;
-          FCSRequest.Release();
-        end;
-        Self.PauseFor(cSleepTime);
-      end;
-
-      try
-        if FProcess <> nil then
-          FProcess.Terminate(0);
-
-      except
-        on E: Exception do
-          LBLogger.Write(1, 'TPyBridge.InternalExecute', lmt_Error, 'Error terminating process: ' + E.Message);
-      end;
-
-      if FProcess <> nil then
-        FreeAndNil(FProcess);
-
-    end
-    else
-      LBLogger.Write(1, 'TPyBridge.InternalExecute', lmt_Warning, 'File worker <%s> not found, terminating thread', [_Path]);
-  end
-  else
-    LBLogger.Write(1, 'TPyBridge.InternalExecute', lmt_Warning, 'Shared memory not initialized!');
-
-end;
-
-constructor TPyBridge.Create(aWorkerTimeoutMs: Cardinal; const ScriptsPath: String);
-{$IFDEF Windows}
-var
-  semNameRequest, semNameResponse: string;
-{$ENDIF}
-begin
-  inherited Create;
-
-  FScriptsPath := IncludeTrailingPathDelimiter(ScriptsPath);
-
-  FreeOnTerminate := True;
-  FThreadNum := InterlockedIncrement(gv_BridgeCounter);
-  FRequest := nil;
-  FProcess := nil;
   FWorkerCrashed := False;
-  FWorkerTimeoutMs := aWorkerTimeoutMs;
   FCSRequest := TTimedOutCriticalSection.Create;
-
-  {$IFDEF WINDOWS}
-  semNameRequest := 'pybridge_req_sem_' + IntToStr(GetCurrentProcessId()) + '_' + IntToStr(FThreadNum);
-  semNameResponse := 'pybridge_res_sem_' + IntToStr(GetCurrentProcessId()) + '_' + IntToStr(FThreadNum);
-  FRequestSem := TLBNamedSemaphore.Create(semNameRequest, 0);
-  FResponseSem := TLBNamedSemaphore.Create(semNameResponse, 0);
-  {$ELSE}
-  // On Linux, we need the shared memory to be prepared first to get the key.
-  // The semaphores will be created in prepareSharedMemory.
-  FRequestSem := nil;
-  FResponseSem := nil;
-  {$ENDIF}
+  FThreadNum := InterlockedIncrement(gv_BridgeCounter);
 end;
 
-destructor TPyBridge.Destroy;
+destructor TBaseBridge.Destroy;
 begin
+  RTLEventSetEvent(FNewRequestAvailable);
   inherited Destroy;
-
-  try
-    FreeAndNil(FCSRequest);
-    FreeAndNil(FRequestSem);
-    FreeAndNil(FResponseSem);
-    Self.cleanupSharedMemory();
-
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'TPyBridge.Destroy', lmt_Error, E.Message);
-  end;
+  FreeAndNil(FCSRequest);
+  RTLEventDestroy(FNewRequestAvailable);
 end;
 
-function TPyBridge.prepareSharedMemory(aSize: Cardinal): Boolean;
-{$IFDEF Unix}
-var
-  _Sem1, _Sem2 : Integer;
-{$ENDIF}
-
-begin
-  Result := False;
-  Self.cleanupSharedMemory();
-
-  if aSize > 0 then
-  begin
-    FSharedMem := AllocateSharedMemory(cShmStartingValue + FThreadNum, aSize);
-    Result := FSharedMem <> nil;
-    {$IFNDEF WINDOWS}
-    if Result then
-    begin
-      // On Linux, create semaphores after shared memory to have a key.
-      if FRequest <> nil then
-        FreeAndNil(FRequestSem);
-
-      if FResponseSem <> nil then
-        FreeAndNil(FResponseSem);
-
-      _Sem1 := cSemStartingValue + InterlockedIncrement(gv_SemCounter);
-      _Sem2 := cSemStartingValue + InterlockedIncrement(gv_SemCounter);
-
-      FRequestSem := TLBNamedSemaphore.Create('', _Sem1, True);   // Red semaphore
-      FResponseSem := TLBNamedSemaphore.Create('', _Sem2, True);  // Red semaphore
-    end;
-    {$ENDIF}
-  end;
-end;
-
-function TPyBridge.insertRequest(aRequest: pRequestData): Boolean;
+function TBaseBridge.insertRequest(aRequest: pRequestData): Boolean;
 begin
   Result := False;
 
-  if FCSRequest.Acquire('TPyBridge.insertRequest') then
+  if FCSRequest.Acquire('TBaseBridge.insertRequest') then
   begin
     if (FRequest = nil) and (aRequest <> nil) then
     begin
@@ -438,8 +202,80 @@ begin
       Result := True;
     end;
     FCSRequest.Release();
+    RTLEventSetEvent(FNewRequestAvailable);
   end;
 end;
+
+class function TBaseBridge.verifyParams(Params: TBridgeConfigParams): Boolean;
+begin
+  Result := True;
+end;
+
+{ TBridgeConfigParams }
+
+function TBridgeConfigParams.Completed(): Boolean;
+begin
+  Result := False;
+  if BridgeClass <> nil then
+  begin
+    if WorkerFilename <> '' then
+    begin
+      if (ScriptsFolder <> '') then
+      begin
+        if not DirectoryExists(ScriptsFolder) then
+          ForceDirectories(ScriptsFolder);
+
+        ScriptsFolder := IncludeTrailingPathDelimiter(ScriptsFolder);
+        Result := (WorkerTimeoutMs > 0) and (ThreadPoolSize > 0);
+        if Result then
+          Result := BridgeClass.VerifyParams(Self)
+        else
+          LBLogger.Write(1, 'TBridgeConfigParams.Completed', lmt_Warning, 'Wrong parameters! Timeout: %d  -  Bridges count: %d', [WorkerTimeoutMs, ThreadPoolSize]);
+      end
+      else
+        LBLogger.Write(1, 'TBridgeConfigParams.Completed', lmt_Warning, 'Scripts folder not set!');
+    end
+    else
+      LBLogger.Write(1, 'TBridgeConfigParams.Completed', lmt_Warning, 'Worker script not set!');
+  end
+  else
+    LBLogger.Write(1, 'TBridgeConfigParams.Completed', lmt_Warning, 'Bridge class type not set!');
+end;
+
+procedure TBridgeConfigParams.Clear();
+begin
+  SharedMemSize   := 0;
+  WorkerTimeoutMs := 0;
+  ScriptsFolder   := '';
+  ThreadPoolSize  := 0;
+  WorkerFilename  := '';
+  SocketFile      := '';
+end;
+
+function TBridgeConfigParams.LoadFromINIFile(aINIFile: TIniFile; aINISection: String): Boolean;
+begin
+  Result := False;
+  Self.Clear();
+
+  if (aINIFile <> nil) and (aINISection <> '') then
+  begin
+
+    SharedMemSize   := aINIFile.ReadInt64   (aINISection, INI_KEY_SHARED_MEMORY_SIZE, DEFAULT_SHARED_MEMORY_SIZE);
+    ThreadPoolSize  := aINIFile.ReadInteger (aINISection, INI_KEY_THREAD_POOL_SIZE,   DEFAULT_THREAD_POOL_SIZE);
+    WorkerTimeoutMs := aINIFile.ReadInteger (aINISection, INI_KEY_WORKER_TIMEOUT,     DEFAULT_WORKER_TIMEOUT_MS);
+    ScriptsFolder   := aINIFile.ReadString  (aINISection, INI_KEY_SCRIPTS_FOLDER,     DEFAULT_SCRIPTS_FOLDER);
+    WorkerFilename  := aINIFile.ReadString  (aINISection, INI_KEY_WORKER_FILE,        DEFAULT_WORKER_FILE);
+    SocketFile      := aINIFile.ReadString  (aINISection, INI_KEY_SOCKET_FILE,        DEFAULT_SOCKET_FILE);
+
+    if ScriptsFolder <> '' then
+      ScriptsFolder := ExpandFileName(ScriptsFolder);
+
+    Result := True;
+  end
+  else
+    LBLogger.Write(1, 'TBridgeConfigParams.LoadFromINIFile', lmt_Warning, 'No INI file or section!');
+end;
+
 
 { TBridgeOrchestrator }
 
@@ -492,7 +328,7 @@ end;
 procedure TBridgeOrchestrator.processRequests();
 var
   _Request : pRequestData;
-  _Bridge : TPyBridge;
+  _Bridge : TBaseBridge;
 
 begin
   if FCS.Acquire('TBridgeOrchestrator.processRequests') then
@@ -502,7 +338,7 @@ begin
       while (FRequests.Count > 0) and (FAvailableElaborators.Count > 0) do
       begin
         _Request := FRequests.Items[0];
-        _Bridge := TPyBridge(FAvailableElaborators.Items[0]);
+        _Bridge := TBaseBridge(FAvailableElaborators.Items[0]);
         FRequests.Delete(0);
         FAvailableElaborators.Delete(0);
 
@@ -590,8 +426,8 @@ begin
     begin
       if (aBridgeIndex >= 0) and (aBridgeIndex <= High(FBridges)) then
       begin
-        FBridges[aBridgeIndex] := TPyBridge.Create(FWorkerTimeoutMs, FScriptsFolder);
-        if FBridges[aBridgeIndex].prepareSharedMemory(FInitialSharedMemorySize) then
+        FBridges[aBridgeIndex] := FConfigParams.BridgeClass.Create(FConfigParams);
+        if FBridges[aBridgeIndex].prepareIPCChannel() then
         begin
           FBridges[aBridgeIndex].AddReference(@FBridges[aBridgeIndex]);
           FBridges[aBridgeIndex].OnElaborationTerminated := @Self.setBridgeAsAvailable;
@@ -612,31 +448,21 @@ begin
 
 end;
 
-constructor TBridgeOrchestrator.Create(aBridgesCount: Integer; aSharedMemorySize: Cardinal; aWorkerTimeoutMs: Integer; const ScriptsFolder: String);
+constructor TBridgeOrchestrator.Create(Params: TBridgeConfigParams);
 var
   i : Integer;
 
 begin
   inherited Create;
   FTerminating := False;
+  FConfigParams := Params;
 
-  FScriptsFolder := ScriptsFolder;
-  if FScriptsFolder = '' then
-  begin
-    FScriptsFolder := IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) + cPythonScriptsSubfolder;
-    LBLogger.Write(1, 'TBridgeOrchestrator.Create', lmt_Debug, 'No script folder set, using default <%s>', [FScriptsFolder]);
-  end;
-
-  FWorkerScript := IncludeTrailingPathDelimiter(FScriptsFolder) + cPythonMainWorker;
-
-  FInitialBridgesCount := aBridgesCount;
-  FInitialSharedMemorySize := aSharedMemorySize;
-  FWorkerTimeoutMs := aWorkerTimeoutMs;
+  FWorkerScript := IncludeTrailingPathDelimiter(FConfigParams.ScriptsFolder) + FConfigParams.WorkerFilename;
 
   FRequests := TList.Create;
   FAvailableElaborators := TList.Create;
 
-  SetLength(FBridges, FInitialBridgesCount);
+  SetLength(FBridges, FConfigParams.ThreadPoolSize);
   for i := 0 to High(FBridges) do
     Self.CreateAndStartNewBridge(i);
 

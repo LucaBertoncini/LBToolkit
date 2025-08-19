@@ -1,0 +1,5 @@
+Format('--socket-path=%s', [SocketPath])
+
+ // Set process options for a background worker.
+  NodeProcess.Options := [poNoConsole, poNewProcessGroup]; // poNoConsole hides the window on Windows
+

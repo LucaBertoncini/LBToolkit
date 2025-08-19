@@ -13,14 +13,7 @@ uses
 type
   TLBmicroWebServer = class;
 
-  TOnGETRequest = function(
-    HTTPParser: THTTPRequestParser;
-    ResponseHeaders: TStringList;
-    var ResponseData: TMemoryStream;
-    out ResponseCode: Integer
-  ): Boolean of object;
-
-  TOnPOSTRequest = function(
+  TOnElaborateRequest = function(
     HTTPParser: THTTPRequestParser;
     ResponseHeaders: TStringList;
     var ResponseData: TMemoryStream;
@@ -128,15 +121,7 @@ type
       FWebServerOwner : TLBmicroWebServer;
       FNext: TRequestChainProcessor;
 
-
-      function DoProcessGETRequest(
-        HTTPParser: THTTPRequestParser;
-        ResponseHeaders: TStringList;
-        var ResponseData: TMemoryStream;
-        out ResponseCode: Integer
-      ): Boolean; virtual; abstract;
-
-      function DoProcessPOSTRequest(
+      function DoProcessRequest(
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -149,15 +134,7 @@ type
 
 
     public
-
-      function ProcessGETRequest(
-        HTTPParser: THTTPRequestParser;
-        ResponseHeaders: TStringList;
-        var ResponseData: TMemoryStream;
-        out ResponseCode: Integer
-      ): Boolean;
-
-      function ProcessPOSTRequest(
+      function ProcessRequest(
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -241,14 +218,7 @@ type
       procedure UpdateChain();
 
     private
-      function ProcessGETRequest(
-        HTTPParser: THTTPRequestParser;
-        ResponseHeaders: TStringList;
-        var ResponseData: TMemoryStream;
-        out ResponseCode: Integer
-      ): Boolean;
-
-      function ProcessPOSTRequest(
+      function ProcessRequest(
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -353,20 +323,19 @@ begin
     FProcessors.Last.NextStep := nil;
 end;
 
-function TLBmicroWebServer.ProcessGETRequest(HTTPParser: THTTPRequestParser;
+function TLBmicroWebServer.ProcessRequest(HTTPParser: THTTPRequestParser;
   ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := False;
-  if FProcessors.First <> nil then
-    Result := FProcessors.First.ProcessGETRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
-end;
 
-function TLBmicroWebServer.ProcessPOSTRequest(HTTPParser: THTTPRequestParser;
-  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
-begin
-  Result := False;
-  if FProcessors.First <> nil then
-    Result := FProcessors.First.ProcessPOSTRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
+  try
+    if FProcessors.First <> nil then
+      Result := FProcessors.First.ProcessRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
+
+  except
+    on E: Exception do
+      LBLogger.Write(1, 'LBmicroWebServer.ProcessRequest', lmt_Error, E.Message);
+  end;
 end;
 
 class function TLBmicroWebServer.getClassDescription(): String;
@@ -669,7 +638,7 @@ begin
 
     // Custom GET handler (fallback)
     Result := HTTP_STATUS_NOT_FOUND;
-    if FWebServerOwner.ProcessGETRequest(FParser, FOutputHeaders, FOutputData, Result) then
+    if FWebServerOwner.ProcessRequest(FParser, FOutputHeaders, FOutputData, Result) then
       NextState := rms_SendHTTPAnswer;
   end;
 end;
@@ -712,7 +681,7 @@ begin
 
   if (FWebServerOwner <> nil) then
   begin
-    if FWebServerOwner.ProcessPOSTRequest(FParser, {FParser.Body,} FOutputHeaders, FOutputData, Result) then
+    if FWebServerOwner.ProcessRequest(FParser, FOutputHeaders, FOutputData, Result) then
     begin
       NextState := rms_SendHTTPAnswer;
       KeepConnection := False;
@@ -1002,25 +971,26 @@ end;
 
 { TRequestChainProcessor }
 
-function TRequestChainProcessor.ProcessGETRequest(HTTPParser: THTTPRequestParser;
+function TRequestChainProcessor.ProcessRequest(HTTPParser: THTTPRequestParser;
   ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
-  Result := Self.DoProcessGETRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
+  try
 
-  // if Result = True the chain is blocked
-  if (not Result) and (FNext <> nil) then
-    Result := FNext.ProcessGETRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
+    Result := Self.DoProcessRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
+
+    // if Result = True the chain is blocked
+    if (not Result) and (FNext <> nil) then
+    begin
+      LBLogger.Write(5, 'TRequestChainProcessor.ProcessRequest', lmt_Debug, 'Running next processor');
+      Result := FNext.ProcessRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
+    end;
+
+  except
+    on E: Exception do
+      LBLogger.Write(1, 'TRequestChainProcessor.ProcessRequest', lmt_Error, E.Message);
+  end;
 end;
 
-function TRequestChainProcessor.ProcessPOSTRequest(HTTPParser: THTTPRequestParser;
-  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
-begin
-  Result := Self.DoProcessPOSTRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
-
-  // if Result = True the chain is blocked
-  if (not Result) and (FNext <> nil) then
-    Result := FNext.ProcessPOSTRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
-end;
 
 { TLBmWsListener }
 

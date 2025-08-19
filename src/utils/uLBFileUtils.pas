@@ -31,6 +31,13 @@ type
       property Comments: String read FComments;
   end;
 
+  TResourceFileInfo = record
+    Filename : String;
+    Code     : String;
+  end;
+  pResourceFileInfo = ^TResourceFileInfo;
+
+  function extractFilesFormResource(const aDestinationFolder: String; aFilesList: pResourceFileInfo; aFileCount: Integer): Boolean;
 
   function getTemporaryFolder(GlobalFolder: Boolean = false): String;
 
@@ -98,6 +105,60 @@ begin
   end
   else
     LBLogger.Write(1, 'TFileInfoRetriever.LoadInfo', lmt_Warning, 'File <%s> not found!', [anExeFilename]);
+end;
+
+function extractFilesFormResource(const aDestinationFolder: String; aFilesList: pResourceFileInfo; aFileCount: Integer): Boolean;
+var
+  _Stream : TResourceStream;
+  _DestFolder : String;
+  _Path : String;
+  i : Integer;
+
+begin
+  Result := False;
+
+  if aDestinationFolder <> '' then
+  begin
+    if not DirectoryExists(aDestinationFolder) then
+      ForceDirectories(aDestinationFolder);
+
+    if (aFilesList <> nil) and (aFileCount > 0) then
+    begin
+      try
+
+        _DestFolder := IncludeTrailingPathDelimiter(aDestinationFolder);
+
+        for i := 0 to aFileCount - 1 do
+        begin
+          if not FileExists(_DestFolder + aFilesList[i].Filename) then
+          begin
+            _Stream := TResourceStream.Create(HINSTANCE, aFilesList[i].Code, RT_RCDATA);
+            if (_Stream <> nil) and (_Stream.Size > 0) then
+            begin
+              _Path := ExtractFilePath(_DestFolder + aFilesList[i].Filename);
+              if not DirectoryExists(_Path) then
+                ForceDirectories(_Path);
+
+              _Stream.SaveToFile(_DestFolder + aFilesList[i].Filename);
+            end;
+            _Stream.Free;
+          end;
+        end;
+
+        Result := True;
+
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'extractFilesFormResource', lmt_Error, E.Message);
+      end;
+
+    end
+    else
+      LBLogger.Write(1, 'extractFilesFormResource', lmt_Warning, 'Nothing to extract!');
+
+  end
+  else
+    LBLogger.Write(1, 'extractFilesFormResource', lmt_Warning, 'No destination folder!');
 end;
 
 function getTemporaryFolder(GlobalFolder: Boolean = false): String;

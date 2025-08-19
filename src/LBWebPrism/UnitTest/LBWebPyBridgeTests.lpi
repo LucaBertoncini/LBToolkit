@@ -12,6 +12,29 @@
       <Title Value="LBWebPyBridgeTests"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
+      <Resources Count="21">
+        <Resource_0 FileName="../pyScripts/lb_logger.py" Type="RCDATA" ResourceName="PY_LB_LOGGER"/>
+        <Resource_1 FileName="../pyScripts/test_launcher.py" Type="RCDATA" ResourceName="PY_TEST_LAUNCHER"/>
+        <Resource_2 FileName="../pyScripts/worker.py" Type="RCDATA" ResourceName="PY_WORKER"/>
+        <Resource_3 FileName="../pyScripts/LBBridge/bridge_base.py" Type="RCDATA" ResourceName="PY_BRIDGE_BASE"/>
+        <Resource_4 FileName="../pyScripts/LBBridge/bridge_sysv.py" Type="RCDATA" ResourceName="PY_BRIDGE_SYSV"/>
+        <Resource_5 FileName="../pyScripts/LBBridge/bridge_win.py" Type="RCDATA" ResourceName="PY_BRIDGE_WIN"/>
+        <Resource_6 FileName="../pyScripts/LBBridge/__init__.py" Type="RCDATA" ResourceName="PY__INIT__"/>
+        <Resource_7 FileName="../pyScripts/LBBridge/sem_sysv.py" Type="RCDATA" ResourceName="PY_SEM_SYSV"/>
+        <Resource_8 FileName="../pyScripts/LBBridge/sem_win.py" Type="RCDATA" ResourceName="PY_SEM_WIN"/>
+        <Resource_9 FileName="../jsScripts/bridge.js" Type="RCDATA" ResourceName="JS_BRIDGE"/>
+        <Resource_10 FileName="../jsScripts/worker.js" Type="RCDATA" ResourceName="JS_WORKER"/>
+        <Resource_11 FileName="../jsScripts/test_launcher.js" Type="RCDATA" ResourceName="JS_TEST_LAUNCHER"/>
+        <Resource_12 FileName="../pyScripts/tests/echo_test.py" Type="RCDATA" ResourceName="PY_ECHO_TEST"/>
+        <Resource_13 FileName="../pyScripts/tests/error_test.py" Type="RCDATA" ResourceName="PY_ERROR_TEST"/>
+        <Resource_14 FileName="../pyScripts/tests/sum_test.py" Type="RCDATA" ResourceName="PY_SUM_TEST"/>
+        <Resource_15 FileName="../pyScripts/tests/AppHello/config.py" Type="RCDATA" ResourceName="PY_HELLO_CONFIG"/>
+        <Resource_16 FileName="../pyScripts/tests/AppHello/main.py" Type="RCDATA" ResourceName="PY_HELLO_MAIN"/>
+        <Resource_17 FileName="../pyScripts/tests/AppHello/utils.py" Type="RCDATA" ResourceName="PY_HELLO_UTILS"/>
+        <Resource_18 FileName="../jsScripts/tests/example.js" Type="RCDATA" ResourceName="JS_EXAMPLE"/>
+        <Resource_19 FileName="../jsScripts/tests/multiply.js" Type="RCDATA" ResourceName="JS_MULTIPLY"/>
+        <Resource_20 FileName="../jsScripts/logger.js" Type="RCDATA" ResourceName="JS_LOGGER"/>
+      </Resources>
     </General>
     <BuildModes>
       <Item Name="Default" Default="True"/>
@@ -67,10 +90,6 @@
         <Filename Value="../pyScripts/tests/AppHello/main.py"/>
         <IsPartOfProject Value="True"/>
       </Unit>
-      <Unit>
-        <Filename Value="../uPyBridgeChainModule.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -83,11 +102,6 @@
       <OtherUnitFiles Value="..;../../utils;../../LBLogger;../../LBmicroWebServer"/>
       <UnitOutputDirectory Value="/tmp/Test_LBWebPyBridge/lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
-    <Other>
-      <ExecuteAfter>
-        <Command Value="$(ProjPath)/../zipper.sh $(ProjPath)/../pyScripts $(ProjPath)/bin"/>
-      </ExecuteAfter>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions>

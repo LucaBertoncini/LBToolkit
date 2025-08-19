@@ -13,16 +13,8 @@ type
 
   TTestChainProcessor = class(TRequestChainProcessor)
     strict protected
-      function DoProcessGETRequest(
+      function DoProcessRequest(
         HTTPParser: THTTPRequestParser;
-        ResponseHeaders: TStringList;
-        var ResponseData: TMemoryStream;
-        out ResponseCode: Integer
-      ): Boolean; override;
-
-      function DoProcessPOSTRequest(
-        HTTPParser: THTTPRequestParser;
-        Payload: TMemoryStream;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
         out ResponseCode: Integer
@@ -85,11 +77,15 @@ end;
 
 { TTestChainProcessor }
 
-function TTestChainProcessor.DoProcessGETRequest(HTTPParser: THTTPRequestParser;
+function TTestChainProcessor.DoProcessRequest(HTTPParser: THTTPRequestParser;
   ResponseHeaders: TStringList; var ResponseData: TMemoryStream;
   out ResponseCode: Integer): Boolean;
 var
   _Text : String;
+  _Obj : TJSONObject = nil;
+  _Answer : TJSONObject = nil;
+  _s : String;
+  _Value : TJSONData = nil;
 
 begin
   Result := False;
@@ -103,7 +99,7 @@ begin
   begin
     _Text := Format(cHelloAnswer, [HTTPParser.Params.Values['name'], HTTPParser.Params.Values['id']]);
 
-    LBLogger.Write(1, 'TTestChainProcessor.DoProcessGETRequest', lmt_Debug, 'Answer: %s', [_Text]);
+    LBLogger.Write(1, 'TTestChainProcessor.DoProcessRequest', lmt_Debug, 'Answer: %s', [_Text]);
 
     if ResponseData = nil then
       ResponseData := TMemoryStream.Create;
@@ -114,67 +110,52 @@ begin
     ResponseCode := 200;
     Result := True;
   end
-  else
-    LBLogger.Write(1, 'TTestChainProcessor.DoProcessGETRequest', lmt_Warning, 'Unknown resource: %s', [HTTPParser.Resource]);
+  else begin
+    if (HTTPParser.Body <> nil) and (HTTPParser.Body.Size > 0) then
+    begin
+      try
+        LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'Payload size: %d', [HTTPParser.Body.Size]);
+
+        SetLength(_s, HTTPParser.Body.Size);
+        HTTPParser.Body.Read(_s[1], Length(_s));
+
+        LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'JSON request: %s', [_s]);
+
+        _Obj := TJSONObject(GetJSON(_s));
+        _Answer := TJSONObject.Create;
+
+        if _Obj.Find('Code', _Value) then
+        begin
+          _Answer.Add('Received', _Value.AsString);
+        end
+        else
+          _Answer.Add('Error', cCodeValueNotFound);
+
+
+        _Answer.CompressedJSON := True;
+        _s := _Answer.AsJSON;
+        LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'Answer: %s', [_s]);
+
+        if ResponseData = nil then
+          ResponseData := TMemoryStream.Create;
+
+        ResponseData.Write(_s[1], Length(_s));
+
+        ResponseCode := 200;
+        Result := True;
+
+        _Answer.Free;
+        _Obj.Free;
+
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Error, E.Message);
+      end;
+    end
+    else
+      LBLogger.Write(1, 'TTestChainProcessor.DoProcessRequest', lmt_Warning, 'Unknown resource: %s', [HTTPParser.Resource]);
+  end;
 end;
-
-function TTestChainProcessor.DoProcessPOSTRequest(HTTPParser: THTTPRequestParser;
-  Payload: TMemoryStream; ResponseHeaders: TStringList;
-  var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
-var
-  _Obj : TJSONObject = nil;
-  _Answer : TJSONObject = nil;
-  _s : String;
-  _Value : TJSONData = nil;
-
-begin
-  // LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'Payload: %s', [Payload]);
-
-  if (Payload <> nil) and (Payload.Size > 0) then
-  begin
-    try
-      LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'Payload size: %d', [Payload.Size]);
-
-      SetLength(_s, Payload.Size);
-      Payload.Read(_s[1], Length(_s));
-
-      LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'JSON request: %s', [_s]);
-
-      _Obj := TJSONObject(GetJSON(_s));
-      _Answer := TJSONObject.Create;
-
-      if _Obj.Find('Code', _Value) then
-      begin
-        _Answer.Add('Received', _Value.AsString);
-      end
-      else
-        _Answer.Add('Error', cCodeValueNotFound);
-
-
-      _Answer.CompressedJSON := True;
-      _s := _Answer.AsJSON;
-      LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Debug, 'Answer: %s', [_s]);
-
-      if ResponseData = nil then
-        ResponseData := TMemoryStream.Create;
-
-      ResponseData.Write(_s[1], Length(_s));
-
-      ResponseCode := 200;
-      Result := True;
-
-      _Answer.Free;
-      _Obj.Free;
-
-    except
-      on E: Exception do
-        LBLogger.Write(1, 'TTestChainProcessor.DoProcessPOSTRequest', lmt_Error, E.Message);
-    end;
-  end
-  else
-    Result := False;
-end;
-
 
 
 end.

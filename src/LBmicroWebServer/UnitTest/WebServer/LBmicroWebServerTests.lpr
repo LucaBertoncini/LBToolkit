@@ -4,7 +4,7 @@ program LBmicroWebServerTests;
 
 uses
   cthreads, Classes, sysutils, consoletestrunner, uHTTPRequestManagerTests,
-  uLBmicroWebServer, ULBLogger, uLBmWsDocumentsFolder, uTestRunner;
+  uLBmicroWebServer, ULBLogger, uLBmWsDocumentsFolder, uTestRunner, uFPHTTPRequestProcessor;
 
 begin
   DefaultRunAllTests:=True;

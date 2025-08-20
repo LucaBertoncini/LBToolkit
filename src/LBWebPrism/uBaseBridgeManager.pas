@@ -107,7 +107,7 @@ type
 
       class function verifyParams(Params: TBridgeConfigParams): Boolean; virtual;
 
-
+      property WorkerCrashed: Boolean read FWorkerCrashed;
       property OnElaborationTerminated: TNotifyEvent write FOnElaborationTerminated;
   end;
 
@@ -386,6 +386,8 @@ end;
 procedure TBridgeOrchestrator.BridgeTerminated(Sender: TObject);
 var
   i, _Idx : Integer;
+  _WorkerCrashed : Boolean;
+
 begin
   if FCS.Acquire('TBridgeOrchestrator.BridgeTerminated') then
   begin
@@ -400,11 +402,15 @@ begin
       begin
         if FBridges[i] = Sender then
         begin
-          LBLogger.Write(1, 'TBridgeOrchestrator.BridgeTerminated', lmt_Warning, 'Bridge %d has terminated. Restarting.', [i]);
+          _WorkerCrashed := FBridges[i].WorkerCrashed;
           FBridges[i].RemoveReference(@FBridges[i]);
           FBridges[i] := nil; // The TMultiReferenceObject will free the instance
-          Self.CreateAndStartNewBridge(i);
-          break;
+          if _WorkerCrashed then
+          begin
+            LBLogger.Write(1, 'TBridgeOrchestrator.BridgeTerminated', lmt_Warning, 'Bridge %d has terminated. Restarting.', [i]);
+            Self.CreateAndStartNewBridge(i);
+          end;
+          Break;
         end;
       end;
 

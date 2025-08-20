@@ -1,14 +1,14 @@
 # This file makes the LBBridge directory a Python package
 # and exposes the main classes for easier import by other modules.
-
+import platform
 from .bridge_base import BridgeBase, Request
-from .bridge_sysv import SysVBridge
-from .bridge_win import WindowsBridge
 
-__all__ = [
-    'BridgeBase',
-    'Request',
-    'SysVBridge',
-    'WindowsBridge'
-]
+__all__ = ['BridgeBase', 'Request']
+
+if platform.system() == "Linux":
+  from .bridge_sysv import SysVBridge
+  __all__.append('SysVBridge')
+else:  
+  from .bridge_win import WindowsBridge
+  __all__.append('WindowsBridge')
 

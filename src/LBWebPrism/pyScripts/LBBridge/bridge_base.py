@@ -81,7 +81,7 @@ class BridgeBase:
             return OrderedCaseInsensitiveDict()
         
         pairs = []
-        lines = raw_data.decode('utf-8', errors='ignore').strip().split('\r\n')
+        lines = bytes(raw_data).decode('utf-8', errors='ignore').strip().split('\r\n')
         for line in lines:
             if not line:
                 continue
@@ -99,7 +99,7 @@ class BridgeBase:
         current_offset = HEADER_SIZE_IN
 
         script_name_raw = self.read_shm(script_len, offset=current_offset)
-        script_name = script_name_raw.decode('utf-8', errors='ignore')
+        script_name = bytes(script_name_raw).decode('utf-8', errors='ignore')
         current_offset += script_len
 
         uri_params_raw = self.read_shm(params_len, offset=current_offset)
@@ -126,7 +126,7 @@ class BridgeBase:
         if not raw_payload:
             return None
         try:
-            return json.loads(raw_payload.decode('utf-8'))
+            return json.loads(bytes(raw_payload).decode('utf-8'))
         except (json.JSONDecodeError, UnicodeDecodeError):
             return None
 

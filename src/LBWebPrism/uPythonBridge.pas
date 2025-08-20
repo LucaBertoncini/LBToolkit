@@ -223,7 +223,7 @@ begin
       begin
         // Starting worker.py and passing it shared memory code and size
         FProcess := TProcess.Create(nil);
-        FProcess.Executable := 'python3';
+        FProcess.Executable := 'python';
         FProcess.Parameters.Add(_Path);
         {$IFDEF WINDOWS}
         FProcess.Parameters.Add(FSharedMem^.name);
@@ -264,15 +264,19 @@ begin
 
         try
           if FProcess <> nil then
-            FProcess.Terminate(0);
+          begin
+            if FProcess.Active then
+            begin
+              FProcess.Terminate(0);
+              Self.PauseFor(200);
+            end;
+            FreeAndNil(FProcess);
+          end;
 
         except
           on E: Exception do
             LBLogger.Write(1, 'TPythonBridge.InternalExecute', lmt_Error, 'Error terminating process: ' + E.Message);
         end;
-
-        if FProcess <> nil then
-          FreeAndNil(FProcess);
 
       end
       else

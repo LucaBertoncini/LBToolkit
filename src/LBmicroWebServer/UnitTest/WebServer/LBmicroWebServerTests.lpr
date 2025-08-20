@@ -3,7 +3,7 @@ program LBmicroWebServerTests;
 {$mode objfpc}{$H+}
 
 uses
-  cthreads, Classes, sysutils, consoletestrunner, uHTTPRequestManagerTests,
+  {$IFDEF Linux}cthreads,{$ENDIF} Classes, sysutils, consoletestrunner, uHTTPRequestManagerTests,
   uLBmicroWebServer, ULBLogger, uLBmWsDocumentsFolder, uTestRunner, uFPHTTPRequestProcessor;
 
 begin

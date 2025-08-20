@@ -5,12 +5,12 @@ unit uIPCUtils;
 interface
 
 uses
-  Classes, SysUtils, {$IFDEF Windows} Windows{$ELSE}BaseUnix, Unix, UnixType, Sockets{$ENDIF}, ipc;
+  Classes, SysUtils, {$IFDEF Windows} Windows{$ELSE}BaseUnix, Unix, UnixType, Sockets, ipc{$ENDIF};
 
 type
   {$IFDEF Windows}
   TSharedMemory = record
-    shmHandle: THandle;       // Windows handle from CreateFileMapping
+    shmHandle : THandle;       // Windows handle from CreateFileMapping
     mem       : Pointer;
     size      : Integer;
     name      : String;       // identifier passed to CreateFileMapping
@@ -60,17 +60,19 @@ type
     FSemHandle: THandle;
     {$ELSE}
     FSemId: cint;
+    FKey: TKey;
     {$ENDIF}
     FName: string;
-    FKey: TKey;
   public
-    constructor Create(const AName: string; const AKey: TKey; Locked: Boolean);
+    constructor Create(const AName: string;{$IFDEF Linux} const AKey: TKey;{$ENDIF} Locked: Boolean);
     destructor Destroy; override;
 
     function Wait(aTimeoutMs: Cardinal): Boolean;
     procedure Signal;
 
+    {$IFDEF Linux}
     property Key: TKey read FKey;
+    {$ENDIF}
     property Name: String read FName;
   end;
 
@@ -399,7 +401,7 @@ end;
 
 { TLBNamedSemaphore }
 
-constructor TLBNamedSemaphore.Create(const AName: string; const AKey: TKey; Locked: Boolean);
+constructor TLBNamedSemaphore.Create(const AName: string; {$IFDEF Linux} const AKey: TKey;{$ENDIF} Locked: Boolean);
 {$IFDEF Unix}
 var
   _arg: TSEMun;
@@ -407,10 +409,10 @@ var
 begin
   inherited Create;
   FName := AName;
-  FKey := AKey;
   {$IFDEF WINDOWS}
   FSemHandle := CreateSemaphore(nil, 0, 1, PChar(FName));
   {$ELSE}
+  FKey := AKey;
   LBLogger.Write(5, 'TLBNamedSemaphore.Create', lmt_Debug, 'Creating semaphore with key: %d', [Integer(FKey)]);
 
   FSemId := semget(FKey, 1, IPC_CREAT or IPC_EXCL or 438); // 438 = 0o666
@@ -661,7 +663,7 @@ begin
     if BytesAvailable = 0 then
       Break;
 
-    if not ReadFile(FHandle, @TempBuf, Min(BytesAvailable, SizeOf(TempBuf)), Read, nil) then
+    if not ReadFile(FHandle, TempBuf[0], Min(BytesAvailable, SizeOf(TempBuf)), Read, nil) then
       Break;
   until False;
 end;
@@ -720,7 +722,7 @@ constructor TLocalServerSocket.Create(const Path: string);
 begin
   inherited Create;
   FPath := Path;
-  FHandle := -1;
+  FHandle := NilHandle;
   FTimeout := 5000;
 end;
 
@@ -800,16 +802,19 @@ var
   Overlapped: TOverlapped;
   Event: THandle;
   WaitResult: DWORD;
+
+const
+  PIPE_UNLIMITED_INSTANCES = 255;
+
 begin
   Result := nil;
-  FHandle := CreateNamedPipe(PChar(FPath),
+  FHandle := CreateNamedPipe(PChar(FPath), // es: '\\.\pipe\MyPipe'
               PIPE_ACCESS_DUPLEX or FILE_FLAG_OVERLAPPED,
-              PIPE_TYPE_BYTE or PIPE
-              _TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,
+              PIPE_TYPE_BYTE or PIPE_READMODE_BYTE or PIPE_WAIT,
               PIPE_UNLIMITED_INSTANCES,
               4096, 4096, 0, nil);
 
-  if FHandle = INVALID_HANDLE_VALUE then
+  if FHandle = NilHandle then // INVALID_HANDLE_VALUE then
   begin
     FLastError := GetLastError;
     Exit;

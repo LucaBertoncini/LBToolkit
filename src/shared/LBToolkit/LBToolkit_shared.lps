@@ -8,33 +8,32 @@
         <Filename Value="LBToolkit_shared.lpr"/>
         <IsPartOfProject Value="True"/>
         <CursorPos X="48" Y="7"/>
-        <UsageCount Value="105"/>
+        <UsageCount Value="106"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uCallbackLogger.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="20"/>
+        <EditorIndex Value="26"/>
         <TopLine Value="10"/>
         <CursorPos X="3" Y="35"/>
-        <UsageCount Value="105"/>
+        <UsageCount Value="106"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../../LBmicroWebServer/ufphttprequestprocessor.pas"/>
-        <UnitName Value="uFPHTTPRequestProcessor"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="42"/>
-        <CursorPos X="73" Y="48"/>
-        <UsageCount Value="24"/>
+        <Filename Value="../../LBmicroWebServer/uFPHTTPRequestProcessor.pas"/>
+        <EditorIndex Value="17"/>
+        <CursorPos Y="6"/>
+        <UsageCount Value="14"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="toolkit_capi_microwebserver.pas"/>
-        <UnitName Value="Toolkit_CAPI_microWebServer"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="16"/>
-        <CursorPos X="68" Y="173"/>
-        <UsageCount Value="32"/>
+        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
+        <EditorIndex Value="13"/>
+        <TopLine Value="56"/>
+        <CursorPos Y="72"/>
+        <UsageCount Value="30"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="toolkit_capi_virtualkeyboard2.pas"/>
@@ -45,21 +44,17 @@
         <UsageCount Value="17"/>
       </Unit>
       <Unit>
-        <Filename Value="toolkit_capi_circularbuffer.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="13"/>
-        <CursorPos Y="34"/>
-        <UsageCount Value="14"/>
-        <Bookmarks Count="1">
-          <Item0 X="11" Y="170" Left="1" Top="154" ID="1"/>
-        </Bookmarks>
+        <Filename Value="Toolkit_CAPI_CircularBuffer.pas"/>
+        <EditorIndex Value="15"/>
+        <CursorPos X="10" Y="5"/>
+        <UsageCount Value="37"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="toolkit_capi_logger.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="44"/>
-        <CursorPos Y="10"/>
-        <UsageCount Value="14"/>
+        <Filename Value="Toolkit_CAPI_Logger.pas"/>
+        <EditorIndex Value="27"/>
+        <UsageCount Value="55"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="toolkit_capi_webserver.pas"/>
@@ -75,36 +70,24 @@
       <Unit>
         <Filename Value="toolkit_capi_virtualkeyboard.pas"/>
         <EditorIndex Value="-1"/>
-        <CursorPos X="58" Y="12"/>
-        <UsageCount Value="13"/>
+        <TopLine Value="118"/>
+        <CursorPos X="48" Y="142"/>
+        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBLogger/ULBLogger.pas"/>
-        <EditorIndex Value="19"/>
+        <EditorIndex Value="25"/>
         <TopLine Value="585"/>
         <CursorPos X="12" Y="588"/>
-        <UsageCount Value="54"/>
+        <UsageCount Value="55"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBCircularBuffer.pas"/>
-        <EditorIndex Value="17"/>
+        <EditorIndex Value="23"/>
         <CursorPos X="5" Y="8"/>
-        <UsageCount Value="37"/>
+        <UsageCount Value="38"/>
         <Loaded Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="Toolkit_CAPI_Logger.pas"/>
-        <EditorIndex Value="21"/>
-        <UsageCount Value="54"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="Toolkit_CAPI_VirtualKeyboard.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="118"/>
-        <CursorPos X="48" Y="142"/>
-        <UsageCount Value="20"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/sysutils/sysutilh.inc"/>
@@ -307,60 +290,39 @@
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBBaseThread.pas"/>
-        <EditorIndex Value="18"/>
+        <EditorIndex Value="24"/>
         <TopLine Value="15"/>
         <CursorPos X="3" Y="15"/>
-        <UsageCount Value="38"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="Toolkit_CAPI_CircularBuffer.pas"/>
-        <EditorIndex Value="8"/>
-        <CursorPos X="10" Y="5"/>
-        <UsageCount Value="36"/>
+        <UsageCount Value="39"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
-        <EditorIndex Value="9"/>
+        <EditorIndex Value="16"/>
         <TopLine Value="208"/>
         <CursorPos X="45" Y="11"/>
-        <UsageCount Value="36"/>
+        <UsageCount Value="37"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uWebSocketManagement.pas"/>
-        <EditorIndex Value="16"/>
+        <EditorIndex Value="22"/>
         <TopLine Value="26"/>
         <CursorPos X="3" Y="39"/>
-        <UsageCount Value="33"/>
+        <UsageCount Value="34"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uHTTPConsts.pas"/>
-        <EditorIndex Value="15"/>
+        <EditorIndex Value="21"/>
         <TopLine Value="79"/>
         <CursorPos X="44" Y="87"/>
-        <UsageCount Value="31"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <EditorIndex Value="6"/>
-        <TopLine Value="56"/>
-        <CursorPos Y="72"/>
-        <UsageCount Value="29"/>
+        <UsageCount Value="32"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="toolkit_capi_webpybridge.pas"/>
         <UnitName Value="Toolkit_CAPI_WebPyBridge"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="74" Y="17"/>
-        <UsageCount Value="18"/>
-      </Unit>
-      <Unit>
-        <Filename Value="Toolkit_CAPI_WebPyBridge.pas"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="29" Y="8"/>
         <UsageCount Value="29"/>
@@ -373,10 +335,10 @@
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="11"/>
         <TopLine Value="109"/>
-        <CursorPos X="60" Y="27"/>
-        <UsageCount Value="28"/>
+        <CursorPos X="13" Y="27"/>
+        <UsageCount Value="29"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -397,18 +359,18 @@
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBSSLConfig.pas"/>
-        <EditorIndex Value="14"/>
+        <EditorIndex Value="20"/>
         <TopLine Value="33"/>
         <CursorPos X="32" Y="35"/>
-        <UsageCount Value="23"/>
+        <UsageCount Value="24"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uLBmWsDocumentsFolder.pas"/>
-        <EditorIndex Value="13"/>
+        <EditorIndex Value="19"/>
         <TopLine Value="10"/>
         <CursorPos X="3" Y="13"/>
-        <UsageCount Value="23"/>
+        <UsageCount Value="24"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -420,17 +382,17 @@
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
-        <EditorIndex Value="7"/>
+        <EditorIndex Value="14"/>
         <CursorPos X="17" Y="30"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="17"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uHTTPRequestParser.pas"/>
-        <EditorIndex Value="12"/>
+        <EditorIndex Value="18"/>
         <TopLine Value="13"/>
         <CursorPos X="21" Y="30"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="17"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -442,11 +404,10 @@
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-web/src/base/httpdefs.pp"/>
         <UnitName Value="HTTPDefs"/>
-        <EditorIndex Value="11"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="500"/>
         <CursorPos X="14" Y="514"/>
         <UsageCount Value="15"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-web/src/base/httpprotocol.pp"/>
@@ -473,106 +434,108 @@
         <UsageCount Value="11"/>
       </Unit>
       <Unit>
-        <Filename Value="../../LBmicroWebServer/uFPHTTPRequestProcessor.pas"/>
-        <EditorIndex Value="10"/>
-        <CursorPos Y="6"/>
-        <UsageCount Value="13"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="uLBToolkitLoader.pas"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="12"/>
         <CursorPos X="34" Y="191"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBWebPyBridge/uNodeJSBridge.pas"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="-1"/>
         <UsageCount Value="10"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBWebPyBridge/uLBWebPrismApplication.pas"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="209"/>
         <CursorPos X="45" Y="12"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="Toolkit_CAPI_WebPrism.pas"/>
+        <EditorIndex Value="1"/>
+        <CursorPos X="26" Y="8"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../utils/uLBFileUtils.pas"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="52"/>
+        <CursorPos X="69" Y="61"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../../../lazarus/fpc/3.2.2/source/rtl/win/wininc/defines.inc"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="1789"/>
+        <CursorPos X="6" Y="1803"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBWebPrism/uLBWebPrismApplication.pas"/>
+        <EditorIndex Value="-1"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="28"/>
+        <CursorPos X="13" Y="42"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="Toolkit_CAPI_WebPrism.pas"/>
+        <Filename Value="../../../../../../../lazarus/fpc/3.2.2/source/rtl/win/wininc/redef.inc"/>
+        <EditorIndex Value="7"/>
+        <CursorPos X="3" Y="21"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../../../lazarus/fpc/3.2.2/source/rtl/win/wininc/base.inc"/>
+        <EditorIndex Value="8"/>
+        <TopLine Value="87"/>
+        <CursorPos X="6" Y="101"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../../../lazarus/fpc/3.2.2/source/rtl/win/sysosh.inc"/>
+        <EditorIndex Value="9"/>
+        <CursorPos X="3" Y="22"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../../../lazarus/fpc/3.2.2/source/rtl/win/sysdlh.inc"/>
+        <EditorIndex Value="6"/>
+        <CursorPos X="3" Y="21"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBWebPrism/uPythonBridge.pas"/>
         <IsVisibleTab Value="True"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="326"/>
+        <CursorPos X="26" Y="338"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../LBWebPrism/uBaseBridgeManager.pas"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="84"/>
+        <CursorPos X="9" Y="96"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="24">
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="46" Column="25" TopLine="30"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="302" Column="3" TopLine="293"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="40" Column="22" TopLine="23"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="294" Column="38" TopLine="287"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="61" Column="50" TopLine="44"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="252" Column="36" TopLine="242"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="260" Column="37" TopLine="242"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="71" Column="33" TopLine="54"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="135" TopLine="120"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="287" TopLine="277"/>
-      </Position>
-      <Position>
-        <Filename Value="LBToolkit_shared.lpr"/>
-        <Caret Line="54" Column="20" TopLine="37"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="84" Column="14" TopLine="59"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="241" Column="67" TopLine="230"/>
-      </Position>
-      <Position>
-        <Filename Value="LBToolkit_shared.lpr"/>
-        <Caret Line="47" Column="21" TopLine="37"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="70" Column="24" TopLine="62"/>
-      </Position>
-      <Position>
-        <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
-        <Caret Line="135"/>
-      </Position>
+    <JumpHistory HistoryIndex="28">
       <Position>
         <Filename Value="Toolkit_CAPI_microWebServer.pas"/>
         <Caret Line="84" Column="24" TopLine="70"/>
@@ -594,18 +557,99 @@
         <Caret Line="55" Column="15" TopLine="37"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uNodeJSBridge.pas"/>
-      </Position>
-      <Position>
         <Filename Value="LBToolkit_shared.lpr"/>
         <Caret Line="55" Column="15"/>
       </Position>
       <Position>
-        <Filename Value="../../LBWebPyBridge/uLBWebPrismApplication.pas"/>
-      </Position>
-      <Position>
         <Filename Value="LBToolkit_shared.lpr"/>
         <Caret Line="7" Column="48"/>
+      </Position>
+      <Position>
+        <Filename Value="Toolkit_CAPI_WebPrism.pas"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uLBFileUtils.pas"/>
+        <Caret Line="131" Column="28" TopLine="109"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uLBFileUtils.pas"/>
+        <Caret Line="61" Column="69" TopLine="52"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="8" Column="99"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="64" TopLine="46"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="67" Column="19" TopLine="53"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="408" Column="3" TopLine="399"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="402" Column="99" TopLine="394"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="75" Column="13" TopLine="56"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="416" TopLine="401"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="666" Column="40" TopLine="646"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="809" Column="27" TopLine="796"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="807" Column="34" TopLine="807"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="817" Column="33" TopLine="807"/>
+      </Position>
+      <Position>
+        <Filename Value="../../utils/uIPCUtils.pas"/>
+        <Caret Line="820" Column="28" TopLine="807"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPrism/uPythonBridge.pas"/>
+        <Caret Line="220" Column="28" TopLine="214"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPrism/uPythonBridge.pas"/>
+        <Caret Line="226" Column="49" TopLine="215"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPrism/uPythonBridge.pas"/>
+        <Caret Line="301" Column="61" TopLine="278"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPrism/uPythonBridge.pas"/>
+        <Caret Line="303" Column="65" TopLine="289"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPrism/uPythonBridge.pas"/>
+        <Caret Line="346" Column="55" TopLine="332"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPrism/uPythonBridge.pas"/>
+        <Caret Line="347" TopLine="332"/>
+      </Position>
+      <Position>
+        <Filename Value="../../LBWebPrism/uPythonBridge.pas"/>
+        <Caret Line="57" Column="21" TopLine="46"/>
       </Position>
     </JumpHistory>
     <RunParams>

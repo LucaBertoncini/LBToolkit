@@ -58,7 +58,7 @@ type
 implementation
 
 uses
-  fileinfo, ULBLogger, Laz2_XMLRead;
+  fileinfo, ULBLogger, Laz2_XMLRead{$IFDEF Windows}, Windows{$ENDIF};
 
 { TFileInfoRetriever }
 

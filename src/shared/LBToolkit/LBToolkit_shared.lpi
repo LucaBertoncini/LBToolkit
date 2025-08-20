@@ -13,19 +13,19 @@
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
       <Resources Count="13">
-        <Resource_0 FileName="../../LBWebPyBridge/pyScripts/lb_logger.py" Type="RCDATA" ResourceName="PY_LB_LOGGER"/>
-        <Resource_1 FileName="../../LBWebPyBridge/pyScripts/test_launcher.py" Type="RCDATA" ResourceName="PY_TEST_LAUNCHER"/>
-        <Resource_2 FileName="../../LBWebPyBridge/pyScripts/worker.py" Type="RCDATA" ResourceName="PY_WORKER"/>
-        <Resource_3 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_base.py" Type="RCDATA" ResourceName="PY_BRIDGE_BASE"/>
-        <Resource_4 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_sysv.py" Type="RCDATA" ResourceName="PY_BRIDGE_SYSV"/>
-        <Resource_5 FileName="../../LBWebPyBridge/pyScripts/LBBridge/bridge_win.py" Type="RCDATA" ResourceName="PY_BRIDGE_WIN"/>
-        <Resource_6 FileName="../../LBWebPyBridge/pyScripts/LBBridge/__init__.py" Type="RCDATA" ResourceName="PY__INIT__"/>
-        <Resource_7 FileName="../../LBWebPyBridge/pyScripts/LBBridge/sem_sysv.py" Type="RCDATA" ResourceName="PY_SEM_SYSV"/>
-        <Resource_8 FileName="../../LBWebPyBridge/pyScripts/LBBridge/sem_win.py" Type="RCDATA" ResourceName="PY_SEM_WIN"/>
-        <Resource_9 FileName="../../LBWebPyBridge/jsScripts/bridge.js" Type="RCDATA" ResourceName="JS_BRIDGE"/>
-        <Resource_10 FileName="../../LBWebPyBridge/jsScripts/logger.js" Type="RCDATA" ResourceName="JS_LOGGER"/>
-        <Resource_11 FileName="../../LBWebPyBridge/jsScripts/test_launcher.js" Type="RCDATA" ResourceName="JS_TEST_LAUNCHER"/>
-        <Resource_12 FileName="../../LBWebPyBridge/jsScripts/worker.js" Type="RCDATA" ResourceName="JS_WORKER"/>
+        <Resource_0 FileName="..\..\LBWebPrism\pyScripts\lb_logger.py" Type="RCDATA" ResourceName="PY_LB_LOGGER"/>
+        <Resource_1 FileName="..\..\LBWebPrism\pyScripts\test_launcher.py" Type="RCDATA" ResourceName="PY_TEST_LAUNCHER"/>
+        <Resource_2 FileName="..\..\LBWebPrism\pyScripts\worker.py" Type="RCDATA" ResourceName="PY_WORKER"/>
+        <Resource_3 FileName="..\..\LBWebPrism\pyScripts\LBBridge\__init__.py" Type="RCDATA" ResourceName="PY__INIT__"/>
+        <Resource_4 FileName="..\..\LBWebPrism\pyScripts\LBBridge\bridge_base.py" Type="RCDATA" ResourceName="PY_BRIDGE_BASE"/>
+        <Resource_5 FileName="..\..\LBWebPrism\pyScripts\LBBridge\bridge_sysv.py" Type="RCDATA" ResourceName="PY_BRIDGE_SYSV"/>
+        <Resource_6 FileName="..\..\LBWebPrism\pyScripts\LBBridge\bridge_win.py" Type="RCDATA" ResourceName="PY_BRIDGE_WIN"/>
+        <Resource_7 FileName="..\..\LBWebPrism\pyScripts\LBBridge\sem_sysv.py" Type="RCDATA" ResourceName="PY_SEM_SYSV"/>
+        <Resource_8 FileName="..\..\LBWebPrism\pyScripts\LBBridge\sem_win.py" Type="RCDATA" ResourceName="PY_SEM_WIN"/>
+        <Resource_9 FileName="..\..\LBWebPrism\jsScripts\bridge.js" Type="RCDATA" ResourceName="JS_BRIDGE"/>
+        <Resource_10 FileName="..\..\LBWebPrism\jsScripts\logger.js" Type="RCDATA" ResourceName="JS_LOGGER"/>
+        <Resource_11 FileName="..\..\LBWebPrism\jsScripts\test_launcher.js" Type="RCDATA" ResourceName="JS_TEST_LAUNCHER"/>
+        <Resource_12 FileName="..\..\LBWebPrism\jsScripts\worker.js" Type="RCDATA" ResourceName="JS_WORKER"/>
       </Resources>
     </General>
     <BuildModes>
@@ -64,7 +64,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="../../utils;../../LBLogger;../../LBmicroWebServer;../../LBWebPyBridge"/>
+      <OtherUnitFiles Value="../../utils;../../LBLogger;../../LBmicroWebServer;../../LBWebPrism"/>
       <UnitOutputDirectory Value="/tmp/lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <CodeGeneration>

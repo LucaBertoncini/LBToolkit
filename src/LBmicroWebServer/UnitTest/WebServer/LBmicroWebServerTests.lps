@@ -7,7 +7,8 @@
       <Unit>
         <Filename Value="LBmicroWebServerTests.lpr"/>
         <IsPartOfProject Value="True"/>
-        <CursorPos X="92" Y="7"/>
+        <IsVisibleTab Value="True"/>
+        <CursorPos X="34" Y="6"/>
         <UsageCount Value="39"/>
         <Loaded Value="True"/>
       </Unit>
@@ -43,12 +44,12 @@
         <Loaded Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="../../uhttprequestparser.pas"/>
-        <UnitName Value="uHTTPRequestParser"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="272"/>
-        <CursorPos X="116" Y="278"/>
-        <UsageCount Value="20"/>
+        <Filename Value="../../uHTTPRequestParser.pas"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="288"/>
+        <CursorPos X="28" Y="288"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="/root/.lazarus/onlinepackagemanager/packages/synapse40.1/httpsend.pas"/>
@@ -66,7 +67,7 @@
       </Unit>
       <Unit>
         <Filename Value="../../uWebSocketManagement.pas"/>
-        <EditorIndex Value="11"/>
+        <EditorIndex Value="10"/>
         <TopLine Value="632"/>
         <CursorPos X="77" Y="653"/>
         <UsageCount Value="19"/>
@@ -115,7 +116,7 @@
       </Unit>
       <Unit>
         <Filename Value="../../uLBmWsFileManager.pas"/>
-        <EditorIndex Value="12"/>
+        <EditorIndex Value="11"/>
         <TopLine Value="44"/>
         <CursorPos Y="46"/>
         <UsageCount Value="18"/>
@@ -123,14 +124,14 @@
       </Unit>
       <Unit>
         <Filename Value="../../../utils/uHTTPConsts.pas"/>
-        <EditorIndex Value="10"/>
+        <EditorIndex Value="9"/>
         <CursorPos Y="17"/>
         <UsageCount Value="17"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../../utils/uLBCircularBuffer.pas"/>
-        <EditorIndex Value="9"/>
+        <EditorIndex Value="8"/>
         <TopLine Value="427"/>
         <CursorPos X="13" Y="451"/>
         <UsageCount Value="16"/>
@@ -155,11 +156,10 @@
       <Unit>
         <Filename Value="/usr/share/lazarus/4.2.0/components/lazutils/laz2_dom.pas"/>
         <UnitName Value="Laz2_DOM"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="248"/>
         <CursorPos X="14" Y="259"/>
         <UsageCount Value="13"/>
-        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../../utils/uLBSSLConfig.pas"/>
@@ -176,28 +176,14 @@
         <UsageCount Value="11"/>
       </Unit>
       <Unit>
-        <Filename Value="../../uHTTPRequestParser.pas"/>
-        <EditorIndex Value="5"/>
-        <TopLine Value="288"/>
-        <CursorPos X="28" Y="288"/>
-        <UsageCount Value="11"/>
-        <Loaded Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="../../uFPHTTPRequestProcessor.pas"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="154"/>
         <CursorPos X="3" Y="169"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
     <JumpHistory HistoryIndex="29">
-      <Position>
-        <Filename Value="../../uLBmicroWebServer.pas"/>
-        <Caret Line="662" Column="64" TopLine="648"/>
-      </Position>
       <Position>
         <Filename Value="../../uLBmicroWebServer.pas"/>
         <Caret Line="520" Column="44" TopLine="502"/>
@@ -313,6 +299,10 @@
       <Position>
         <Filename Value="../../uFPHTTPRequestProcessor.pas"/>
         <Caret Line="45" Column="25" TopLine="31"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uFPHTTPRequestProcessor.pas"/>
+        <Caret Line="169" Column="3"/>
       </Position>
     </JumpHistory>
     <RunParams>

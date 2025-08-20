@@ -57,9 +57,13 @@ uses
   ULBLogger;
 
 const
+  cSleepTime        = Integer(10);
+  {$IFDEF Windows}
+  cShmBaseNameValue = String('pyBridge_shm');
+  {$ELSE}
   cShmStartingValue = Integer(1975);
   cSemStartingValue = Integer(11975);
-  cSleepTime        = Integer(10);
+  {$ENDIF}
 
 
 var
@@ -221,12 +225,14 @@ begin
         FProcess := TProcess.Create(nil);
         FProcess.Executable := 'python3';
         FProcess.Parameters.Add(_Path);
-        FProcess.Parameters.Add(IntToStr(FSharedMem^.key));
-        FProcess.Parameters.Add(IntToStr(FSharedMem^.size));
         {$IFDEF WINDOWS}
+        FProcess.Parameters.Add(FSharedMem^.name);
+        FProcess.Parameters.Add(IntToStr(FSharedMem^.size));
         FProcess.Parameters.Add(FRequestSem.Name);
         FProcess.Parameters.Add(FResponseSem.Name);
         {$ELSE}
+        FProcess.Parameters.Add(IntToStr(FSharedMem^.key));
+        FProcess.Parameters.Add(IntToStr(FSharedMem^.size));
         FProcess.Parameters.Add(IntToStr(FRequestSem.Key));
         FProcess.Parameters.Add(IntToStr(FResponseSem.Key));
         {$ENDIF}
@@ -284,6 +290,7 @@ constructor TPythonBridge.Create(Params: TBridgeConfigParams);
 {$IFDEF Windows}
 var
   semNameRequest, semNameResponse: string;
+  _Counter : Integer;
 {$ENDIF}
 begin
   inherited Create(Params);
@@ -292,10 +299,12 @@ begin
   FProcess := nil;
 
   {$IFDEF WINDOWS}
-  semNameRequest := 'pybridge_req_sem_' + IntToStr(GetCurrentProcessId()) + '_' + IntToStr(FThreadNum);
-  semNameResponse := 'pybridge_res_sem_' + IntToStr(GetCurrentProcessId()) + '_' + IntToStr(FThreadNum);
-  FRequestSem := TLBNamedSemaphore.Create(semNameRequest, 0);
-  FResponseSem := TLBNamedSemaphore.Create(semNameResponse, 0);
+  _Counter := InterlockedIncrement(gv_SemCounter);
+
+  semNameRequest := 'pybridge_req_sem_' + IntToStr(_Counter) + '_' + IntToStr(FThreadNum);
+  semNameResponse := 'pybridge_res_sem_' + IntToStr(_Counter) + '_' + IntToStr(FThreadNum);
+  FRequestSem := TLBNamedSemaphore.Create(semNameRequest, True);
+  FResponseSem := TLBNamedSemaphore.Create(semNameResponse, True);
   {$ELSE}
   // On Linux, we need the shared memory to be prepared first to get the key.
   // The semaphores will be created in prepareSharedMemory.
@@ -338,9 +347,12 @@ begin
 
   if FConfigParams.SharedMemSize > 0 then
   begin
+    {$IFDEF Windows}
+    FSharedMem := AllocateSharedMemory(cShmBaseNameValue + '_' + IntToStr(FThreadNum), FConfigParams.SharedMemSize);
+    Result := FSharedMem <> nil;
+    {$ELSE}
     FSharedMem := AllocateSharedMemory(cShmStartingValue + FThreadNum, FConfigParams.SharedMemSize);
     Result := FSharedMem <> nil;
-    {$IFNDEF WINDOWS}
     if Result then
     begin
       // On Linux, create semaphores after shared memory to have a key.

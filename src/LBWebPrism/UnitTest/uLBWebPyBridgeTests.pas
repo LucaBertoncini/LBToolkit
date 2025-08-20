@@ -26,6 +26,9 @@ type
     procedure TearDown; override;
 
   public
+
+  published
+    procedure Test_NodeJSExample;
     procedure Test_NoWorkerPy;
     {$IFDEF Unix}
     procedure Test_PythonWorkerRunning;
@@ -35,9 +38,6 @@ type
     procedure Test_ScriptException;
     procedure Test_Sum;
     procedure Test_AppHello;
-
-  published
-    procedure Test_NodeJSExample;
   end;
 
 implementation

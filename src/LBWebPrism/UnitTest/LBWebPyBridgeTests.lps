@@ -14,9 +14,8 @@
       <Unit>
         <Filename Value="uLBWebPyBridgeTests.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <CursorPos X="14" Y="47"/>
+        <CursorPos X="54" Y="24"/>
         <UsageCount Value="119"/>
         <Loaded Value="True"/>
       </Unit>
@@ -91,9 +90,10 @@
       </Unit>
       <Unit>
         <Filename Value="../uPythonBridge.pas"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="6"/>
-        <TopLine Value="19"/>
-        <CursorPos Y="37"/>
+        <TopLine Value="221"/>
+        <CursorPos X="68" Y="231"/>
         <UsageCount Value="21"/>
         <Loaded Value="True"/>
       </Unit>
@@ -248,6 +248,7 @@
       <Unit>
         <Filename Value="../../LBmicroWebServer/uHTTPRequestParser.pas"/>
         <EditorIndex Value="3"/>
+        <TopLine Value="67"/>
         <CursorPos X="39" Y="92"/>
         <UsageCount Value="21"/>
         <Loaded Value="True"/>
@@ -255,6 +256,7 @@
       <Unit>
         <Filename Value="../uBridgeChainModule.pas"/>
         <EditorIndex Value="7"/>
+        <TopLine Value="89"/>
         <CursorPos X="11" Y="113"/>
         <UsageCount Value="21"/>
         <Loaded Value="True"/>

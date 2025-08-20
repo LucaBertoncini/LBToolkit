@@ -223,7 +223,7 @@ begin
       begin
         // Starting worker.py and passing it shared memory code and size
         FProcess := TProcess.Create(nil);
-        FProcess.Executable := 'python';
+        FProcess.Executable := {$IFDEF WINDOWS}'python'{$ELSE}'python3'{$ENDIF};
         FProcess.Parameters.Add(_Path);
         {$IFDEF WINDOWS}
         FProcess.Parameters.Add(FSharedMem^.name);

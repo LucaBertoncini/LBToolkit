@@ -274,10 +274,14 @@ end;
 
 function TNodeJSBridge.prepareIPCChannel(): Boolean;
 begin
+  {$IFDEF WINDOWS}
+  FIPCFile := FConfigParams.SocketFile + '_' + IntToStr(FThreadNum);
+  {$ELSE}
   FIPCFile := ExtractFileName(FConfigParams.SocketFile);
   FIPCFile := ExtractFilePath(FConfigParams.SocketFile) + IntToStr(FThreadNum) + '_' + FIPCFile;
   if FileExists(FIPCFile) then
     DeleteFile(FIPCFile);
+  {$ENDIF}
 
   FServerSocket := TLocalServerSocket.Create(FIPCFile);
   Result := FServerSocket.Listen;

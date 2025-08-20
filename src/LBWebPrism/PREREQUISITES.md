@@ -15,8 +15,12 @@ python3 --version
 ## Node.js Wrapper
 
 -   **Node.js Version:** Node.js 14.x or newer is recommended.
--   **Installation:** The Node.js wrapper uses only the built-in `net` and `fs` modules, so no `npm install` is necessary for the wrapper itself. Node.js and npm can be downloaded from the [official Node.js website](https://nodejs.org/).
-
+-   **pywin32**: Required for Pacal - Node.js communication via Named Pipes on Windows.
+    To install:
+    ```bash
+    pip install pywin32
+    ```
+	
 To check your Node.js version, run:
 ```bash
 node --version

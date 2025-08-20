@@ -8,23 +8,27 @@
         <Filename Value="LBWebPyBridgeTests.lpr"/>
         <IsPartOfProject Value="True"/>
         <CursorPos X="33" Y="6"/>
-        <UsageCount Value="119"/>
+        <UsageCount Value="123"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uLBWebPyBridgeTests.pas"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <CursorPos X="54" Y="24"/>
-        <UsageCount Value="119"/>
+        <TopLine Value="13"/>
+        <CursorPos Y="28"/>
+        <UsageCount Value="123"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uLBWebPyBridgeTestRunner.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <CursorPos X="3" Y="36"/>
-        <UsageCount Value="20"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="44"/>
+        <CursorPos X="51" Y="65"/>
+        <UsageCount Value="24"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../pyScripts/worker.py"/>
@@ -32,7 +36,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="10"/>
         <CursorPos X="19" Y="35"/>
-        <UsageCount Value="101"/>
+        <UsageCount Value="105"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -40,7 +44,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="24" Y="3"/>
-        <UsageCount Value="96"/>
+        <UsageCount Value="100"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -49,7 +53,7 @@
         <EditorIndex Value="-1"/>
         <TopLine Value="44"/>
         <CursorPos X="31" Y="65"/>
-        <UsageCount Value="96"/>
+        <UsageCount Value="100"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -57,7 +61,7 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="25" Y="4"/>
-        <UsageCount Value="92"/>
+        <UsageCount Value="96"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
@@ -65,19 +69,19 @@
         <IsPartOfProject Value="True"/>
         <EditorIndex Value="-1"/>
         <CursorPos X="9" Y="7"/>
-        <UsageCount Value="88"/>
+        <UsageCount Value="92"/>
         <DefaultSyntaxHighlighter Value="Python"/>
       </Unit>
       <Unit>
-        <Filename Value="../unodejsbridge.pas"/>
-        <UnitName Value="uNodeJSBridge"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="71"/>
-        <CursorPos X="32" Y="122"/>
+        <Filename Value="../uNodeJSBridge.pas"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="263"/>
+        <CursorPos X="25" Y="270"/>
         <UsageCount Value="41"/>
         <Bookmarks Count="1">
           <Item0 X="31" Y="204" Left="1" Top="189" ID="1"/>
         </Bookmarks>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../uPyBridgeChainModule.pas"/>
@@ -90,11 +94,10 @@
       </Unit>
       <Unit>
         <Filename Value="../uPythonBridge.pas"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="6"/>
-        <TopLine Value="221"/>
-        <CursorPos X="68" Y="231"/>
-        <UsageCount Value="21"/>
+        <EditorIndex Value="9"/>
+        <TopLine Value="73"/>
+        <CursorPos X="3" Y="172"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -145,10 +148,10 @@
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uLBmicroWebServer.pas"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="7"/>
         <TopLine Value="319"/>
         <CursorPos X="3" Y="329"/>
-        <UsageCount Value="39"/>
+        <UsageCount Value="40"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -193,24 +196,25 @@
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBBaseThread.pas"/>
-        <EditorIndex Value="-1"/>
-        <TopLine Value="27"/>
-        <CursorPos X="70" Y="48"/>
-        <UsageCount Value="34"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="54"/>
+        <CursorPos X="23" Y="65"/>
+        <UsageCount Value="35"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBApplicationBoostrap.pas"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="11"/>
         <TopLine Value="163"/>
         <CursorPos X="41" Y="191"/>
-        <UsageCount Value="37"/>
+        <UsageCount Value="38"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="8"/>
         <CursorPos X="5" Y="7"/>
-        <UsageCount Value="30"/>
+        <UsageCount Value="31"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -239,26 +243,25 @@
       </Unit>
       <Unit>
         <Filename Value="../uBaseBridgeManager.pas"/>
-        <EditorIndex Value="2"/>
-        <TopLine Value="89"/>
-        <CursorPos X="9" Y="94"/>
-        <UsageCount Value="22"/>
+        <EditorIndex Value="4"/>
+        <TopLine Value="62"/>
+        <CursorPos X="59" Y="110"/>
+        <UsageCount Value="23"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../LBmicroWebServer/uHTTPRequestParser.pas"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="67"/>
-        <CursorPos X="39" Y="92"/>
-        <UsageCount Value="21"/>
+        <EditorIndex Value="6"/>
+        <CursorPos X="38" Y="92"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../uBridgeChainModule.pas"/>
-        <EditorIndex Value="7"/>
-        <TopLine Value="89"/>
-        <CursorPos X="11" Y="113"/>
-        <UsageCount Value="21"/>
+        <EditorIndex Value="10"/>
+        <TopLine Value="3"/>
+        <CursorPos X="20" Y="3"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
@@ -269,58 +272,125 @@
         <UsageCount Value="15"/>
       </Unit>
     </Units>
-    <JumpHistory HistoryIndex="12">
+    <JumpHistory HistoryIndex="29">
       <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="25" Column="18" TopLine="12"/>
+        <Filename Value="../uPythonBridge.pas"/>
+        <Caret Line="24" Column="27" TopLine="10"/>
       </Position>
       <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="108" Column="84" TopLine="105"/>
+        <Filename Value="../uPythonBridge.pas"/>
+        <Caret Line="216" Column="3" TopLine="203"/>
       </Position>
       <Position>
-        <Filename Value="../../LBmicroWebServer/uLBWebServerConfigurationLoader.pas"/>
-        <Caret Line="7" Column="61"/>
+        <Filename Value="../uPythonBridge.pas"/>
+        <Caret Line="24" Column="17" TopLine="10"/>
       </Position>
       <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="38" Column="28" TopLine="24"/>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="73" Column="3" TopLine="71"/>
       </Position>
       <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="337" Column="3" TopLine="315"/>
+        <Filename Value="../../utils/uLBBaseThread.pas"/>
+        <Caret Line="29" Column="20" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPythonBridge.pas"/>
+        <Caret Line="24" Column="21" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBridgeChainModule.pas"/>
+        <Caret Line="113" Column="11"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="130" Column="28" TopLine="120"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="423" Column="3" TopLine="412"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="139" Column="20" TopLine="120"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="477" Column="3" TopLine="465"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="130" Column="40" TopLine="114"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="403" Column="30" TopLine="389"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPythonBridge.pas"/>
+        <Caret Line="253" Column="34" TopLine="206"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPythonBridge.pas"/>
+        <Caret Line="13" Column="3" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="75" Column="49" TopLine="67"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="95" Column="23" TopLine="71"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="180" Column="17" TopLine="165"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="95" Column="23" TopLine="83"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="180" Column="17" TopLine="156"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPythonBridge.pas"/>
+        <Caret Line="15" Column="68" TopLine="10"/>
+      </Position>
+      <Position>
+        <Filename Value="../uPythonBridge.pas"/>
+        <Caret Line="184" Column="25" TopLine="167"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="130" Column="40" TopLine="112"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="409" Column="36" TopLine="386"/>
+      </Position>
+      <Position>
+        <Filename Value="../uBaseBridgeManager.pas"/>
+        <Caret Line="127" Column="7" TopLine="113"/>
       </Position>
       <Position>
         <Filename Value="LBWebPyBridgeTests.lpr"/>
         <Caret Line="6" Column="33"/>
       </Position>
       <Position>
-        <Filename Value="LBWebPyBridgeTests.lpr"/>
-        <Caret Line="6" Column="33"/>
-      </Position>
-      <Position>
         <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="40" Column="25" TopLine="20"/>
       </Position>
       <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="341" Column="30" TopLine="323"/>
+        <Filename Value="../uNodeJSBridge.pas"/>
+        <Caret Line="17" Column="20" TopLine="10"/>
       </Position>
       <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="334" Column="19" TopLine="294"/>
+        <Filename Value="../uNodeJSBridge.pas"/>
+        <Caret Line="176" Column="19" TopLine="170"/>
       </Position>
       <Position>
-        <Filename Value="LBWebPyBridgeTests.lpr"/>
-        <Caret Line="6" Column="33"/>
-      </Position>
-      <Position>
-        <Filename Value="uLBWebPyBridgeTests.pas"/>
-        <Caret Line="40" Column="27" TopLine="16"/>
-      </Position>
-      <Position>
-        <Filename Value="LBWebPyBridgeTests.lpr"/>
-        <Caret Line="6" Column="33"/>
+        <Filename Value="../uNodeJSBridge.pas"/>
+        <Caret Line="185" Column="67" TopLine="170"/>
       </Position>
     </JumpHistory>
     <RunParams>

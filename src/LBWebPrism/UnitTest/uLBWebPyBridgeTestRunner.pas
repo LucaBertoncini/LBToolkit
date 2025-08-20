@@ -61,7 +61,11 @@ begin
     _cfg.Add('ThreadPoolSize=1');
     _cfg.Add('WorkerTimeout=5000'); // Use a shorter timeout for tests
     _cfg.Add('ScriptsFolder=./jsScripts');
+    {$IFDEF WINDOWS}
+    _cfg.Add('SocketFilename=\\.\pipe\Prism_NodeJS');
+    {$ELSE}
     _cfg.Add('SocketFilename=/tmp/NodeJS.sock');
+    {$ENDIF}
 
     _cfg.SaveToFile(FConfigFilename);
   finally

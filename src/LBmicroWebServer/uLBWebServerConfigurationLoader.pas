@@ -122,6 +122,8 @@ begin
           begin
             if DirectoryExists(_DocumentFolder) then
             begin
+              LBLogger.Write(5, 'TINIConfigLoader.LoadConfig', lmt_Debug, 'Document folder <%s>', [_DocumentFolder]);
+
               aWebServer.createDocumentFolder();
               aWebServer.DocumentsFolder.DocumentFolder := _DocumentFolder;
             end

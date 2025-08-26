@@ -135,7 +135,7 @@ begin
       if Pos(FDocumentFolder, _LocalPath) = 1 then
         Result := _LocalPath
       else
-        LBLogger.Write(1, 'TLBmWsDocumentsFolder.RetrieveFilename', lmt_Warning, 'Path traversal rilevato: <%s>', [_LocalPath]);
+        LBLogger.Write(1, 'TLBmWsDocumentsFolder.RetrieveFilename', lmt_Warning, 'Path traversal found: <%s>', [_LocalPath]);
     end;
   end
   else

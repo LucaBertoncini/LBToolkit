@@ -323,13 +323,12 @@ begin
     FProcessors.Last.NextStep := nil;
 end;
 
-function TLBmicroWebServer.ProcessRequest(HTTPParser: THTTPRequestParser;
-  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TLBmicroWebServer.ProcessRequest(HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := False;
 
   try
-    if FProcessors.First <> nil then
+    if (FProcessors.Count > 0) then
       Result := FProcessors.First.ProcessRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 
   except
@@ -640,7 +639,9 @@ begin
     Result := HTTP_STATUS_NOT_FOUND;
     if FWebServerOwner.ProcessRequest(FParser, FOutputHeaders, FOutputData, Result) then
       NextState := rms_SendHTTPAnswer;
-  end;
+  end
+  else
+    LBLogger.Write(1, 'THTTPRequestManager.ProcessGETRequest', lmt_Warning, 'WebServer not set!');
 end;
 
 function THTTPRequestManager.ProcessHEADRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;

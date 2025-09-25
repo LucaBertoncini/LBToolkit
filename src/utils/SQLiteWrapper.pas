@@ -5,7 +5,7 @@ unit SQLiteWrapper;
 interface
 
 uses
-  Classes, SysUtils, SQLite3Dyn, uLBUtils;
+  Classes, SysUtils, SQLite3Dyn, uTimedoutCriticalSection;
 
 type
 
@@ -16,7 +16,7 @@ type
   TSQLiteDBManager = class(TObject)
     public
       type
-        TNewDBEvent = procedure (Sender: TObject; anUTCCreationTime: TDateTime) of object;
+        TNewDBEvent = function (Sender: TObject; anUTCCreationTime: TDateTime): Boolean of object;
 
     strict private
       FOnNewDBEvent : TNewDBEvent;
@@ -91,7 +91,7 @@ type
 implementation
 
 uses
-  ULBLogger, LazFileUtils;
+  ULBLogger, LazFileUtils, LazSysUtils;
 
 var
   gv_SQLiteInitialized  : Boolean = False;
@@ -245,7 +245,7 @@ var
   _errmsg : PAnsiChar = nil;
   _sError : String;
   i : Integer;
-  _Statement : PChar = nil;
+  _Statement : PAnsiChar = nil;
 
 
 begin
@@ -259,16 +259,14 @@ begin
 
     for i := 0 to aSQLStatements.Count - 1 do
     begin
-      _Statement := uLBUtils.getNullTerminatedString(aSQLStatements.Strings[i]);
-      Result := sqlite3_exec(FDBHandle, _Statement{PAnsiChar(aSQLStatements.Strings[i])}, nil, nil, @_errmsg) = SQLITE_OK;
+      _Statement := PAnsiChar(aSQLStatements.Strings[i]);
+      Result := sqlite3_exec(FDBHandle, _Statement, nil, nil, @_errmsg) = SQLITE_OK;
       if not Result then
       begin
         _sError := StrPas(_errmsg);
         LBLogger.Write(1, 'TSQLiteDBManager.executeSQL', lmt_Warning, 'Statement %d not executed: <%s>', [i + 1, _sError {AnsiString(sqlite3_errstr(FDBHandle))}]);
         raise Exception.Create(Format('Statement <%s> not executed: <%s>',[aSQLStatements.Strings[i], _sError {AnsiString(sqlite3_errstr(FDBHandle))}]));
       end;
-
-      uLBUtils.disposeNullTerminatedString(_Statement);
 
       if _errmsg <> nil then
       begin
@@ -282,7 +280,7 @@ end;
 function TSQLiteDBManager.executeSQL(const aSingleStatement: String): Boolean;
 var
   _errmsg : PAnsiChar = nil;
-  _Statement : PChar = nil;
+  _Statement : PAnsiChar = nil;
   _sError : String;
 
 begin
@@ -295,7 +293,7 @@ begin
     FEOF := True;
     FEmptyRecordset := True;
 
-    _Statement := uLBUtils.getNullTerminatedString(aSingleStatement);
+    _Statement := PAnsiChar(aSingleStatement);
 
     Result := sqlite3_exec(FDBHandle, _Statement, nil, nil, @_errmsg) = SQLITE_OK;
     if not Result then
@@ -304,8 +302,6 @@ begin
       LBLogger.Write(1, 'TSQLiteDBManager.executeSQL', lmt_Warning, 'Statement <%s> not executed: <%s>', [aSingleStatement, _sError]);
       raise Exception.Create(Format('Statement <%s> not executed: <%s>',[aSingleStatement, _sError]));
     end;
-
-    uLBUtils.disposeNullTerminatedString(_Statement);
 
     if _errmsg <> nil then
       sqlite3_free(_errmsg);
@@ -577,7 +573,7 @@ begin
   if gv_SQLiteInitialized then
   begin
 
-    _DBName := uLBUtils.getNullTerminatedString(aDBName);
+    _DBName := PAnsiChar(aDBName);
 
     if _DBName <> nil then
     begin
@@ -643,8 +639,6 @@ begin
           LBLogger.Write(1, 'TSQLiteDBManager.ConnectDB', lmt_Warning, 'DB <%s> not opened: <%s>', [aDBName, AnsiString(sqlite3_errmsg(FDBHandle))]);
           Self.CloseConnection();
         end;
-
-        uLBUtils.disposeNullTerminatedString(_DBName);
       end;
     end
     else

@@ -22,8 +22,13 @@ type
         pLoggerConfig = ^TLoggerConfig;
 
         TWebServerConfig = record
-          Port         : Integer;
-          DocumentRoot : String;
+          Port            : Integer;
+          DocumentsFolder : String;
+
+          CertificateFile   : String;
+          CACertificateFile : String;
+          PrivateKeyFile    : String;
+          KeyPassword       : String;
         end;
         pWebServerConfig = ^TWebServerConfig;
 
@@ -54,27 +59,27 @@ type
 
       const
         // Sezioni
-        cINI_CFG_SEC_LOGGER         = 'LBLogger';
-        cINI_CFG_SEC_WEBSERVER      = 'LBmicroWebServer';
+        cINI_CFG_SEC_LOGGER          = 'LBLogger';
+        cINI_CFG_SEC_WEBSERVER       = 'LBmicroWebServer';
 
         // Logger keys
-        cINI_CFG_KEY_LOGFILE        = 'LogFile';
-        cINI_CFG_KEY_LOGLEVEL       = 'LogLevel';
-        cINI_CFG_KEY_LOGFILESIZE    = 'MaxFileSize';
+        cINI_CFG_KEY_LOGFILE         = 'LogFile';
+        cINI_CFG_KEY_LOGLEVEL        = 'LogLevel';
+        cINI_CFG_KEY_LOGFILESIZE     = 'MaxFileSize';
 
         // WebServer keys
-        cINI_CFG_KEY_PORT           = 'Port';
-        cINI_CFG_KEY_DOCUMENTROOT   = 'DocumentRoot';
+        cINI_CFG_KEY_PORT            = 'Port';
+        cINI_CFG_KEY_DOCUMENTSFOLDER = 'DocumentsFolder';
 
-        cXML_CFG_Logger             = cINI_CFG_SEC_LOGGER;
-        cXML_CFG_WEBSERVER          = cINI_CFG_SEC_WEBSERVER;
+        cXML_CFG_Logger              = cINI_CFG_SEC_LOGGER;
+        cXML_CFG_WEBSERVER           = cINI_CFG_SEC_WEBSERVER;
 
-        cXML_CFG_ATTR_LOGFILE       = cINI_CFG_KEY_LOGFILE;
-        cXML_CFG_ATTR_LOGLEVEL      = cINI_CFG_KEY_LOGLEVEL;
-        cXML_CFG_ATTR_LOGFILESIZE   = cINI_CFG_KEY_LOGFILESIZE;
+        cXML_CFG_ATTR_LOGFILE        = cINI_CFG_KEY_LOGFILE;
+        cXML_CFG_ATTR_LOGLEVEL       = cINI_CFG_KEY_LOGLEVEL;
+        cXML_CFG_ATTR_LOGFILESIZE    = cINI_CFG_KEY_LOGFILESIZE;
 
-        cXML_CFG_ATTR_WEBPORT       = cINI_CFG_KEY_PORT;
-        cXML_CFG_ATTR_DOCUMENTROOT  = cINI_CFG_KEY_DOCUMENTROOT;
+        cXML_CFG_ATTR_WEBPORT        = cINI_CFG_KEY_PORT;
+        cXML_CFG_ATTR_DOCUMENTROOT   = cINI_CFG_KEY_DOCUMENTSFOLDER;
 
 
         cExtension_INIFile = '.ini';
@@ -86,7 +91,7 @@ type
 implementation
 
 uses
-  ULBLogger, FileUtil, uLBFileUtils;
+  ULBLogger, FileUtil, uLBFileUtils, uLBSSLConfig;
 
 { TLBApplicationBoostrap }
 
@@ -124,7 +129,7 @@ begin
       if _Item <> nil then
       begin
         _WebCfg.Port := StrToIntDef(_Item.GetAttribute(cXML_CFG_ATTR_WEBPORT), 0);
-        _WebCfg.DocumentRoot := Trim(_Item.GetAttribute(cXML_CFG_ATTR_DOCUMENTROOT));
+        _WebCfg.DocumentsFolder := Trim(_Item.GetAttribute(cXML_CFG_ATTR_DOCUMENTROOT));
       end
       else
         FillChar(_WebCfg, SizeOf(_WebCfg), 0);
@@ -189,7 +194,14 @@ begin
       if _IniF.SectionExists(cINI_CFG_SEC_WEBSERVER) then
       begin
         _WebCfg.Port := _IniF.ReadInteger(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_PORT, 0);
-        _WebCfg.DocumentRoot := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_DOCUMENTROOT, '');
+        _WebCfg.DocumentsFolder := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_DOCUMENTSFOLDER, '');
+        if _IniF.SectionExists(TSSLConnectionData.cDEFAULT_INI_SECTION) then
+        begin
+          _WebCfg.CertificateFile   := _IniF.ReadString(TSSLConnectionData.cDEFAULT_INI_SECTION, TSSLConnectionData.cSSLCertificateNodeName, '');
+          _WebCfg.CACertificateFile := _IniF.ReadString(TSSLConnectionData.cDEFAULT_INI_SECTION, TSSLConnectionData.cSSLCACertificateNodeName, '');
+          _WebCfg.PrivateKeyFile    := _IniF.ReadString(TSSLConnectionData.cDEFAULT_INI_SECTION, TSSLConnectionData.cSSLPrivateKeyNodeName, '');
+          _WebCfg.KeyPassword       := _IniF.ReadString(TSSLConnectionData.cDEFAULT_INI_SECTION, TSSLConnectionData.cSSLKeyPasswordNodeName, '');
+        end;
       end;
 
       Result := Self.LoadConfigurationFromINIFileInternal(_IniF, anErrorMsg);
@@ -246,19 +258,38 @@ var
 begin
   if aConfiguration <> nil then
   begin
-    FreeAndNil(FWebServer);
-    if aConfiguration^.Port > 0 then
-    begin
-      FWebServer := TLBmicroWebServer.Create;
-      if aConfiguration^.DocumentRoot <> '' then
+
+    try
+      FreeAndNil(FWebServer);
+      if aConfiguration^.Port > 0 then
       begin
-        _DocRoot := ResolvePath(aConfiguration^.DocumentRoot);
-        if _DocRoot <> '' then
-          FWebServer.DocumentsFolder.DocumentFolder := _DocRoot;
+        FWebServer := TLBmicroWebServer.Create;
+        if aConfiguration^.DocumentsFolder <> '' then
+        begin
+          _DocRoot := ResolvePath(aConfiguration^.DocumentsFolder);
+          if _DocRoot <> '' then
+          begin
+            FWebServer.createDocumentFolder();
+            FWebServer.DocumentsFolder.DocumentFolder := _DocRoot;
+          end;
+        end;
+
+        if aConfiguration^.CertificateFile <> '' then
+        begin
+          FWebServer.SSLData.CertificateFile   := aConfiguration^.CertificateFile;
+          FWebServer.SSLData.CACertificateFile := aConfiguration^.CACertificateFile;
+          FWebServer.SSLData.PrivateKeyFile    := aConfiguration^.PrivateKeyFile;
+          FWebServer.SSLData.KeyPassword       := aConfiguration^.KeyPassword;
+        end;
+
+        Self.startingWebServer();
+        FWebServer.ListeningPort := aConfiguration^.Port;
+        FWebServer.Activate();
       end;
-      Self.startingWebServer();
-      FWebServer.ListeningPort := aConfiguration^.Port;
-      FWebServer.Activate();
+
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'TLBApplicationBoostrap.setUpWebServer', lmt_Error, E.Message);
     end;
   end;
 end;

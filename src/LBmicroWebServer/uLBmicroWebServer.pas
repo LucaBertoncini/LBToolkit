@@ -274,8 +274,11 @@ const
 
 implementation
 
+{$smartlink off}
 uses
-  uHTTPConsts, synautil, laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
+  uHTTPConsts, System.NetEncoding, ssl_openssl3, synautil, laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
+
+{$smartlink on}
 
 { TAnswerError }
 
@@ -355,6 +358,10 @@ begin
   FProcessors := TRequestChainProcessorList.Create(True);
 
   FListener := nil;
+
+  {$IFDEF CodeTyphon}
+  InitOpenSSL3();
+  {$ENDIF}
 end;
 
 destructor TLBmicroWebServer.Destroy;
@@ -817,6 +824,8 @@ var
   parseResult: TParserResult;
   lastDataTime: TTimeoutTimer;
   bytesRead: Integer;
+  _Buff : TBytes;
+
 begin
   SocketError := False;
   Result := False;
@@ -860,7 +869,15 @@ begin
       if lastDataTime.Expired then
       begin
         Result := False;
-        LBLogger.Write(1, 'THTTPRequestManager', lmt_Warning, 'Request idle timeout.');
+        LBLogger.Write(1, 'THTTPRequestManager.ReceiveAndParseRequest', lmt_Warning, 'Request idle timeout. Available bytes: %d', [FRecvBuffer.Buffer.AvailableForRead]);
+        if FRecvBuffer.Buffer.AvailableForRead > 0 then
+        begin
+          SetLength(_Buff, FRecvBuffer.Buffer.AvailableForRead);
+
+          FRecvBuffer.Buffer.Peek(@_Buff[0], Length(_Buff), 0);
+          LBLogger.Write(1, 'THTTPRequestManager.ReceiveAndParseRequest', lmt_Warning, 'Received: <%s>', [TNetEncoding.Base64.EncodeBytesToString(_Buff)]);
+          SetLength(_Buff, 0);
+        end;
         Break;
       end;
     end;

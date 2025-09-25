@@ -193,7 +193,7 @@ begin
   if (FMethod = '') or (FURI = '') or (Pos('HTTP/', FHTTPVersion) <> 1) then
   begin
     FState := psError;
-    LBLogger.Write(1, 'THTTPRequestParser', lmt_Warning, 'Invalid request line: ' + FCurrentLine);
+    LBLogger.Write(1, 'THTTPRequestParser.ProcessRequestLine', lmt_Warning, 'Invalid request line: ' + FCurrentLine);
   end
   else
     FRawRequestLine := FCurrentLine;
@@ -228,7 +228,7 @@ begin
     begin
       FState := psError;
       Result := prError;
-      LBLogger.Write(1, 'THTTPRequestParser', lmt_Warning, 'Max header size exceeded.');
+      LBLogger.Write(1, 'THTTPRequestParser.ParseHeaders', lmt_Warning, 'Max header size exceeded.');
       Exit;
     end;
 
@@ -286,8 +286,7 @@ begin
             FBody.WriteBuffer(tempBuffer[0], SizeOf(tempBuffer));
             bytesRead := bytesRead - SizeOf(tempBuffer);
           end
-          else
-          begin
+          else begin
             FBuffer.Read(@tempBuffer[0], bytesRead);
             FBody.WriteBuffer(tempBuffer[0], bytesRead);
             bytesRead := 0;
@@ -330,7 +329,7 @@ begin
         begin
           FState := psError;
           Result := prError;
-          LBLogger.Write(1, 'THTTPRequestParser', lmt_Warning, 'Invalid or too large Content-Length.');
+          LBLogger.Write(1, 'THTTPRequestParser.Parse', lmt_Warning, 'Invalid or too large Content-Length.');
           Exit;
         end;
       end
@@ -342,7 +341,7 @@ begin
       begin
         FState := psError;
         Result := prError;
-        LBLogger.Write(1, 'THTTPRequestParser', lmt_Warning, 'Transfer-Encoding is not supported.');
+        LBLogger.Write(1, 'THTTPRequestParser.Parse', lmt_Warning, 'Transfer-Encoding is not supported.');
         Exit;
       end;
 

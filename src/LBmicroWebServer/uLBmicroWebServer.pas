@@ -36,6 +36,7 @@ type
       FWebServerOwner: TLBmicroWebServer;
       function ProcessGETRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
       function ProcessHEADRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
+      function ProcessOPTIONSRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
       function ProcessPOSTRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
 
       procedure DoExecuteTerminated();
@@ -69,7 +70,7 @@ type
         FOutputData: TMemoryStream;
 
         FSendingFile : TLBmWsFileManager;
-        FRecvBuffer: TLBCircularBufferThreaded;
+        FRecvBuffer: TLBCircularBuffer;
         FParser: THTTPRequestParser;
 
       function ReceiveAndParseRequest(out SocketError: Boolean): Boolean;
@@ -564,9 +565,11 @@ begin
     try
 
       case FParser.Method of
-        HTTP_METHOD_GET    : Result := Self.ProcessGETRequest(KeepConnection, NextState);
-        HTTP_METHOD_HEAD   : Result := Self.ProcessHEADRequest(KeepConnection, NextState);
-        HTTP_METHOD_POST   : Result := Self.ProcessPOSTRequest(KeepConnection, NextState);
+        HTTP_METHOD_GET     : Result := Self.ProcessGETRequest(KeepConnection, NextState);
+        HTTP_METHOD_HEAD    : Result := Self.ProcessHEADRequest(KeepConnection, NextState);
+        HTTP_METHOD_POST    : Result := Self.ProcessPOSTRequest(KeepConnection, NextState);
+        HTTP_METHOD_OPTIONS : Result := Self.ProcessOPTIONSRequest(KeepConnection, NextState);
+
         else
           LBLogger.Write(1, 'THTTPRequestManager.ProcessHttpRequest', lmt_Warning, Format('Unknown request method <%s>', [FParser.Method]));
       end;
@@ -679,6 +682,27 @@ begin
     else
       LBLogger.Write(1, 'THTTPRequestManager.ProcessHEADRequest', lmt_Warning, 'File not found for HEAD <%s>', [FParser.URI]);
   end;
+end;
+
+function THTTPRequestManager.ProcessOPTIONSRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
+begin
+  LBLogger.Write(5, 'THTTPRequestManager.ProcessOPTIONSRequest', lmt_Debug, 'OPTIONS request');
+
+  Result := HTTP_STATUS_NOT_FOUND;
+  KeepConnection := False;
+  NextState := rms_CloseSocket;
+
+  if (FWebServerOwner <> nil) then
+  begin
+    FOutputHeaders.Add(HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN + ': *');
+    FOutputHeaders.Add(HTTP_HEADER_ACCESS_CONTROL_ALLOW_METHODS + ': ' + HTTP_METHOD_POST + ', ' + HTTP_METHOD_OPTIONS);
+    FOutputHeaders.Add(HTTP_HEADER_ACCESS_CONTROL_ALLOW_HEADERS + ': ' + HTTP_HEADER_CONTENT_TYPE);
+
+    Result := HTTP_STATUS_OK;
+    NextState := rms_SendHTTPAnswer;
+    KeepConnection := True;
+  end;
+
 end;
 
 function THTTPRequestManager.ProcessPOSTRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
@@ -822,16 +846,18 @@ const
   cRequestIdleTimeout = 10000; // 10 seconds idle timeout
 var
   parseResult: TParserResult;
-  lastDataTime: TTimeoutTimer;
+  _lastDataTime: TTimeoutTimer;
   bytesRead: Integer;
   _Buff : TBytes;
+  _Body : String;
 
 begin
   SocketError := False;
   Result := False;
   FParser.Reset;
   FRecvBuffer.Clear;
-  lastDataTime := TTimeoutTimer.Create(cRequestIdleTimeout);
+  _lastDataTime := TTimeoutTimer.Create(cRequestIdleTimeout);
+
   try
     while not Terminated do
     begin
@@ -851,11 +877,11 @@ begin
       end;
 
       // If more data is needed, wait for it on the socket
-      if FSocket.CanRead(100) then
+      if (FSocket.WaitingData > 0) or FSocket.CanRead(100) then
       begin
-        bytesRead := FRecvBuffer.Buffer.WriteFromSocket(FSocket, cReadChunkSize);
+        bytesRead := FRecvBuffer.WriteFromSocket(FSocket, cReadChunkSize);
         if bytesRead > 0 then
-          lastDataTime.Reset // Reset idle timer since we got data
+          _lastDataTime.Reset // Reset idle timer since we got data
         else if bytesRead < 0 then
         begin
           // CanRead was true but read failed, socket error
@@ -866,23 +892,25 @@ begin
       end;
 
       // Check for idle timeout
-      if lastDataTime.Expired then
+      if _lastDataTime.Expired then
       begin
         Result := False;
-        LBLogger.Write(1, 'THTTPRequestManager.ReceiveAndParseRequest', lmt_Warning, 'Request idle timeout. Available bytes: %d', [FRecvBuffer.Buffer.AvailableForRead]);
-        if FRecvBuffer.Buffer.AvailableForRead > 0 then
+        (*
+        if (FParser.Body <> nil) and (FParser.Body.Size > 0) then
         begin
-          SetLength(_Buff, FRecvBuffer.Buffer.AvailableForRead);
+          SetLength(_Body, FParser.Body.Size);
+          Move(FParser.Body.Memory^, _Body[1], Length(_Body));
+        end
+        else
+          _Body := '';
 
-          FRecvBuffer.Buffer.Peek(@_Buff[0], Length(_Buff), 0);
-          LBLogger.Write(1, 'THTTPRequestManager.ReceiveAndParseRequest', lmt_Warning, 'Received: <%s>', [TNetEncoding.Base64.EncodeBytesToString(_Buff)]);
-          SetLength(_Buff, 0);
-        end;
+        LBLogger.Write(1, 'THTTPRequestManager.ReceiveAndParseRequest', lmt_Warning, 'Request idle timeout. Available bytes: %d  -  Headers: <%s>  -  Body: (%d) <%s>', [FRecvBuffer.AvailableForRead, FParser.Headers.Text, Length(_Body), _Body]);
+        *)
         Break;
       end;
     end;
   finally
-    lastDataTime.Free;
+    _lastDataTime.Free;
   end;
 end;
 
@@ -895,8 +923,8 @@ begin
   FSocket := TTCPBlockSocket.Create;
   FSocket.Socket := ASocket;
 
-  FRecvBuffer := TLBCircularBufferThreaded.Create(16 * 1024); // 16KB buffer
-  FParser := THTTPRequestParser.Create(FRecvBuffer.Buffer);
+  FRecvBuffer := TLBCircularBuffer.Create(16 * 1024); // 16KB buffer
+  FParser := THTTPRequestParser.Create(FRecvBuffer);
 
   FAnswerDescription := TFPStringHashTable.Create;
   FAnswerDescription.Add('200', ' OK');

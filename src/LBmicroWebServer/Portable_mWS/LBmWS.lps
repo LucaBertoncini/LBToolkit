@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="LBmWS.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <TopLine Value="7"/>
+        <CursorPos X="2" Y="13"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../uLBWebServerConfigurationLoader.pas"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="5"/>
+        <TopLine Value="13"/>
+        <CursorPos X="27" Y="22"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../utils/uLBFileUtils.pas"/>
+        <EditorIndex Value="4"/>
+        <CursorPos X="5" Y="11"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="593"/>
+        <CursorPos X="7" Y="626"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/fgl.pp"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="175"/>
+        <CursorPos X="14" Y="189"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../uLBmWsDocumentsFolder.pas"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="104"/>
+        <CursorPos X="29" Y="136"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="28">
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="221" Column="18" TopLine="208"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="331" Column="45" TopLine="310"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="332" Column="28" TopLine="310"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="355" Column="14" TopLine="335"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="368" Column="27" TopLine="345"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="402" Column="18" TopLine="379"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="404" Column="18" TopLine="381"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="207" Column="18" TopLine="193"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="319" Column="28" TopLine="296"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="320" Column="43" TopLine="297"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="322" Column="17" TopLine="299"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="323" Column="16" TopLine="300"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="331" Column="8" TopLine="314"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="365" Column="43" TopLine="353"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="368" Column="27" TopLine="353"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="402" Column="18" TopLine="388"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="404" Column="18" TopLine="388"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="207" Column="18" TopLine="193"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="319" Column="28" TopLine="296"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="320" Column="43" TopLine="297"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="322" Column="17" TopLine="299"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="323" Column="16" TopLine="300"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="326" Column="42" TopLine="317"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="332" Column="49" TopLine="317"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="336" Column="57" TopLine="317"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="626" Column="7" TopLine="618"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmWsDocumentsFolder.pas"/>
+        <Caret Line="27" Column="16" TopLine="15"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="626" Column="7" TopLine="618"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBWebServerConfigurationLoader.pas"/>
+        <Caret Line="113" Column="26" TopLine="108"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

@@ -435,8 +435,7 @@ begin
           Result := _BytesRead;
         end;
       end
-      else
-      begin
+      else begin
         // Wrap-around write
         _FirstChunk := FMemorySize - FWritePos;
         _BytesRead := aSocket.RecvBuffer(@FData[FWritePos], _FirstChunk);

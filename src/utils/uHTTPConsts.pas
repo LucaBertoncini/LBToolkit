@@ -6,18 +6,20 @@ interface
 
 const
   // 🔹 Standard HTTP Headers
-  HTTP_HEADER_CONTENT_TYPE                = 'Content-Type';
-  HTTP_HEADER_CONTENT_LENGTH              = 'Content-Length';
-  HTTP_HEADER_CONNECTION                  = 'Connection';
-  HTTP_HEADER_UPGRADE                     = 'Upgrade';
-  HTTP_HEADER_HOST                        = 'Host';
-  HTTP_HEADER_RANGE                       = 'Range';
-  HTTP_HEADER_ACCEPT                      = 'Accept';
-  HTTP_HEADER_CONTENT_RANGE               = 'Content-Range';
-  HTTP_HEADER_ACCEPT_RANGES               = 'Accept-Ranges';
-  HTTP_HEADER_DATE                        = 'Date';
-  HTTP_HEADER_SERVER                      = 'Server';
-  HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN = 'Access-Control-Allow-Origin';
+  HTTP_HEADER_CONTENT_TYPE                 = 'Content-Type';
+  HTTP_HEADER_CONTENT_LENGTH               = 'Content-Length';
+  HTTP_HEADER_CONNECTION                   = 'Connection';
+  HTTP_HEADER_UPGRADE                      = 'Upgrade';
+  HTTP_HEADER_HOST                         = 'Host';
+  HTTP_HEADER_RANGE                        = 'Range';
+  HTTP_HEADER_ACCEPT                       = 'Accept';
+  HTTP_HEADER_CONTENT_RANGE                = 'Content-Range';
+  HTTP_HEADER_ACCEPT_RANGES                = 'Accept-Ranges';
+  HTTP_HEADER_DATE                         = 'Date';
+  HTTP_HEADER_SERVER                       = 'Server';
+  HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN  = 'Access-Control-Allow-Origin';
+  HTTP_HEADER_ACCESS_CONTROL_ALLOW_METHODS = 'Access-Control-Allow-Methods';
+  HTTP_HEADER_ACCESS_CONTROL_ALLOW_HEADERS = 'Access-Control-Allow-Headers';
 
   // 🔹 HTTP Methods
   HTTP_METHOD_GET                = 'GET';

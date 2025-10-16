@@ -263,6 +263,7 @@ function THTTPRequestParser.ParseBody: TParserResult;
 var
   bytesToRead, bytesRead: Int64;
   tempBuffer: array[0..4095] of Byte;
+
 begin
   Result := prIncomplete;
 

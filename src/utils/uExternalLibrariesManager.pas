@@ -27,6 +27,9 @@ type
 
        procedure ClearCorrelations;
 
+    strict protected
+      procedure CloseFile();
+
     public
       constructor Create;
       destructor Destroy; override;
@@ -62,6 +65,17 @@ begin
   end;
 end;
 
+procedure TExternalLibraryLoader.CloseFile();
+begin
+
+  if FLibHandle <> dynlibs.NilHandle then
+  begin
+    UnloadLibrary(FLibHandle);
+    FLibHandle := dynlibs.NilHandle;
+  end;
+
+end;
+
 constructor TExternalLibraryLoader.Create;
 begin
   inherited Create;
@@ -76,8 +90,7 @@ begin
     Self.ClearCorrelations;
     FreeAndNil(FCorrelations);
 
-    if FLibHandle <> dynlibs.NilHandle then
-      UnloadLibrary(FLibHandle);
+    Self.CloseFile();
 
 
   except

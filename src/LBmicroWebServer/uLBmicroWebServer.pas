@@ -92,7 +92,7 @@ type
 
     public
       constructor Create(ASocket: TSocket; AOwner: TLBmicroWebServer); reintroduce; virtual;
-      destructor Destroy; override;
+      destructor Destroy(); override;
 
       property OnExecuteTerminated: TNotifyEvent write FOnExecuteTerminated;
 
@@ -165,14 +165,14 @@ type
 
         FSock : TTCPBlockSocket;
         FListeningPort : Integer;
-        FActiveChildren : TObjectList;
+        FActiveConnections : TObjectList;
         FCS : TTimedOutCriticalSection;
         FLastConnectionTimer : TTimeoutTimer;
 
       const
         cNoConnectionsTimeout = Int64(14400000); // 4 hours
 
-      procedure DestroyAllChildren();
+      procedure DestroyAllConnections();
       procedure DestroySocket();
       function BindSocket(): Boolean;
       function AddNewConnections(): Boolean;
@@ -180,7 +180,7 @@ type
       procedure set_RequestManagerType(AValue: THTTPRequestManagerClass);
 
       function WaitForDestruction(): Boolean;
-      procedure RemoveChild(Sender: TObject);
+      procedure RemoveConnection(Sender: TObject);
 
     protected
       procedure InternalExecute; override;
@@ -229,7 +229,7 @@ type
 
     public
       constructor Create();
-      destructor Destroy; override;
+      destructor Destroy(); override;
 
       class function getClassDescription(): String;
 
@@ -280,6 +280,9 @@ uses
   uHTTPConsts, System.NetEncoding, ssl_openssl3, synautil, laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
 
 {$smartlink on}
+
+var
+  gv_SSLConnectionCS : TTimedOutCriticalSection = nil;
 
 { TAnswerError }
 
@@ -368,7 +371,7 @@ end;
 destructor TLBmicroWebServer.Destroy;
 begin
   try
-    FreeAndNil(FListener);
+    Self.Stop();
 
     if FDocumentsFolder <> nil then
       FreeAndNil(FDocumentsFolder);
@@ -398,7 +401,11 @@ end;
 
 procedure TLBmicroWebServer.Stop();
 begin
-  FreeAndNil(FListener);
+  if FListener <> nil then
+  begin
+    LBLogger.Write(5, 'TLBmicroWebServer.Stop', lmt_Debug, 'Stopping web-server listener ...');
+    FreeAndNil(FListener);
+  end;
 end;
 
 function TLBmicroWebServer.addChainProcessor(aProcessor: TRequestChainProcessor; asFirst: Boolean): Boolean;
@@ -600,58 +607,64 @@ begin
   KeepConnection := False;
   NextState := rms_CloseSocket;
 
-  // Check for WebSocket Upgrade
-  if (Trim(FParser.Headers.Values[HTTP_HEADER_UPGRADE]) = HTTP_UPGRADE_WEBSOCKET) and
-     (Pos(HTTP_CONNECTION_UPGRADE, FParser.Headers.Values[HTTP_HEADER_CONNECTION]) > 0) then
-  begin
-    Result := HTTP_STATUS_OK;
-    KeepConnection := True;
-    NextState := rms_ManageWebSocketSession;
-    Exit;
-  end;
-
-  if FParser.URI = cTestURI then
-  begin
-    LBLogger.Write(5, 'THTTPRequestManager.ProcessGETRequest', lmt_Debug, 'Test request');
-
-    FOutputHeaders.Add(HTTP_HEADER_CONTENT_TYPE + ': ' + MIME_TYPE_HTML);
-    if FOutputData = nil then
-      FOutputData := TMemoryStream.Create
-    else
-      FOutputData.Clear;
-
-
-    FOutputData.Write(cStaticHTML[1], Length(cStaticHTML));
-
-    Result := HTTP_STATUS_OK;
-    NextState := rms_SendHTTPAnswer;
-    Exit;
-  end;
-
-  // Attempt to access static file
-  if (FWebServerOwner <> nil) then
-  begin
-    _DocFolder := FWebServerOwner.DocumentsFolder;
-    if (_DocFolder <> nil) and _DocFolder.isValidSubpath(FParser.URI) then
+  try
+    // Check for WebSocket Upgrade
+    if (Trim(FParser.Headers.Values[HTTP_HEADER_UPGRADE]) = HTTP_UPGRADE_WEBSOCKET) and
+       (Pos(HTTP_CONNECTION_UPGRADE, FParser.Headers.Values[HTTP_HEADER_CONNECTION]) > 0) then
     begin
-      FSendingFile := TLBmWsFileManager.Create;
-      if FSendingFile.setFile(_DocFolder.RetrieveFilename(FParser.URI), Trim(FParser.Headers.Values[HTTP_HEADER_RANGE])) then
-      begin
-        Result := FSendingFile.answerStatus;
-        NextState := rms_SendHTTPAnswer;
-        Exit;
-      end
-      else
-        FreeAndNil(FSendingFile);
+      Result := HTTP_STATUS_OK;
+      KeepConnection := True;
+      NextState := rms_ManageWebSocketSession;
+      Exit;
     end;
 
-    // Custom GET handler (fallback)
-    Result := HTTP_STATUS_NOT_FOUND;
-    if FWebServerOwner.ProcessRequest(FParser, FOutputHeaders, FOutputData, Result) then
+    if FParser.URI = cTestURI then
+    begin
+      LBLogger.Write(5, 'THTTPRequestManager.ProcessGETRequest', lmt_Debug, 'Test request');
+
+      FOutputHeaders.Add(HTTP_HEADER_CONTENT_TYPE + ': ' + MIME_TYPE_HTML);
+      if FOutputData = nil then
+        FOutputData := TMemoryStream.Create
+      else
+        FOutputData.Clear;
+
+
+      FOutputData.Write(cStaticHTML[1], Length(cStaticHTML));
+
+      Result := HTTP_STATUS_OK;
       NextState := rms_SendHTTPAnswer;
-  end
-  else
-    LBLogger.Write(1, 'THTTPRequestManager.ProcessGETRequest', lmt_Warning, 'WebServer not set!');
+      Exit;
+    end;
+
+    // Attempt to access static file
+    if (FWebServerOwner <> nil) then
+    begin
+      _DocFolder := FWebServerOwner.DocumentsFolder;
+      if (_DocFolder <> nil) and _DocFolder.isValidSubpath(FParser.URI) then
+      begin
+        FSendingFile := TLBmWsFileManager.Create;
+        if FSendingFile.setFile(_DocFolder.RetrieveFilename(FParser.URI), Trim(FParser.Headers.Values[HTTP_HEADER_RANGE])) then
+        begin
+          Result := FSendingFile.answerStatus;
+          NextState := rms_SendHTTPAnswer;
+          Exit;
+        end
+        else
+          FreeAndNil(FSendingFile);
+      end;
+
+      // Custom GET handler (fallback)
+      Result := HTTP_STATUS_NOT_FOUND;
+      if FWebServerOwner.ProcessRequest(FParser, FOutputHeaders, FOutputData, Result) then
+        NextState := rms_SendHTTPAnswer;
+    end
+    else
+      LBLogger.Write(1, 'THTTPRequestManager.ProcessGETRequest', lmt_Warning, 'WebServer not set!');
+
+  except
+    on E: Exception do
+      LBLogger.Write(1, 'THTTPRequestManager.ProcessGETRequest', lmt_Error, E.Message);
+  end;
 end;
 
 function THTTPRequestManager.ProcessHEADRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
@@ -747,6 +760,9 @@ var
   _SocketError            : Boolean;
 
 begin
+
+  _SocketError := False;
+
   if (FWebServerOwner <> nil) then
   begin
     _SSLData := FWebServerOwner.SSLData;
@@ -755,85 +771,89 @@ begin
       if (not Self.setSSLConnection(_SSLData)) then
       begin
         LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Warning, 'SSL connection not set!');
-        Exit;
+        _SocketError := True;
       end;
     end;
   end;
 
-  try
+  if not _SocketError then
+  begin
+    try
 
-    FConnectionExecuted := True;
+      FConnectionExecuted := True;
 
-    while not Self.Terminated do
-    begin
+      while not Self.Terminated do
+      begin
 
-      case _InternalState of
-        rms_Unknown : _InternalState := rms_ReadIncomingHTTPRequest;
+        case _InternalState of
+          rms_Unknown : _InternalState := rms_ReadIncomingHTTPRequest;
 
-        rms_ReadIncomingHTTPRequest:
-          begin
-            if self.ReceiveAndParseRequest(_SocketError) then
+          rms_ReadIncomingHTTPRequest:
             begin
-              if FOutputData <> nil then
-                FOutputData.Clear;
+              if self.ReceiveAndParseRequest(_SocketError) then
+              begin
+                if FOutputData <> nil then
+                  FOutputData.Clear;
 
-              FOutputHeaders.Clear;
+                FOutputHeaders.Clear;
 
-              // This function determines the new state: rms_SendHTTPAnswer for a single HTTP request or rms_ManageWebSocketSession for a WebSocket connection request.
-              _ResultCode := Self.ProcessHttpRequest(_KeepConnection, _InternalState);
-            end
-            else
-              _InternalState := rms_CloseSocket;
-          end;
-
-        rms_SendHTTPAnswer:
-          begin
-            if (not Self.SendAnswer(_ResultCode)) or (not _KeepConnection) then
-              _InternalState := rms_CloseSocket
-            else
-              _InternalState := rms_ReadIncomingHTTPRequest;
-          end;
-
-        rms_ManageWebSocketSession:
-          begin
-            if FWebSocketManager = nil then
-            begin
-              FWebSocketManager := TLBWebSocketSession.Create(FSocket, @Self.Terminated);
-              if FWebServerOwner <> nil then
-                FWebSocketManager.OnDataReceived := FWebServerOwner.OnElaborateWebSocketMessage;
+                // This function determines the new state: rms_SendHTTPAnswer for a single HTTP request or rms_ManageWebSocketSession for a WebSocket connection request.
+                _ResultCode := Self.ProcessHttpRequest(_KeepConnection, _InternalState);
+              end
+              else
+                _InternalState := rms_CloseSocket;
             end;
 
-            try
-              if FWebSocketManager.PerformHandshake(FParser.Headers) then
-              begin
-                if (FWebServerOwner <> nil) and Assigned(FWebServerOwner.OnWebSocketConnectionEstablished) then
-                  FWebServerOwner.OnWebSocketConnectionEstablished(Self);
+          rms_SendHTTPAnswer:
+            begin
+              if (not Self.SendAnswer(_ResultCode)) or (not _KeepConnection) then
+                _InternalState := rms_CloseSocket
+              else
+                _InternalState := rms_ReadIncomingHTTPRequest;
+            end;
 
-                FWebSocketManager.ExecuteSession();
+          rms_ManageWebSocketSession:
+            begin
+              if FWebSocketManager = nil then
+              begin
+                FWebSocketManager := TLBWebSocketSession.Create(FSocket, @Self.Terminated);
+                if FWebServerOwner <> nil then
+                  FWebSocketManager.OnDataReceived := FWebServerOwner.OnElaborateWebSocketMessage;
               end;
 
-            finally
-              FreeAndNil(FWebSocketManager);
-              _InternalState := rms_CloseSocket;
-            end;
-          end;
+              try
+                if FWebSocketManager.PerformHandshake(FParser.Headers) then
+                begin
+                  if (FWebServerOwner <> nil) and Assigned(FWebServerOwner.OnWebSocketConnectionEstablished) then
+                    FWebServerOwner.OnWebSocketConnectionEstablished(Self);
 
-        rms_CloseSocket:
-          begin
-            FSocket.CloseSocket;
+                  FWebSocketManager.ExecuteSession();
+                end;
+
+              finally
+                FreeAndNil(FWebSocketManager);
+                _InternalState := rms_CloseSocket;
+              end;
+            end;
+
+          rms_CloseSocket:
+            begin
+              FSocket.CloseSocket;
+              Break;
+            end;
+
+          else begin
+            LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Warning, 'Wrong internal state: %d', [Integer(_InternalState)]);
             Break;
           end;
-
-        else begin
-          LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Warning, 'Wrong internal state: %d', [Integer(_InternalState)]);
-          Break;
         end;
       end;
+
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Error, '<%s>  -  %s', [Self.ClassName, E.Message]);
     end;
 
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Error, '<%s>  -  %s', [Self.ClassName, E.Message]);
   end;
 
   FDestroying := True;
@@ -844,6 +864,7 @@ function THTTPRequestManager.ReceiveAndParseRequest(out SocketError: Boolean): B
 const
   cReadChunkSize = 4096; // Read in 4KB chunks
   cRequestIdleTimeout = 10000; // 10 seconds idle timeout
+
 var
   parseResult: TParserResult;
   _lastDataTime: TTimeoutTimer;
@@ -856,6 +877,7 @@ begin
   Result := False;
   FParser.Reset;
   FRecvBuffer.Clear;
+
   _lastDataTime := TTimeoutTimer.Create(cRequestIdleTimeout);
 
   try
@@ -864,54 +886,51 @@ begin
       // Try to parse what we already have in the buffer
       parseResult := FParser.Parse;
 
-      if parseResult = prComplete then
-      begin
-        Result := True;
-        Break;
-      end;
+      case parseResult of
+        prComplete:
+          begin
+            Result := True;
+            Break;
+          end;
 
-      if parseResult = prError then
-      begin
-        Result := False;
-        Break;
-      end;
+        prError:
+          begin
+            Result := False;
+            Break;
+          end;
 
-      // If more data is needed, wait for it on the socket
-      if (FSocket.WaitingData > 0) or FSocket.CanRead(100) then
-      begin
-        bytesRead := FRecvBuffer.WriteFromSocket(FSocket, cReadChunkSize);
-        if bytesRead > 0 then
-          _lastDataTime.Reset // Reset idle timer since we got data
-        else if bytesRead < 0 then
-        begin
-          // CanRead was true but read failed, socket error
-          SocketError := True;
-          Result := False;
-          Break;
+        else begin
+
+          // If more data is needed, wait for it on the socket
+          if (FSocket.WaitingData > 0) or FSocket.CanRead(100) then
+          begin
+            bytesRead := FRecvBuffer.WriteFromSocket(FSocket, cReadChunkSize);
+            if bytesRead > 0 then
+              _lastDataTime.Reset // Reset idle timer since we got data
+            else if bytesRead < 0 then
+            begin
+              // CanRead was true but read failed, socket error
+              SocketError := True;
+              Result := False;
+              Break;
+            end;
+          end;
+
+          // Check for idle timeout
+          if _lastDataTime.Expired then
+          begin
+            Result := False;
+            Break;
+          end;
+
         end;
       end;
-
-      // Check for idle timeout
-      if _lastDataTime.Expired then
-      begin
-        Result := False;
-        (*
-        if (FParser.Body <> nil) and (FParser.Body.Size > 0) then
-        begin
-          SetLength(_Body, FParser.Body.Size);
-          Move(FParser.Body.Memory^, _Body[1], Length(_Body));
-        end
-        else
-          _Body := '';
-
-        LBLogger.Write(1, 'THTTPRequestManager.ReceiveAndParseRequest', lmt_Warning, 'Request idle timeout. Available bytes: %d  -  Headers: <%s>  -  Body: (%d) <%s>', [FRecvBuffer.AvailableForRead, FParser.Headers.Text, Length(_Body), _Body]);
-        *)
-        Break;
-      end;
     end;
-  finally
-    _lastDataTime.Free;
+  except
+    on E: Exception do
+      LBLogger.Write(1, 'THTTPRequestManager.ReceiveAndParseRequest', lmt_Error, E.Message);
   end;
+  _lastDataTime.Free;
 end;
 
 constructor THTTPRequestManager.Create(ASocket: TSocket; AOwner: TLBmicroWebServer);
@@ -953,6 +972,8 @@ destructor THTTPRequestManager.Destroy;
 begin
   FDestroying := True;
 
+  inherited Destroy;
+
   try
     if FWebSocketManager <> nil then
       FreeAndNil(FWebSocketManager);
@@ -973,10 +994,6 @@ begin
     on E: Exception do
       LBLogger.Write(1, 'THTTPRequestManager.Destroy', lmt_Error, E.Message);
   end;
-
-  inherited Destroy;
-
-  LBLogger.Write(5, 'THTTPRequestManager.Destroy', lmt_Debug, 'Thread destroyed', []);
 end;
 
 function THTTPRequestManager.setSSLConnection(aSSLData: TSSLConnectionData): Boolean;
@@ -996,7 +1013,14 @@ begin
 
       FSocket.SSL.KeyPassword := aSSLData.KeyPassword;
 
-      Result := FSocket.SSLAcceptConnection;
+      if gv_SSLConnectionCS.Acquire('THTTPRequestManager.setSSLConnection') then
+      begin
+        try
+          Result := FSocket.SSLAcceptConnection;
+        finally
+          gv_SSLConnectionCS.Release();
+        end;
+      end;
       // Result := FSocket.SSL.LastError = 0;
 
       if not Result then
@@ -1040,35 +1064,36 @@ end;
 
 { TLBmWsListener }
 
-procedure TLBmWsListener.DestroyAllChildren();
+procedure TLBmWsListener.DestroyAllConnections();
 var
   i: Integer;
 
 begin
-  if FActiveChildren = nil then Exit;
-
-
-  if FCS.Acquire('TLBmWsListener.DestroyAllChildren') then
+  if FActiveConnections <> nil then
   begin
 
-    try
 
-      for i := FActiveChildren.Count - 1 downto 0 do
-        THTTPRequestManager(FActiveChildren.Items[i]).Terminate;
+    if FCS.Acquire('TLBmWsListener.DestroyAllConnections') then
+    begin
 
-    except
-      on E: Exception do
-        LBLogger.Write(1, 'TLBmWsListener.DestroyAllChildren', lmt_Error, E.Message);
+      try
+
+        for i := FActiveConnections.Count - 1 downto 0 do
+          THTTPRequestManager(FActiveConnections.Items[i]).Terminate;
+
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'TLBmWsListener.DestroyAllConnections', lmt_Error, E.Message);
+      end;
+      FCS.Release();
+
     end;
-    FCS.Release();
 
+    if not Self.WaitForDestruction() then
+      LBLogger.Write(1, 'TLBmWsListener.DestroyAllConnections', lmt_Warning, 'Timeout reached!')
+    else
+      LBLogger.Write(1, 'TLBmWsListener.DestroyAllConnections', lmt_Debug, 'All connections destroyed!');
   end;
-
-  if not Self.WaitForDestruction() then
-    LBLogger.Write(1, 'TLBmWsListener.DestroyAllChildren', lmt_Warning, 'Timeout reached!')
-  else
-    LBLogger.Write(1, 'TLBmWsListener.DestroyAllChildren', lmt_Debug, 'ALL CHILDREN DESTROYED!');
-
 end;
 
 procedure TLBmWsListener.DestroySocket();
@@ -1078,7 +1103,7 @@ begin
     if FSock <> nil then
       FreeAndNil(FSock);
 
-    Self.DestroyAllChildren();
+    Self.DestroyAllConnections();
 
   except
     on E: Exception do
@@ -1140,7 +1165,7 @@ function TLBmWsListener.AddNewConnections(): Boolean;
 var
   _Child       : THTTPRequestManager;
   _CanAccept   : Boolean;
-  _tempSock    : TTCPBlockSocket;
+  _tempSock    : TSocket;
   _Msg         : String;
 
 const
@@ -1149,70 +1174,89 @@ const
 begin
   Result := False;
 
-  if FSock.CanRead(cWaitForConnection) then
-  begin
-    if FSock.LastError = 0 then
+  try
+    if FSock.CanRead(cWaitForConnection) then
     begin
-      FLastConnectionTimer.Reset(cNoConnectionsTimeout);
-
-      // Check active connections limit
-      if FCS.Acquire('TLBmWsListener.AddNewConnections (limit check)') then
+      if FSock.LastError = 0 then
       begin
-        try
-          _CanAccept := (FMaxActiveConnections = 0) or (FActiveChildren.Count < FMaxActiveConnections);
-        finally
-          FCS.Release;
-        end;
-        if not _CanAccept then
-          _Msg := Format('Too many active connections (%d)!', [FMaxActiveConnections]);
-      end
-      else begin
-        _CanAccept := False; // unable to verify state
-        _Msg := 'Not enable to verify connection count!'
-      end;
+        FLastConnectionTimer.Reset(cNoConnectionsTimeout);
 
-      if _CanAccept then
-      begin
-        if Assigned(FOnNewConnectionRequest) then
-          Result := FOnNewConnectionRequest(FSock.Accept)
-        else begin
-          _Child := FRequestManagerType.Create(FSock.Accept, FWebServerOwner);
-          _Child.OnExecuteTerminatedInternal := @Self.RemoveChild;
-
-          if FCS.Acquire('TLBmWsListener.AddNewConnections') then
-          begin
-            try
-              if not Self.Terminated then
-              begin
-                FActiveChildren.Add(_Child);
-                Result := True;
-              end;
-            except
-              on E: Exception do
-                LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Error, 'Error adding child: %s', [E.Message]);
-            end;
+        // Check active connections limit
+        if FCS.Acquire('TLBmWsListener.AddNewConnections (limit check)') then
+        begin
+          try
+            _CanAccept := (FMaxActiveConnections = 0) or (FActiveConnections.Count < FMaxActiveConnections);
+          finally
             FCS.Release;
           end;
+          if not _CanAccept then
+            _Msg := Format('Too many active connections (%d)!', [FMaxActiveConnections]);
+        end
+        else begin
+          _CanAccept := False; // unable to verify state
+          _Msg := 'Not enable to verify connection count!'
+        end;
 
-          if Result then
-            _Child.Start
-          else begin
-            LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Debug, 'Child thread discarded');
-            _Child.Free;
-          end;
+        if _CanAccept then
+        begin
+          _tempSock := FSock.Accept;
+
+          // Verifica che Accept sia andato a buon fine
+          if (_tempSock <> INVALID_SOCKET) and (FSock.LastError = 0) then
+          begin
+
+            if Assigned(FOnNewConnectionRequest) then
+              Result := FOnNewConnectionRequest(_tempSock)
+            else begin
+
+              _Child := FRequestManagerType.Create(_tempSock, FWebServerOwner);
+              _Child.OnExecuteTerminatedInternal := @Self.RemoveConnection;
+
+              if FCS.Acquire('TLBmWsListener.AddNewConnections') then
+              begin
+                try
+                  if not Self.Terminated then
+                  begin
+                    FActiveConnections.Add(_Child);
+                    Result := True;
+                  end;
+                except
+                  on E: Exception do
+                    LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Error, 'Error adding child: %s', [E.Message]);
+                end;
+                FCS.Release;
+              end;
+
+              if Result then
+                _Child.Start()
+              else begin
+                LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Debug, 'Child thread discarded');
+                _Child.Free;
+              end;
+            end;
+          end
+          else
+            LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Warning, 'Accept failed: %s', [FSock.LastErrorDesc]);
+        end
+        else begin
+          LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Warning, 'Connection rejected: %s', [_Msg]);
+          _tempSock := FSock.Accept;
+          if _tempSock <> INVALID_SOCKET then
+          begin
+            Self.PauseFor(100);
+            synsock.CloseSocket(_tempSock);
+          end
+          else if FSock.LastError <> 0 then
+            LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Warning, 'Accept failed on rejection: %s', [FSock.LastErrorDesc]);
         end;
       end
-      else begin
-        LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Warning, 'Connection rejected: %s', [_Msg]);
-        _tempSock := TTCPBlockSocket.Create;
-        _tempSock.Socket := FSock.Accept;
+      else
+        LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Warning, 'Error accepting connection: %s', [FSock.LastErrorDesc]);
+    end;
 
-        _tempSock.CloseSocket;
-        _tempSock.Free;
-      end;
-    end
-    else
-      LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Warning, 'Error accepting connection: %s', [FSock.LastErrorDesc]);
+  except
+    on E: Exception do
+      LBLogger.Write(1, 'TLBmWsListener.AddNewConnections', lmt_Error, E.Message);
   end;
 end;
 
@@ -1226,7 +1270,7 @@ begin
     begin
 
       try
-        Result := FActiveChildren.Count = 0;
+        Result := FActiveConnections.Count = 0;
 
       finally
         FCS.Release();
@@ -1259,7 +1303,7 @@ const
 begin
   _Counter := 0;
 
-  while (FActiveChildren <> nil) and (FActiveChildren.Count > 0) and (_Counter < cMaxTimeout) do
+  while (FActiveConnections <> nil) and (FActiveConnections.Count > 0) and (_Counter < cMaxTimeout) do
   begin
     Sleep(cSleepTime);
     Inc(_Counter, cSleepTime);
@@ -1267,41 +1311,51 @@ begin
 
   Result := _Counter < cMaxTimeout;
 
-  if Result then Exit;
+  if not Result then
+  begin
 
-  if not FCS.Acquire('TLBmWsListener.WaitForDestruction') then Exit;
+    if FCS.Acquire('TLBmWsListener.WaitForDestruction') then
+    begin
 
-  LBLogger.Write(1, 'TLBmWsListener.WaitForDestruction', lmt_Warning, '%d threads still alive!', [FActiveChildren.Count]);
+      LBLogger.Write(1, 'TLBmWsListener.WaitForDestruction', lmt_Warning, '%d threads still alive!', [FActiveConnections.Count]);
 
-  try
+      try
 
-    for i := 0 to FActiveChildren.Count - 1 do
-      (FActiveChildren.Items[i] as THTTPRequestManager).OnExecuteTerminatedInternal := nil;
+        for i := 0 to FActiveConnections.Count - 1 do
+          (FActiveConnections.Items[i] as THTTPRequestManager).OnExecuteTerminatedInternal := nil;
 
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'TLBmWsListener.WaitForDestruction', lmt_Error, E.Message);
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'TLBmWsListener.WaitForDestruction', lmt_Error, E.Message);
+      end;
+
+      FCS.Release();
+    end;
+
   end;
-
-  FCS.Release();
 
 end;
 
 
-procedure TLBmWsListener.RemoveChild(Sender: TObject);
+procedure TLBmWsListener.RemoveConnection(Sender: TObject);
 begin
-  if (FActiveChildren = nil) or (Sender = nil) then Exit;
 
-  if not FCS.Acquire('TLBmWsListener.RemoveChild') then Exit;
+  if (FActiveConnections <> nil) and (Sender <> nil) then
+  begin
 
-  try
+    if FCS.Acquire('TLBmWsListener.RemoveChild') then
+    begin
 
-    FActiveChildren.Remove(Sender);
+      try
 
-  finally
-    FCS.Release();
+        FActiveConnections.Remove(Sender);
+
+      finally
+        FCS.Release();
+      end;
+
+    end;
   end;
-
 end;
 
 
@@ -1354,21 +1408,21 @@ begin
       LBLogger.Write(1, 'TLBmWsListener.InternalExecute', lmt_Error, E.Message);
   end;
 
-  LBLogger.Write(1, 'TLBmWsListener.InternalExecute', lmt_Debug, 'HTTP Server closed');
+  LBLogger.Write(1, 'TLBmWsListener.InternalExecute', lmt_Debug, 'HTTP Listener terminated');
 end;
 
 constructor TLBmWsListener.Create(aListeningPort: Integer; aOwner: TLBmicroWebServer);
 begin
   inherited Create();
 
-  Self.setThreadName('WServerListener');
+  Self.setThreadName('WSListener');
 
   FWebServerOwner := aOwner;
   FRequestManagerType := THTTPRequestManager;
 
   FCS := TTimedOutCriticalSection.Create;
 
-  FActiveChildren := TObjectList.Create(False);
+  FActiveConnections := TObjectList.Create(False);
 
   FLastConnectionTimer := TTimeoutTimer.Create(cNoConnectionsTimeout);
   FListeningPort := aListeningPort;
@@ -1387,8 +1441,9 @@ begin
     begin
 
       try
-        if FActiveChildren <> nil then
-          FreeAndNil(FActiveChildren);
+
+        if FActiveConnections <> nil then
+          FreeAndNil(FActiveConnections);
 
       except
         on E1: Exception do
@@ -1407,6 +1462,13 @@ begin
       LBLogger.Write(1, 'TLBmWsListener.Destroy', lmt_Error, E.Message);
   end;
 end;
+
+initialization
+  gv_SSLConnectionCS := TTimedOutCriticalSection.Create;
+
+finalization
+  if gv_SSLConnectionCS <> nil then
+    FreeAndNil(gv_SSLConnectionCS);
 
 end.
 

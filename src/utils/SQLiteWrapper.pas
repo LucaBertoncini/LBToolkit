@@ -447,9 +447,15 @@ procedure TSQLiteDBManager.closeQuery;
 begin
   if FStatement <> nil then
   begin
-    sqlite3_clear_bindings(FStatement);
-    sqlite3_reset(FStatement);
-    sqlite3_finalize(FStatement);
+    try
+      sqlite3_clear_bindings(FStatement);
+      sqlite3_reset(FStatement);
+      sqlite3_finalize(FStatement);
+
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'TSQLiteDBManager.closeQuery', lmt_Error, E.Message);
+    end;
 
     FStatement := nil;
    end;

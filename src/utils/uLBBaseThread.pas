@@ -83,7 +83,7 @@ constructor TLBBaseThread.Create();
 begin
   inherited Create(True);
 
-  FreeOnTerminate := False;
+  FreeOnTerminate := True;
 
   FReferences := TMultiReferenceObject.Create;
 
@@ -108,7 +108,7 @@ begin
       begin
         Self.Terminate;
         // Attende la terminazione vera
-        LBLogger.Write(5, 'TLBBaseThread.Destroy', lmt_Debug, 'Waiting thread <%s> termination ...', [Self.ClassName]);
+        LBLogger.Write(6, 'TLBBaseThread.Destroy', lmt_Debug, 'Waiting thread <%s> termination ...', [Self.ClassName]);
         RTLEventWaitFor(FTerminatedEvent, 2000);
       end;
 

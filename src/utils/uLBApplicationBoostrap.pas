@@ -5,7 +5,7 @@ unit uLBApplicationBoostrap;
 interface
 
 uses
-  Classes, SysUtils, uLBmicroWebServer, Laz2_DOM, IniFiles;
+  Classes, SysUtils, uLBmicroWebServer, Laz2_DOM, IniFiles{$IFDEF Linux}, BaseUnix, uLBSignalManager{$ENDIF};
 
 type
 
@@ -33,6 +33,9 @@ type
         pWebServerConfig = ^TWebServerConfig;
 
     strict private
+      {$IFDEF Linux}
+      FSigPipeAction : TSignalManager;
+      {$ENDIF}
       procedure setUpLogger(aConfiguration: pLoggerConfig);
       procedure setUpWebServer(aConfiguration: pWebServerConfig);
 
@@ -53,6 +56,7 @@ type
       procedure startingWebServer(); virtual;
 
     public
+      constructor Create; virtual;
       destructor Destroy; override;
 
       function LoadConfiguration(const aFilename: String; out anErrorMsg: String): Boolean;
@@ -302,6 +306,21 @@ end;
 procedure TLBApplicationBoostrap.startingWebServer();
 begin
   //
+end;
+
+{$IFDEF Linux}
+procedure IgnoreBrokenPIPE(signal: longint; info: psiginfo; context: psigcontext); cdecl;
+begin
+  LBLogger.Write(1, 'LBApplicationBoostrap.DoIgnoreBrokenPipe', lmt_Debug, 'Signal broken pipe received');
+end;
+{$ENDIF}
+
+constructor TLBApplicationBoostrap.Create;
+begin
+  inherited Create;
+  {$IFDEF Linux}
+  FSigPipeAction := BrokenPipeSignalManager(@IgnoreBrokenPipe);
+  {$ENDIF}
 end;
 
 destructor TLBApplicationBoostrap.Destroy;

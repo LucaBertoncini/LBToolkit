@@ -3,8 +3,8 @@ program LBWebPyBridgeTests;
 {$mode objfpc}{$H+}
 
 uses
-  {$IFDEF Unix}cthreads,{$ENDIF} Classes, uLBWebPyBridgeTestRunner, uLBWebPyBridgeTests,
-  consoletestrunner;
+  {$IFDEF Unix}cthreads,{$ENDIF} Classes, ssl_openssl3, uLBWebPyBridgeTestRunner,
+  uLBWebPyBridgeTests, consoletestrunner;
 
 {$R *.res}
 

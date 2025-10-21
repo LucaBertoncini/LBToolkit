@@ -36,6 +36,10 @@
         <Filename Value="LBmWS.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/synapse40.1/ssl_openssl3.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -45,7 +49,7 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="..;../../utils;../../LBLogger"/>
+      <OtherUnitFiles Value="..;../../utils;../../LBLogger;../../../../../.lazarus/onlinepackagemanager/packages/synapse40.1"/>
       <UnitOutputDirectory Value="/tmp/LBmWS/lib/$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>

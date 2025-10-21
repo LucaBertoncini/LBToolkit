@@ -4,16 +4,31 @@ program LBmWS;
 
 uses
   {$IFDEF UNIX}
-  cthreads,
+  cthreads, BaseUnix,
   {$ENDIF}
-  Classes, sysutils, ULBLogger, uLBmicroWebServer, uLBmWsDocumentsFolder, uLBWebServerConfigurationLoader;
+  Classes, sysutils, ssl_openssl3, ULBLogger, uLBmicroWebServer,
+  uLBmWsDocumentsFolder, uLBWebServerConfigurationLoader, uLBSignalManager;
 
 var
   gv_WebServer : TLBmicroWebServer;
   gv_Loader : TINIConfigLoader;
+  {$IFDEF Linux}
+  gv_PIPESignal : TSignalManager;
+  {$ENDIF}
+
+{$IFDEF Linux}
+procedure IgnoreBrokenPIPE(signal: longint; info: psiginfo; context: psigcontext); cdecl;
+begin
+  LBLogger.Write(1, 'LBmWS.IgnoreBrokenPIPE', lmt_Warning, 'Broken PIPE signal ignored');
+end;
+{$ENDIF}
 
 begin
   InitLogger(5, 'LBmWS.log');
+
+  {$IFDEF Linux}
+  gv_PIPESignal := BrokenPipeSignalManager(@IgnoreBrokenPIPE);
+  {$ENDIF}
 
   gv_Loader := TINIConfigLoader.Create;
   gv_WebServer := TLBmicroWebServer.Create;
@@ -28,6 +43,10 @@ begin
   end;
   FreeAndNil(gv_Loader);
   FreeAndNil(gv_WebServer);
+
+  {$IFDEF Linux}
+  FreeAndNil(gv_PIPESignal);
+  {$ENDIF}
 
   ReleaseLogger();
 end.

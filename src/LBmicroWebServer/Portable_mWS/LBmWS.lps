@@ -7,38 +7,40 @@
       <Unit>
         <Filename Value="LBmWS.lpr"/>
         <IsPartOfProject Value="True"/>
-        <TopLine Value="7"/>
-        <CursorPos X="2" Y="13"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="4"/>
+        <CursorPos Y="21"/>
         <UsageCount Value="20"/>
+        <Bookmarks Count="1">
+          <Item0 X="10" Y="31" Left="1" Top="1"/>
+        </Bookmarks>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../uLBWebServerConfigurationLoader.pas"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="5"/>
-        <TopLine Value="13"/>
+        <EditorIndex Value="8"/>
         <CursorPos X="27" Y="22"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../utils/uLBFileUtils.pas"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="7"/>
         <CursorPos X="5" Y="11"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../uLBmicroWebServer.pas"/>
-        <EditorIndex Value="1"/>
-        <TopLine Value="593"/>
-        <CursorPos X="7" Y="626"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="263"/>
+        <CursorPos X="48" Y="282"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/fgl.pp"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="6"/>
         <TopLine Value="175"/>
         <CursorPos X="14" Y="189"/>
         <UsageCount Value="10"/>
@@ -46,38 +48,37 @@
       </Unit>
       <Unit>
         <Filename Value="../uLBmWsDocumentsFolder.pas"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="5"/>
         <TopLine Value="104"/>
         <CursorPos X="29" Y="136"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="../../utils/uLBSignalManager.pas"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="4"/>
+        <CursorPos X="64" Y="24"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/linux/signal.inc"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="211"/>
+        <CursorPos Y="226"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../../../../.lazarus/onlinepackagemanager/packages/synapse40.1/ssl_openssl3.pas"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="4"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
     </Units>
-    <JumpHistory HistoryIndex="28">
-      <Position>
-        <Filename Value="../uLBmicroWebServer.pas"/>
-        <Caret Line="221" Column="18" TopLine="208"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBmicroWebServer.pas"/>
-        <Caret Line="331" Column="45" TopLine="310"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBmicroWebServer.pas"/>
-        <Caret Line="332" Column="28" TopLine="310"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBmicroWebServer.pas"/>
-        <Caret Line="355" Column="14" TopLine="335"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBmicroWebServer.pas"/>
-        <Caret Line="368" Column="27" TopLine="345"/>
-      </Position>
-      <Position>
-        <Filename Value="../uLBmicroWebServer.pas"/>
-        <Caret Line="402" Column="18" TopLine="379"/>
-      </Position>
+    <JumpHistory HistoryIndex="29">
       <Position>
         <Filename Value="../uLBmicroWebServer.pas"/>
         <Caret Line="404" Column="18" TopLine="381"/>
@@ -169,6 +170,34 @@
       <Position>
         <Filename Value="../uLBWebServerConfigurationLoader.pas"/>
         <Caret Line="113" Column="26" TopLine="108"/>
+      </Position>
+      <Position>
+        <Filename Value="LBmWS.lpr"/>
+        <Caret Line="15" Column="20"/>
+      </Position>
+      <Position>
+        <Filename Value="LBmWS.lpr"/>
+        <Caret Line="23" Column="44"/>
+      </Position>
+      <Position>
+        <Filename Value="LBmWS.lpr"/>
+        <Caret Line="24" Column="3" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="LBmWS.lpr"/>
+        <Caret Line="23" Column="79" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/linux/signal.inc"/>
+        <Caret Line="231" Column="3" TopLine="211"/>
+      </Position>
+      <Position>
+        <Filename Value="LBmWS.lpr"/>
+        <Caret Line="29" Column="61" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="../uLBmicroWebServer.pas"/>
+        <Caret Line="282" Column="48" TopLine="263"/>
       </Position>
     </JumpHistory>
     <RunParams>

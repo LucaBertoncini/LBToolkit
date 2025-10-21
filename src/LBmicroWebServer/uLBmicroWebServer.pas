@@ -205,6 +205,8 @@ type
       FOnWebSocketConnectionEstablished : TNotifyEvent;
       FOnElaborateWebSocketMessage      : TWebSocketDataReceivedEvent;
 
+      FCS : TTimedOutCriticalSection;
+
       FProcessors : TRequestChainProcessorList;
 
       FListeningPort     : Integer;
@@ -363,6 +365,8 @@ begin
 
   FListener := nil;
 
+  FCS := TTimedOutCriticalSection.Create;
+
   {$IFDEF CodeTyphon}
   InitOpenSSL3();
   {$ENDIF}
@@ -372,6 +376,8 @@ destructor TLBmicroWebServer.Destroy;
 begin
   try
     Self.Stop();
+
+    FreeAndNil(FCS);
 
     if FDocumentsFolder <> nil then
       FreeAndNil(FDocumentsFolder);
@@ -395,8 +401,18 @@ end;
 
 procedure TLBmicroWebServer.createDocumentFolder;
 begin
-  if FDocumentsFolder = nil then
-    FDocumentsFolder := TLBmWsDocumentsFolder.Create;
+  if FCS.Acquire('TLBmicroWebServer.createDocumentFolder') then
+  begin
+    try
+      if FDocumentsFolder = nil then
+        FDocumentsFolder := TLBmWsDocumentsFolder.Create;
+
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'TLBmicroWebServer.createDocumentFolder', lmt_Error, E.Message);
+    end;
+    FCS.Release();
+  end;
 end;
 
 procedure TLBmicroWebServer.Stop();
@@ -869,14 +885,12 @@ var
   parseResult: TParserResult;
   _lastDataTime: TTimeoutTimer;
   bytesRead: Integer;
-  _Buff : TBytes;
-  _Body : String;
 
 begin
   SocketError := False;
   Result := False;
   FParser.Reset;
-  FRecvBuffer.Clear;
+//  FRecvBuffer.Clear;
 
   _lastDataTime := TTimeoutTimer.Create(cRequestIdleTimeout);
 
@@ -907,10 +921,9 @@ begin
             bytesRead := FRecvBuffer.WriteFromSocket(FSocket, cReadChunkSize);
             if bytesRead > 0 then
               _lastDataTime.Reset // Reset idle timer since we got data
-            else if bytesRead < 0 then
-            begin
+            else begin
               // CanRead was true but read failed, socket error
-              SocketError := True;
+              SocketError := bytesRead < 0;
               Result := False;
               Break;
             end;

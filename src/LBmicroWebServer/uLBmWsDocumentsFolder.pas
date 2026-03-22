@@ -13,10 +13,13 @@ type
   TLBmWsDocumentsFolder = class(TObject)
   private
     procedure set_DocumentFolder(AValue: String);
+    procedure set_UploadEndpoint(AValue: String);
 
   protected
     FDocumentFolder: String;
-    FEnableUpload: Boolean;
+    FUploadEndpoint: String;
+    FDefaultFile : String;
+
     function LoadSpecificSettingsFromXMLNode(aParentNode: TDOMNode): Boolean; virtual;
 
   public
@@ -27,31 +30,45 @@ type
     function RetrieveFilename(const anURI: String): String;
 
     property DocumentFolder: String read FDocumentFolder write set_DocumentFolder;
-    property EnableUpload: Boolean read FEnableUpload write FEnableUpload;
+    property UploadEndpoint: String read FUploadEndpoint write set_UploadEndpoint;
+    property DefaultFile: String read FDefaultFile write FDefaultFile;
 
     const
       cRootNodeName       = DOMString('DocumentsFolder');
       cNodeName_Folder    = DOMString('Folder');
-      cNodeName_EnableUpload = DOMString('EnableUpload');
+      cNodeName_UploadEndpoint = DOMString('UploadEndpoint');
+      cNodeName_DefaultFile = DOMString('DefaultFile');
   end;
-
-//  TDocumentsFolderClass = class of TLBmWsDocumentsFolder;
 
 implementation
 
 uses
-  synacode, ULBLogger;
+  synacode, ULBLogger, uLBFileUtils;
 
 { TLBmWsDocumentsFolder }
 
 procedure TLBmWsDocumentsFolder.set_DocumentFolder(AValue: String);
 begin
-  FDocumentFolder := IncludeTrailingPathDelimiter(Trim(AValue));
+  AValue := Trim(AValue);
+
+  if AValue <> '' then
+    FDocumentFolder := IncludeTrailingPathDelimiter(ResolvePath(AValue))
+  else
+    FDocumentFolder := '';
+end;
+
+procedure TLBmWsDocumentsFolder.set_UploadEndpoint(AValue: String);
+begin
+  FUploadEndpoint := Trim(AValue);
+  if (FUploadEndpoint <> '') and (FUploadEndpoint[1] <> '/') then
+    FUploadEndpoint := '/' + FUploadEndpoint;
 end;
 
 constructor TLBmWsDocumentsFolder.Create;
 begin
   inherited Create;
+  FDocumentFolder := '';
+  FUploadEndpoint := '';
 end;
 
 function TLBmWsDocumentsFolder.LoadSpecificSettingsFromXMLNode(aParentNode: TDOMNode): Boolean;
@@ -79,8 +96,12 @@ begin
 
         if DirectoryExists(FDocumentFolder) then
         begin
-          _Item := aParentNode.FindNode(cNodeName_EnableUpload);
-          FEnableUpload := (_Item <> nil) and (_Item.TextContent = '1');
+          _Item := aParentNode.FindNode(cNodeName_UploadEndpoint);
+          if _Item <> nil then
+            FUploadEndpoint := Trim(_Item.TextContent)
+          else
+            FUploadEndpoint := '';
+
           Result := LoadSpecificSettingsFromXMLNode(aParentNode);
         end
         else
@@ -91,7 +112,7 @@ begin
     end
     else begin
       FDocumentFolder := '';
-      FEnableUpload := False;
+      FUploadEndpoint := '';
       LBLogger.Write(1, 'TLBmWsDocumentsFolder.LoadFromXMLNode', lmt_Warning, 'Node <%s> not found!', [cNodeName_Folder]);
     end;
   end;

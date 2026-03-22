@@ -33,7 +33,7 @@ type
     function SetFile(const aFilename, aRangeHeader: String): Boolean;
 
     procedure addResponseHeaders(anHeadersList: TStringList);
-    function sendData(aSocket: TTCPBlockSocket): Boolean;
+    function sendData(aSocket: TTCPBlockSocket; out AllOk: Boolean): Boolean;
 
     property AnswerStatus: Integer read FStatusCode;
     property RangeStart: Int64 read FRangeStart;
@@ -105,14 +105,13 @@ begin
         _StartVal := StrToInt64Def(_StartStr, -1);
         _EndVal   := StrToInt64Def(_EndStr, -1);
 
-        if (_StartVal >= 0) and (_EndVal > _StartVal) and (_StartVal < aFileSize) then
+        if (_StartVal >= 0) and (_EndVal >= _StartVal) and (_StartVal < aFileSize) then
         begin
           FRangeStart := _StartVal;
           if _EndVal > aFileSize - 1 then
             FRangeEnd := aFileSize - 1
           else
             FRangeEnd := _EndVal;
-//          FRangeEnd := Min(_EndVal, aFileSize - 1);
           FStatusCode := HTTP_STATUS_PARTIAL_CONTENT;
           Result := True;
         end
@@ -195,7 +194,8 @@ begin
     end
     else begin
       FStatusCode := HTTP_STATUS_NOT_FOUND;
-      LBLogger.Write(1, 'TLBmWsFileManager.SetFile', lmt_Warning, 'File not found: %s', [aFilename]);
+      if aFilename <> '' then
+        LBLogger.Write(5, 'TLBmWsFileManager.SetFile', lmt_Warning, 'File not found: %s', [aFilename]);
     end;
 
   except
@@ -253,12 +253,15 @@ begin
       end;
 
       anHeadersList.Add(HTTP_HEADER_CONTENT_TYPE + ': ' + _ContentType);
-      anHeadersList.Add(HTTP_HEADER_CONTENT_LENGTH + ': ' + IntToStr(FRangeEnd - FRangeStart + 1));
       anHeadersList.Add(HTTP_HEADER_ACCEPT_RANGES + ': bytes');
       if FStatusCode = HTTP_STATUS_PARTIAL_CONTENT then
+      begin
+        anHeadersList.Add(HTTP_HEADER_CONTENT_LENGTH + ': ' + IntToStr(FRangeEnd - FRangeStart + 1));
         anHeadersList.Add(HTTP_HEADER_CONTENT_RANGE + ': ' + Format('bytes %d-%d/%d', [FRangeStart, FRangeEnd, FFileStream.Size]));
+      end
+      else
+        anHeadersList.Add(HTTP_HEADER_CONTENT_LENGTH + ': ' + IntToStr(FFileStream.Size));
 
-      anHeadersList.Add(HTTP_HEADER_CONNECTION + ': ' + HTTP_CONNECTION_KEEP_ALIVE);
 
     except
       on E: Exception do
@@ -270,13 +273,14 @@ begin
     LBLogger.Write(1, 'TLBmWsFileManager.addResponseHeaders', lmt_Warning, 'File not set!');
 end;
 
-function TLBmWsFileManager.sendData(aSocket: TTCPBlockSocket): Boolean;
+function TLBmWsFileManager.sendData(aSocket: TTCPBlockSocket; out AllOk: Boolean): Boolean;
 var
   _BytesRead : Int64;
   _BytesToRead : Int64;
 
 begin
   Result := False;
+  AllOk := True;
 
   if (not FSendHeadersOnly) and (FFileStream <> nil) then
   begin
@@ -295,9 +299,12 @@ begin
         if _BytesRead > 0 then
         begin
           aSocket.SendBuffer(@FBuffer[0], _BytesRead);
-          Result := aSocket.LastError = 0;
-          if Result then
-            Dec(FRemainingBytes, _BytesRead)
+          AllOk := aSocket.LastError = 0;
+          if AllOk then
+          begin
+            Dec(FRemainingBytes, _BytesRead);
+            Result := True;
+          end
           else
             LBLogger.Write(1, 'TLBmWsFileManager.sendData', lmt_Warning, 'Error sending file <%s>: <%s>', [FFileStream.FileName, aSocket.LastErrorDesc]);
         end

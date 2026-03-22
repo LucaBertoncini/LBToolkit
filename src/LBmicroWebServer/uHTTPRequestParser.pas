@@ -44,6 +44,7 @@ type
     FCurrentLine: AnsiString;
     FRawRequestLine : String;
     FResource: String;
+    FUploadedFiles: TStringList;
 
     procedure ProcessRequestLine;
     procedure ProcessHeaderLine;
@@ -55,7 +56,7 @@ type
     constructor Create(aBuffer: TLBCircularBuffer);
     destructor Destroy; override;
 
-    function Parse: TParserResult;
+    function Parse(aParseBody: Boolean = True): TParserResult;
     procedure Reset;
 
     function SplitURIIntoResourceAndParameters(): Boolean;
@@ -70,6 +71,9 @@ type
     property Body: TMemoryStream read FBody;
     property MaxHeaderSize: Cardinal read FMaxHeaderSize write FMaxHeaderSize;
     property MaxBodySize: Cardinal read FMaxBodySize write FMaxBodySize;
+    property UploadedFiles: TStringList read FUploadedFiles;
+
+    property State: TParserState read FState;
 
     property RawRequestLine: String read FRawRequestLine;
   end;
@@ -96,6 +100,8 @@ begin
 
   FRawRequestLine := '';
 
+  FUploadedFiles := TStringList.Create;
+
   FBody := TMemoryStream.Create;
   FMaxHeaderSize := 16 * 1024; // 16KB default
   FMaxBodySize := 10 * 1024 * 1024; // 10MB default
@@ -108,6 +114,7 @@ begin
   FreeAndNil(FHeaders);
   FreeAndNil(FBody);
   FreeAndNil(FParams);
+  FreeAndNil(FUploadedFiles);
 
   inherited Destroy;
 end;
@@ -125,12 +132,14 @@ begin
   FCurrentLine := '';
   FResource := '';
   FParams.Clear;
+  FUploadedFiles.Clear;
 end;
 
 function THTTPRequestParser.SplitURIIntoResourceAndParameters(): Boolean;
 var
   i: integer;
   _tokens: TStringArray;
+  _Params : TStringArray;
 
 begin
   Result := FResource <> '';
@@ -147,16 +156,18 @@ begin
 
     FResource := _tokens[0].Trim;
 
-    if Length(_tokens) >= 2 then
+    if High(_tokens) >= 1 then
     begin
-      _tokens := _tokens[1].Split('&');
-      for i := 0 to High(_tokens) do
-        FParams.Add(_tokens[i].Trim);
+//      LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Tokens: <%s>', [_tokens[1]]);
+      _Params := _tokens[1].Split('&');
+//      LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Params: <%s>', [_Params[0]]);
+      for i := 0 to High(_Params) do
+        FParams.Add(_Params[i].Trim);
     end;
 
     Result := True;
 
-    LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Resource: <%s>  -  Params: <%s>', [FResource, FParams.CommaText]);
+//    LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Resource: <%s>  -  Params: <%s>', [FResource, FParams.CommaText]);
 
   end;
 end;
@@ -220,7 +231,7 @@ var
 begin
   Result := prIncomplete;
 
-  while FindCRLF(linePos) do
+  while Self.FindCRLF(linePos) do
   begin
     lineLen := linePos;
     FCurrentHeaderSize += lineLen + 2;
@@ -269,38 +280,47 @@ begin
 
   if FContentLength > 0 then
   begin
-    bytesToRead := FContentLength - FBody.Size;
-    if bytesToRead > 0 then
+    if FContentLength <= FMaxBodySize then
     begin
-      bytesRead := FBuffer.AvailableForRead;
-      if bytesRead > bytesToRead then
-        bytesRead := bytesToRead;
-
-      if bytesRead > 0 then
+      bytesToRead := FContentLength - FBody.Size;
+      if bytesToRead > 0 then
       begin
-        // Read in chunks to avoid large memory allocation for tempBuffer
-        while bytesRead > 0 do
+        bytesRead := FBuffer.AvailableForRead;
+        if bytesRead > bytesToRead then
+          bytesRead := bytesToRead;
+
+        if bytesRead > 0 then
         begin
-          if bytesRead > SizeOf(tempBuffer) then
+          // Read in chunks to avoid large memory allocation for tempBuffer
+          while bytesRead > 0 do
           begin
-            FBuffer.Read(@tempBuffer[0], SizeOf(tempBuffer));
-            FBody.WriteBuffer(tempBuffer[0], SizeOf(tempBuffer));
-            bytesRead := bytesRead - SizeOf(tempBuffer);
-          end
-          else begin
-            FBuffer.Read(@tempBuffer[0], bytesRead);
-            FBody.WriteBuffer(tempBuffer[0], bytesRead);
-            bytesRead := 0;
+            if bytesRead > SizeOf(tempBuffer) then
+            begin
+              FBuffer.Read(@tempBuffer[0], SizeOf(tempBuffer));
+              FBody.WriteBuffer(tempBuffer[0], SizeOf(tempBuffer));
+              bytesRead := bytesRead - SizeOf(tempBuffer);
+            end
+            else begin
+              FBuffer.Read(@tempBuffer[0], bytesRead);
+              FBody.WriteBuffer(tempBuffer[0], bytesRead);
+              bytesRead := 0;
+            end;
           end;
         end;
       end;
-    end;
 
-    if FBody.Size >= FContentLength then
-    begin
-      FState := psComplete;
-      Result := prComplete;
-      FBody.Position := 0;
+      if FBody.Size >= FContentLength then
+      begin
+        FState := psComplete;
+        Result := prComplete;
+        FBody.Position := 0;
+      end;
+
+    end
+    else begin
+      FState := psError;
+      Result := prError;
+      LBLogger.Write(1, 'THTTPRequestParser.ParseBody', lmt_Warning, 'Wrong content length %d  -  Max allowed %d', [FContentLength, FMaxBodySize]);
     end;
   end
   else begin
@@ -311,7 +331,7 @@ begin
 end;
 
 
-function THTTPRequestParser.Parse: TParserResult;
+function THTTPRequestParser.Parse(aParseBody: Boolean): TParserResult;
 var
   clHeader: String;
 begin
@@ -326,11 +346,11 @@ begin
       if clHeader <> '' then
       begin
         FContentLength := StrToInt64Def(clHeader, -1);
-        if (FContentLength < 0) or (FContentLength > FMaxBodySize) then
+        if (FContentLength < 0) or (aParseBody and (FContentLength > FMaxBodySize)) then
         begin
           FState := psError;
           Result := prError;
-          LBLogger.Write(1, 'THTTPRequestParser.Parse', lmt_Warning, 'Invalid or too large Content-Length.');
+          LBLogger.Write(1, 'THTTPRequestParser.Parse', lmt_Warning, 'Invalid or too large Content-Length. Content length: %d  -  Max allowed: %d', [FContentLength, FMaxBodySize]);
           Exit;
         end;
       end
@@ -347,6 +367,13 @@ begin
       end;
 
       FState := psBody_Identity;
+
+      if not aParseBody then
+      begin
+        Result := prComplete;
+        Exit;
+      end;
+
     end
     else if FState = psError then
     begin
@@ -357,8 +384,11 @@ begin
       Exit; // Incomplete
   end;
 
-  if FState = psBody_Identity then
-    Result := Self.ParseBody;
+
+  if aParseBody and (FState = psBody_Identity) then
+    Result := Self.ParseBody
+  else if not aParseBody then
+    Result := prComplete;
 
   if FState = psComplete then
     Result := prComplete;

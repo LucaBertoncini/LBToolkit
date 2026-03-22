@@ -34,10 +34,16 @@ type
                                     rms_CloseSocket                   = 7);
     strict private
       FWebServerOwner: TLBmicroWebServer;
-      function ProcessGETRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
-      function ProcessHEADRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
-      function ProcessOPTIONSRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
-      function ProcessPOSTRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
+      function ProcessGETRequest(out NextState: THTTPRequestManagerState): Integer;
+      function ProcessHEADRequest(out NextState: THTTPRequestManagerState): Integer;
+      function ProcessOPTIONSRequest(out NextState: THTTPRequestManagerState): Integer;
+      function ProcessPOSTRequest(out NextState: THTTPRequestManagerState): Integer;
+      function HandleRawFileUpload(aDocFolder: TLBmWsDocumentsFolder; out aUploadedFilePath: String): Integer;
+      function SanitizeFileName(const aFileName: String): String;
+      function GenerateUniqueFileName(const aPath: String; const aOriginalName: String): String;
+      function ExtractHeaderValue(const aHeaderLine: String; const aKey: String; out aValue: String): Boolean;
+
+
 
       procedure DoExecuteTerminated();
 
@@ -64,8 +70,6 @@ type
 
         FConnectionExecuted : Boolean;
 
-        FAnswerDescription: TFPStringHashTable;
-
         FOutputHeaders: TStringList;
         FOutputData: TMemoryStream;
 
@@ -73,7 +77,9 @@ type
         FRecvBuffer: TLBCircularBuffer;
         FParser: THTTPRequestParser;
 
-      function ReceiveAndParseRequest(out SocketError: Boolean): Boolean;
+        FKeepConnection : Boolean;
+
+      function ReceiveAndParseRequest(out SocketError: Boolean; aParseBody: Boolean = True; aResetParser: Boolean = True): Boolean;
       function SendAnswer(aResultCode: Integer): Boolean;
       function SendHeaders(aResultCode: Integer): Boolean;
 
@@ -82,7 +88,7 @@ type
       function setSSLConnection(aSSLData: TSSLConnectionData): Boolean;
 
       function SendData(): Boolean; virtual;
-      function ProcessHttpRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer; virtual;
+      function ProcessHttpRequest({out KeepConnection: Boolean;} out NextState: THTTPRequestManagerState): Integer; virtual;
 
     private
       property OnExecuteTerminatedInternal: TNotifyEvent write FOnExecuteTerminatedInternal;
@@ -93,6 +99,9 @@ type
     public
       constructor Create(ASocket: TSocket; AOwner: TLBmicroWebServer); reintroduce; virtual;
       destructor Destroy(); override;
+
+      function setFileToSend(const aFileRelativePath: String; const aRange: String; out ResCode: Integer): Boolean;
+      function setFileToSendByAbsolutePath(const aFilename: String; const aRange: String; out ResCode: Integer): Boolean;
 
       property OnExecuteTerminated: TNotifyEvent write FOnExecuteTerminated;
 
@@ -117,12 +126,13 @@ type
   where each component can transform or filter the request before the response.
 }
 
-  TRequestChainProcessor = class(TObject)
+  TRequestChainProcessor = class(TObject)   // Must be thread-safe
     strict protected
       FWebServerOwner : TLBmicroWebServer;
       FNext: TRequestChainProcessor;
 
       function DoProcessRequest(
+        RequestManager: THTTPRequestManager; // thread that manage the answer
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -136,6 +146,7 @@ type
 
     public
       function ProcessRequest(
+        RequestManager: THTTPRequestManager; // thread that manage the answer
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -222,6 +233,7 @@ type
 
     private
       function ProcessRequest(
+        RequestManager: THTTPRequestManager; // thread that manage the answer
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -279,12 +291,12 @@ implementation
 
 {$smartlink off}
 uses
-  uHTTPConsts, System.NetEncoding, ssl_openssl3, synautil, laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
-
+  uHTTPConsts, System.NetEncoding, {$IFDEF OldSSL}ssl_openssl{$ELSE}ssl_openssl3{$ENDIF}, synautil,
+  laz2_XMLRead, ULBLogger {$IFDEF Unix}, BaseUnix{$ENDIF};
 {$smartlink on}
 
 var
-  gv_SSLConnectionCS : TTimedOutCriticalSection = nil;
+  gv_AnswerDescription : TFPStringHashTable = nil;
 
 { TAnswerError }
 
@@ -332,13 +344,13 @@ begin
     FProcessors.Last.NextStep := nil;
 end;
 
-function TLBmicroWebServer.ProcessRequest(HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TLBmicroWebServer.ProcessRequest(RequestManager: THTTPRequestManager; HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   Result := False;
 
   try
     if (FProcessors.Count > 0) then
-      Result := FProcessors.First.ProcessRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
+      Result := FProcessors.First.ProcessRequest(RequestManager, HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 
   except
     on E: Exception do
@@ -357,6 +369,7 @@ begin
   inherited Create();
 
   FDocumentsFolder := nil;
+
   FListeningPort := 0;
 
   FSSLData := TSSLConnectionData.Create;
@@ -368,7 +381,11 @@ begin
   FCS := TTimedOutCriticalSection.Create;
 
   {$IFDEF CodeTyphon}
+  {$IFDEF OldSSL}
+  InitOpenSSL();
+  {$ELSE}
   InitOpenSSL3();
+  {$ENDIF}
   {$ENDIF}
 end;
 
@@ -455,7 +472,7 @@ begin
       begin
         while (not Self.Terminated) do
         begin
-          if not FSendingFile.sendData(FSocket) then
+          if not FSendingFile.sendData(FSocket, Result) then
             Break;
         end;
         FreeAndNil(FSendingFile);
@@ -509,8 +526,10 @@ begin
       if (FOutputHeaders.Count > 0) and (FOutputHeaders[FOutputHeaders.Count - 1] = '') then
         FOutputHeaders.Delete(FOutputHeaders.Count - 1);
 
-      _code_desc := FAnswerDescription[IntTostr(aResultCode)];
+      _code_desc := gv_AnswerDescription[IntTostr(aResultCode)];
+
       FSocket.SendString(FParser.HTTPVersion + ' ' + IntTostr(aResultCode) + _code_desc + CRLF);
+      // LBLogger.Write(5, 'THTTPRequestManager.SendHeaders', lmt_Debug, FParser.HTTPVersion + ' ' + IntTostr(aResultCode) + _code_desc);
 
       if FOutputHeaders.IndexOfName(HTTP_HEADER_DATE) = -1 then
         FOutputHeaders.Add(HTTP_HEADER_DATE + ': ' + Rfc822DateTime(Now));
@@ -532,6 +551,17 @@ begin
           FOutputHeaders.Add(HTTP_HEADER_CONTENT_LENGTH + ': ' + IntTostr(FOutputData.Size))
         else
           LBLogger.Write(5, 'THTTPRequestManager.SendHeaders', lmt_Debug, 'Header <%s> already present', [HTTP_HEADER_CONTENT_LENGTH]);
+      end;
+
+      if FOutputHeaders.IndexOfName(HTTP_HEADER_CONNECTION) = -1 then
+      begin
+        if FKeepConnection then
+        begin
+          FOutputHeaders.Add(HTTP_HEADER_CONNECTION + ': ' + HTTP_CONNECTION_KEEP_ALIVE);
+          FOutputHeaders.Add('Keep-Alive: timeout=10, max=100');
+        end
+        else
+          FOutputHeaders.Add(HTTP_HEADER_CONNECTION + ': close');
       end;
 
       FOutputHeaders.Add('');
@@ -576,22 +606,23 @@ begin
   FOutputData.Write(_sError[1], Length(_sError));
 end;
 
-function THTTPRequestManager.ProcessHttpRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
+function THTTPRequestManager.ProcessHttpRequest(out NextState: THTTPRequestManagerState): Integer;
 begin
   Result := HTTP_STATUS_NOT_FOUND;
-  KeepConnection := False;
+  FKeepConnection := False;
   NextState := rms_CloseSocket;
 
   if Pos('HTTP/', FParser.HTTPVersion) = 1 then
   begin
-
+    FKeepConnection := (FParser.HTTPVersion = 'HTTP/1.1') or
+                       SameText(Trim(FParser.Headers.Values[HTTP_HEADER_CONNECTION]), HTTP_CONNECTION_KEEP_ALIVE);
     try
 
       case FParser.Method of
-        HTTP_METHOD_GET     : Result := Self.ProcessGETRequest(KeepConnection, NextState);
-        HTTP_METHOD_HEAD    : Result := Self.ProcessHEADRequest(KeepConnection, NextState);
-        HTTP_METHOD_POST    : Result := Self.ProcessPOSTRequest(KeepConnection, NextState);
-        HTTP_METHOD_OPTIONS : Result := Self.ProcessOPTIONSRequest(KeepConnection, NextState);
+        HTTP_METHOD_GET     : Result := Self.ProcessGETRequest(NextState);
+        HTTP_METHOD_HEAD    : Result := Self.ProcessHEADRequest(NextState);
+        HTTP_METHOD_POST    : Result := Self.ProcessPOSTRequest(NextState);
+        HTTP_METHOD_OPTIONS : Result := Self.ProcessOPTIONSRequest(NextState);
 
         else
           LBLogger.Write(1, 'THTTPRequestManager.ProcessHttpRequest', lmt_Warning, Format('Unknown request method <%s>', [FParser.Method]));
@@ -611,16 +642,12 @@ end;
 
 
 
-function THTTPRequestManager.ProcessGETRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
-var
-  _DocFolder: TLBmWsDocumentsFolder;
-
+function THTTPRequestManager.ProcessGETRequest(out NextState: THTTPRequestManagerState): Integer;
 const
   cStaticHTML = AnsiString('<!DOCTYPE html><html><head></head><body><br>Micro-WebServer working! ;-)</body></html>');
 
 begin
   Result := HTTP_STATUS_NOT_FOUND;
-  KeepConnection := False;
   NextState := rms_CloseSocket;
 
   try
@@ -629,7 +656,7 @@ begin
        (Pos(HTTP_CONNECTION_UPGRADE, FParser.Headers.Values[HTTP_HEADER_CONNECTION]) > 0) then
     begin
       Result := HTTP_STATUS_OK;
-      KeepConnection := True;
+      FKeepConnection := True;
       NextState := rms_ManageWebSocketSession;
       Exit;
     end;
@@ -655,23 +682,15 @@ begin
     // Attempt to access static file
     if (FWebServerOwner <> nil) then
     begin
-      _DocFolder := FWebServerOwner.DocumentsFolder;
-      if (_DocFolder <> nil) and _DocFolder.isValidSubpath(FParser.URI) then
+      if Self.setFileToSend(FParser.URI, Trim(FParser.Headers.Values[HTTP_HEADER_RANGE]), Result) then
       begin
-        FSendingFile := TLBmWsFileManager.Create;
-        if FSendingFile.setFile(_DocFolder.RetrieveFilename(FParser.URI), Trim(FParser.Headers.Values[HTTP_HEADER_RANGE])) then
-        begin
-          Result := FSendingFile.answerStatus;
-          NextState := rms_SendHTTPAnswer;
-          Exit;
-        end
-        else
-          FreeAndNil(FSendingFile);
+        NextState := rms_SendHTTPAnswer;
+        Exit;
       end;
 
       // Custom GET handler (fallback)
       Result := HTTP_STATUS_NOT_FOUND;
-      if FWebServerOwner.ProcessRequest(FParser, FOutputHeaders, FOutputData, Result) then
+      if FWebServerOwner.ProcessRequest(Self, FParser, FOutputHeaders, FOutputData, Result) then
         NextState := rms_SendHTTPAnswer;
     end
     else
@@ -683,13 +702,12 @@ begin
   end;
 end;
 
-function THTTPRequestManager.ProcessHEADRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
+function THTTPRequestManager.ProcessHEADRequest(out NextState: THTTPRequestManagerState): Integer;
 var
   _DocFolder: TLBmWsDocumentsFolder;
 
 begin
   Result := HTTP_STATUS_NOT_FOUND;
-  KeepConnection := False;
   NextState := rms_CloseSocket;
 
   if (FWebServerOwner <> nil) then
@@ -713,12 +731,11 @@ begin
   end;
 end;
 
-function THTTPRequestManager.ProcessOPTIONSRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
+function THTTPRequestManager.ProcessOPTIONSRequest(out NextState: THTTPRequestManagerState): Integer;
 begin
   LBLogger.Write(5, 'THTTPRequestManager.ProcessOPTIONSRequest', lmt_Debug, 'OPTIONS request');
 
   Result := HTTP_STATUS_NOT_FOUND;
-  KeepConnection := False;
   NextState := rms_CloseSocket;
 
   if (FWebServerOwner <> nil) then
@@ -729,26 +746,241 @@ begin
 
     Result := HTTP_STATUS_OK;
     NextState := rms_SendHTTPAnswer;
-    KeepConnection := True;
   end;
 
 end;
 
-function THTTPRequestManager.ProcessPOSTRequest(out KeepConnection: Boolean; out NextState: THTTPRequestManagerState): Integer;
+function THTTPRequestManager.ProcessPOSTRequest(out NextState: THTTPRequestManagerState): Integer;
 begin
   Result := HTTP_STATUS_NOT_FOUND;
-  KeepConnection := False;
+  //FKeepConnection := False;
   NextState := rms_CloseSocket;
 
   if (FWebServerOwner <> nil) then
   begin
-    if FWebServerOwner.ProcessRequest(FParser, FOutputHeaders, FOutputData, Result) then
-    begin
+    if FWebServerOwner.ProcessRequest(Self, FParser, FOutputHeaders, FOutputData, Result) then
       NextState := rms_SendHTTPAnswer;
-      KeepConnection := False;
-    end;
   end;
 end;
+
+function THTTPRequestManager.HandleRawFileUpload(aDocFolder: TLBmWsDocumentsFolder; out aUploadedFilePath: String): Integer;
+var
+  _FileName: String;
+  _FileStream: TFileStream = nil;
+  _ContentDisp: String;
+  _TotalBytes, _RemainingBytes, _BufferedBytes: Int64;
+  _bytesRead: Integer;
+  _DestFolder : String;
+
+  _Timeout : TTimeoutTimer = nil;
+  _WriteFromSocket : Int64 = 0;
+
+begin
+  Result := HTTP_STATUS_BAD_REQUEST;
+  aUploadedFilePath := '';
+
+  _ContentDisp := FParser.Headers.Values[HTTP_HEADER_CONTENT_DISPOSITION];
+  _TotalBytes := StrToInt64Def(FParser.Headers.Values[HTTP_HEADER_CONTENT_LENGTH], 0);
+
+  if _TotalBytes > 0 then
+  begin
+    (*
+
+    POST /upload HTTP/1.1
+    Host: example.com
+    Content-Type: application/octet-stream
+    Content-Length: 1024567
+    Content-Disposition: attachment; filename="report_2024.pdf"
+    Authorization: Bearer your_token_here
+
+    [binary file data...]
+
+    *)
+    if not ExtractHeaderValue(_ContentDisp, 'filename', _FileName) then
+      _FileName := ''; // Generate a default name
+
+    _DestFolder := IncludeTrailingPathDelimiter(aDocFolder.DocumentFolder) + 'tmpUpload' + PathDelim;
+    if not DirectoryExists(_DestFolder) then
+      ForceDirectories(_DestFolder);
+
+    aUploadedFilePath := GenerateUniqueFileName(_DestFolder, _FileName);
+    LBLogger.Write(5, 'THTTPRequestManager.HandleRawFileUpload', lmt_Debug, 'Receiving raw file upload to <%s>', [aUploadedFilePath]);
+
+    try
+      _FileStream := TFileStream.Create(aUploadedFilePath, fmCreate);
+      _RemainingBytes := _TotalBytes;
+
+//      LBLogger.Write(5, 'THTTPRequestManager.HandleRawFileUpload', lmt_Debug,
+//                        'Upload starting: file=<%s>, expected=%d bytes, buffer_size=%d bytes',
+//                        [ExtractFileName(aUploadedFilePath), _TotalBytes, FRecvBuffer.AvailableForRead]);
+
+
+      _Timeout := TTimeoutTimer.Create(30000);
+
+      // Read remaining data from socket
+      while (_RemainingBytes > 0) and (not Self.Terminated) and (not _Timeout.Expired()) do
+      begin
+//        LBLogger.Write(5, 'THTTPRequestManager.HandleRawFileUpload', lmt_Debug, 'Remaining: %d', [_RemainingBytes]);
+
+        // Trasferisci dal buffer al file
+        _BufferedBytes := FRecvBuffer.AvailableForRead;
+        if _BufferedBytes > 0 then
+        begin
+          if _BufferedBytes > _RemainingBytes then
+            _BufferedBytes := _RemainingBytes;
+
+          if FRecvBuffer.Read(_FileStream, _BufferedBytes) then
+          begin
+            Dec(_RemainingBytes, _BufferedBytes);
+//            LBLogger.Write(5, 'THTTPRequestManager.HandleRawFileUpload', lmt_Debug,
+//                              'Transferred %d bytes from buffer, remaining: %d', [_BufferedBytes, _RemainingBytes]);
+          end
+          else begin
+            Result := HTTP_STATUS_INTERNAL_ERROR;
+            LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning, 'Failed to transfer data from buffer to file');
+            Break;
+          end;
+        end;
+
+        if _RemainingBytes = 0 then
+          Break;
+
+        if FSocket.WaitingData = 0 then
+          FSocket.CanRead(10000);
+
+        if FSocket.WaitingData > 0 then
+        begin
+          _bytesRead := FRecvBuffer.WriteFromSocket(FSocket);
+          _WriteFromSocket += _bytesRead;
+          // LBLogger.Write(5, 'THTTPRequestManager.HandleRawFileUpload', lmt_Debug, 'Write from socket: %d', [_WriteFromSocket]);
+
+          if _bytesRead > 0 then
+            _Timeout.Reset()
+          else if _bytesRead < 0 then // Errore socket
+          begin
+            LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning, 'Socket error during file upload: %s', [FSocket.LastErrorDesc]);
+            Break;
+          end;
+        end
+        else begin
+          LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning, 'No data available in socket buffer. Remaining bytes: %d. Connection closed?', [_RemainingBytes]);
+          Break;
+        end;
+      end;
+
+      if _RemainingBytes = 0 then
+      begin
+        Result := HTTP_STATUS_OK;
+        LBLogger.Write(5, 'THTTPRequestManager.HandleRawFileUpload', lmt_Debug, 'File upload completed: %d bytes written', [_TotalBytes]);
+      end
+      else begin
+        Result := HTTP_STATUS_INTERNAL_ERROR;
+        LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning,
+                          'File upload incomplete. Expected %d, received %d bytes.',
+                          [_TotalBytes, _TotalBytes - _RemainingBytes]);
+      end;
+
+    except
+      on E: Exception do
+      begin
+        Result := HTTP_STATUS_INTERNAL_ERROR;
+        LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Error, 'Error writing to file <%s>: %s', [aUploadedFilePath, E.Message]);
+      end;
+    end;
+
+    if _FileStream <> nil then
+      _FileStream.Free;
+
+    if _Timeout <> nil then
+      _Timeout.Free;
+
+    if Result <> HTTP_STATUS_OK then
+    begin
+      DeleteFile(aUploadedFilePath);
+      aUploadedFilePath := '';
+    end;
+
+  end
+  else
+    LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning, 'Invalid or missing Content-Length for raw upload.');
+end;
+
+(*
+function THTTPRequestManager.HandleRawFileUpload(aDocFolder: TLBmWsDocumentsFolder; out aUploadedFilePath: String): Integer;
+var
+  _FileName: String;
+  _FileStream: TFileStream;
+  _ContentDisp: String; // _ContentLen
+  _TotalBytes, _RemainingBytes: Int64;
+  _bytesRead: Integer;
+begin
+  Result := HTTP_STATUS_BAD_REQUEST;
+  _ContentDisp := FParser.Headers.Values[HTTP_HEADER_CONTENT_DISPOSITION];
+  _TotalBytes := StrToInt64Def(FParser.Headers.Values[HTTP_HEADER_CONTENT_LENGTH], 0);
+
+  if {TryStrToInt64(_ContentLen, _TotalBytes) and} (_TotalBytes > 0) then
+  begin
+    if not ExtractHeaderValue(_ContentDisp, 'filename', _FileName) then
+      _FileName := ''; // Generate a default name
+
+    aUploadedFilePath := GenerateUniqueFileName(aDocFolder.DocumentFolder, _FileName);
+    LBLogger.Write(5, 'THTTPRequestManager.HandleRawFileUpload', lmt_Debug, 'Receiving raw file upload to <%s>', [aUploadedFilePath]);
+
+    try
+      _FileStream := TFileStream.Create(aUploadedFilePath, fmCreate);
+      try
+        // Write any data already in the circular buffer
+        _RemainingBytes := _TotalBytes;
+        if FRecvBuffer.AvailableForRead > 0 then
+        begin
+          _bytesRead := FRecvBuffer.AvailableForRead;
+          if _bytesRead > _RemainingBytes then _bytesRead := _RemainingBytes;
+          FRecvBuffer.Read(_FileStream, _bytesRead);
+          Dec(_RemainingBytes, _bytesRead);
+        end;
+
+        // Stream remaining data from socket
+        while (_RemainingBytes > 0) and (not Self.Terminated) do
+        begin
+          _bytesRead := FRecvBuffer.WriteFromSocket(FSocket, FRecvBuffer.AvailableForWrite);
+          if _bytesRead > 0 then
+          begin
+            _bytesRead := FRecvBuffer.AvailableForRead;
+            if _bytesRead > _RemainingBytes then _bytesRead := _RemainingBytes;
+            FRecvBuffer.Read(_FileStream, _bytesRead);
+            Dec(_RemainingBytes, _bytesRead);
+          end
+          else
+          begin
+            if _bytesRead < 0 then // Socket error
+              LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning, 'Socket error during file upload: %s', [FSocket.LastErrorDesc]);
+            Break; // End of stream or error
+          end;
+        end;
+
+        if _RemainingBytes = 0 then
+          Result := HTTP_STATUS_OK
+        else
+        begin
+          Result := HTTP_STATUS_INTERNAL_ERROR;
+          LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning, 'File upload incomplete. Expected %d, received %d bytes.', [_TotalBytes, _TotalBytes - _RemainingBytes]);
+        end;
+
+      finally
+        _FileStream.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        Result := HTTP_STATUS_INTERNAL_ERROR;
+        LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Error, 'Error writing to file <%s>: %s', [aUploadedFilePath, E.Message]);
+      end;
+    end;
+  end
+  else
+    LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning, 'Invalid or missing Content-Length for raw upload.');
+end;
+*)
 
 procedure THTTPRequestManager.DoExecuteTerminated;
 begin
@@ -770,14 +1002,21 @@ end;
 procedure THTTPRequestManager.InternalExecute;
 var
   _ResultCode             : Integer;
-  _KeepConnection         : Boolean = False;
+//  _KeepConnection         : Boolean = False;
   _InternalState          : THTTPRequestManagerState = rms_ReadIncomingHTTPRequest;
   _SSLData                : TSSLConnectionData;
   _SocketError            : Boolean;
 
+  _DocFolder              : TLBmWsDocumentsFolder;
+  _CanUpload : Boolean;
+  _ContentType, _Boundary, _UploadedFilePath : String;
+  i: Integer;
 begin
-
+  FKeepConnection := False;
   _SocketError := False;
+
+  FSocket.SetRecvTimeout(2000);
+  FSocket.SetSendTimeout(2000);
 
   if (FWebServerOwner <> nil) then
   begin
@@ -785,18 +1024,23 @@ begin
     if (_SSLData <> nil) and _SSLData.hasValidData then
     begin
       if (not Self.setSSLConnection(_SSLData)) then
-      begin
-        LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Warning, 'SSL connection not set!');
         _SocketError := True;
-      end;
     end;
   end;
 
   if not _SocketError then
   begin
+    FSocket.SetRecvTimeout(10000);
+    FSocket.SetSendTimeout(10000);
+
     try
 
       FConnectionExecuted := True;
+      _DocFolder := FWebServerOwner.DocumentsFolder;
+      _CanUpload := (_DocFolder <> nil) and (_DocFolder.UploadEndpoint <> '');
+
+      if not _CanUpload then
+        LBLogger.Write(5, 'THTTPRequestManager.InternalExecute', lmt_Debug, 'Cannot upload data');
 
       while not Self.Terminated do
       begin
@@ -806,15 +1050,47 @@ begin
 
           rms_ReadIncomingHTTPRequest:
             begin
-              if self.ReceiveAndParseRequest(_SocketError) then
+              if Self.ReceiveAndParseRequest(_SocketError, False, True) then
               begin
-                if FOutputData <> nil then
-                  FOutputData.Clear;
-
-                FOutputHeaders.Clear;
-
-                // This function determines the new state: rms_SendHTTPAnswer for a single HTTP request or rms_ManageWebSocketSession for a WebSocket connection request.
-                _ResultCode := Self.ProcessHttpRequest(_KeepConnection, _InternalState);
+                // UPLOAD DISPATCHER
+                if _CanUpload and (FParser.Method = HTTP_METHOD_POST) and
+                  (FParser.URI.StartsWith(_DocFolder.UploadEndpoint, False)) then
+                begin
+                  // Raw binary upload
+                  _UploadedFilePath := '';
+                  _ResultCode := Self.HandleRawFileUpload(_DocFolder, _UploadedFilePath);
+                  if (_ResultCode = HTTP_STATUS_OK) and (_UploadedFilePath <> '') then
+                  begin
+                    FParser.UploadedFiles.Add(_UploadedFilePath);
+                    if FOutputData <> nil then
+                      FOutputData.Clear;
+                    FOutputHeaders.Clear;
+                    _ResultCode := Self.ProcessHttpRequest({_KeepConnection,} _InternalState);
+                  end
+                  else
+                    FKeepConnection := False;
+                  _InternalState := rms_SendHTTPAnswer;
+                end
+                // STANDARD REQUEST
+                else begin
+                  if Self.ReceiveAndParseRequest(_SocketError, True, False) then
+                  begin
+                    if FParser.Parse(True) = prComplete then
+                    begin
+                      if FOutputData <> nil then FOutputData.Clear;
+                      FOutputHeaders.Clear;
+                      _ResultCode := Self.ProcessHttpRequest(_InternalState);
+                    end
+                    else begin
+                      LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Warning, 'Body received but parsing not completed!');
+                      _InternalState := rms_CloseSocket;
+                    end;
+                  end
+                  else begin
+                    LBLogger.Write(1, 'THTTPRequestManager.InternalExecute', lmt_Warning, 'Error receiving body ...');
+                    _InternalState := rms_CloseSocket;
+                  end;
+                end;
               end
               else
                 _InternalState := rms_CloseSocket;
@@ -822,10 +1098,12 @@ begin
 
           rms_SendHTTPAnswer:
             begin
-              if (not Self.SendAnswer(_ResultCode)) or (not _KeepConnection) then
+              if (not Self.SendAnswer(_ResultCode)) or (not FKeepConnection) then
                 _InternalState := rms_CloseSocket
-              else
+              else begin
                 _InternalState := rms_ReadIncomingHTTPRequest;
+                FParser.Reset;
+              end;
             end;
 
           rms_ManageWebSocketSession:
@@ -876,9 +1154,8 @@ begin
   Self.DoExecuteTerminated();
 end;
 
-function THTTPRequestManager.ReceiveAndParseRequest(out SocketError: Boolean): Boolean;
+function THTTPRequestManager.ReceiveAndParseRequest(out SocketError: Boolean; aParseBody: Boolean; aResetParser: Boolean): Boolean;
 const
-  cReadChunkSize = 4096; // Read in 4KB chunks
   cRequestIdleTimeout = 10000; // 10 seconds idle timeout
 
 var
@@ -889,8 +1166,9 @@ var
 begin
   SocketError := False;
   Result := False;
-  FParser.Reset;
-//  FRecvBuffer.Clear;
+
+  if aResetParser then
+    FParser.Reset;
 
   _lastDataTime := TTimeoutTimer.Create(cRequestIdleTimeout);
 
@@ -898,7 +1176,7 @@ begin
     while not Terminated do
     begin
       // Try to parse what we already have in the buffer
-      parseResult := FParser.Parse;
+      parseResult := FParser.Parse(aParseBody);
 
       case parseResult of
         prComplete:
@@ -914,28 +1192,33 @@ begin
           end;
 
         else begin
-
-          // If more data is needed, wait for it on the socket
-          if (FSocket.WaitingData > 0) or FSocket.CanRead(100) then
+          if (not aParseBody) and (FParser.State >= psBody_Identity) then
           begin
-            bytesRead := FRecvBuffer.WriteFromSocket(FSocket, cReadChunkSize);
-            if bytesRead > 0 then
-              _lastDataTime.Reset // Reset idle timer since we got data
-            else begin
-              // CanRead was true but read failed, socket error
-              SocketError := bytesRead < 0;
+            Result := True;
+            Break;
+          end
+          else begin
+            // If more data is needed, wait for it on the socket
+            if (FSocket.WaitingData > 0) or FSocket.CanRead(100) then
+            begin
+              bytesRead := FRecvBuffer.WriteFromSocket(FSocket);
+              if bytesRead > 0 then
+                _lastDataTime.Reset // Reset idle timer since we got data
+              else begin
+                // CanRead was true but read failed, socket error
+                SocketError := bytesRead < 0;
+                Result := False;
+                Break;
+              end;
+            end;
+
+            // Check for idle timeout
+            if _lastDataTime.Expired then
+            begin
               Result := False;
               Break;
             end;
           end;
-
-          // Check for idle timeout
-          if _lastDataTime.Expired then
-          begin
-            Result := False;
-            Break;
-          end;
-
         end;
       end;
     end;
@@ -944,6 +1227,82 @@ begin
       LBLogger.Write(1, 'THTTPRequestManager.ReceiveAndParseRequest', lmt_Error, E.Message);
   end;
   _lastDataTime.Free;
+end;
+
+function THTTPRequestManager.SanitizeFileName(const aFileName: String): String;
+var
+  i: Integer;
+const
+  InvalidChars = ['/', '\', ':', '*', '?', '"', '<', '>', '|', #0..#31];
+begin
+  Result := '';
+  for i := 1 to Length(aFileName) do
+  begin
+    if not (aFileName[i] in InvalidChars) then
+      Result := Result + aFileName[i];
+  end;
+
+  // Rimuovi spazi iniziali/finali e punti
+  Result := Trim(Result);
+  while (Length(Result) > 0) and (Result[1] = '.') do
+    Delete(Result, 1, 1);
+end;
+
+function THTTPRequestManager.GenerateUniqueFileName(const aPath: String; const aOriginalName: String): String;
+var
+  _BaseName, _Ext: String;
+  _Counter: Integer;
+  _SanitizedName: String;
+begin
+  _SanitizedName := SanitizeFileName(aOriginalName);
+
+  if _SanitizedName = '' then
+    _SanitizedName := 'upload_' + FormatDateTime('yyyymmdd_hhnnss', Now);
+
+  _Ext := ExtractFileExt(_SanitizedName);
+  _BaseName := ChangeFileExt(_SanitizedName, '');
+
+  Result := IncludeTrailingPathDelimiter(aPath) + _SanitizedName;
+  _Counter := 1;
+
+  while FileExists(Result) do
+  begin
+    Result := IncludeTrailingPathDelimiter(aPath) +
+              _BaseName + '_' + IntToStr(_Counter) + _Ext;
+    Inc(_Counter);
+  end;
+end;
+
+function THTTPRequestManager.ExtractHeaderValue(const aHeaderLine: String; const aKey: String; out aValue: String): Boolean;
+var
+  _Pos, _StartPos, _EndPos: Integer;
+  _SearchKey: String;
+begin
+  Result := False;
+  aValue := '';
+
+  _SearchKey := aKey + '=';
+  _Pos := Pos(_SearchKey, aHeaderLine);
+
+  if _Pos > 0 then
+  begin
+    _StartPos := _Pos + Length(_SearchKey);
+
+    // Salta eventuali virgolette iniziali
+    if (aHeaderLine[_StartPos] = '"') then
+      Inc(_StartPos);
+
+    _EndPos := _StartPos;
+
+    // Trova la fine del valore (virgolette o punto e virgola)
+    while (_EndPos <= Length(aHeaderLine)) and
+          (aHeaderLine[_EndPos] <> '"') and
+          (aHeaderLine[_EndPos] <> ';') do
+      Inc(_EndPos);
+
+    aValue := Copy(aHeaderLine, _StartPos, _EndPos - _StartPos);
+    Result := aValue <> '';
+  end;
 end;
 
 constructor THTTPRequestManager.Create(ASocket: TSocket; AOwner: TLBmicroWebServer);
@@ -955,14 +1314,8 @@ begin
   FSocket := TTCPBlockSocket.Create;
   FSocket.Socket := ASocket;
 
-  FRecvBuffer := TLBCircularBuffer.Create(16 * 1024); // 16KB buffer
+  FRecvBuffer := TLBCircularBuffer.Create(80 * 1024); // 16KB buffer
   FParser := THTTPRequestParser.Create(FRecvBuffer);
-
-  FAnswerDescription := TFPStringHashTable.Create;
-  FAnswerDescription.Add('200', ' OK');
-  FAnswerDescription.Add('206', ' Partial Content');
-  FAnswerDescription.Add('403', ' FORBIDDEN');
-  FAnswerDescription.Add('404', ' NOT FOUND');
 
   FAllowCrossOrigin := False;
 
@@ -1001,12 +1354,50 @@ begin
 
     FreeAndNil(FOutputData);
 
-    FreeAndNil(FAnswerDescription);
-
   except
     on E: Exception do
       LBLogger.Write(1, 'THTTPRequestManager.Destroy', lmt_Error, E.Message);
   end;
+end;
+
+function THTTPRequestManager.setFileToSend(const aFileRelativePath: String; const aRange: String; out ResCode: Integer): Boolean;
+var
+  _DocFolder: TLBmWsDocumentsFolder;
+
+begin
+  Result := False;
+  ResCode := HTTP_STATUS_NOT_FOUND;
+
+  if (aFileRelativePath <> '') and (aFileRelativePath <> '/') then
+  begin
+    _DocFolder := FWebServerOwner.DocumentsFolder;
+    if (_DocFolder <> nil) and _DocFolder.isValidSubpath(aFileRelativePath) then
+    begin
+      FSendingFile := TLBmWsFileManager.Create;
+      if FSendingFile.setFile(_DocFolder.RetrieveFilename(aFileRelativePath), aRange) then
+      begin
+        ResCode := FSendingFile.answerStatus;
+        Result := True;
+      end
+      else
+        FreeAndNil(FSendingFile);
+    end;
+  end;
+end;
+
+function THTTPRequestManager.setFileToSendByAbsolutePath(const aFilename: String; const aRange: String; out ResCode: Integer): Boolean;
+begin
+  Result := False;
+  ResCode := HTTP_STATUS_NOT_FOUND;
+
+  FSendingFile := TLBmWsFileManager.Create;
+  if FSendingFile.setFile(aFilename, aRange) then
+  begin
+    ResCode := FSendingFile.answerStatus;
+    Result := True;
+  end
+  else
+    FreeAndNil(FSendingFile);
 end;
 
 function THTTPRequestManager.setSSLConnection(aSSLData: TSSLConnectionData): Boolean;
@@ -1019,25 +1410,20 @@ begin
     begin
 
       FSocket.SSL.SSLType := LT_all;
-//      FSocket.SSL.VerifyCert := False;
 
       FSocket.SSL.CertificateFile := aSSLData.CertificateFile;
       FSocket.SSL.PrivateKeyFile := aSSLData.PrivateKeyFile;
-
       FSocket.SSL.KeyPassword := aSSLData.KeyPassword;
 
-      if gv_SSLConnectionCS.Acquire('THTTPRequestManager.setSSLConnection') then
-      begin
-        try
-          Result := FSocket.SSLAcceptConnection;
-        finally
-          gv_SSLConnectionCS.Release();
-        end;
-      end;
-      // Result := FSocket.SSL.LastError = 0;
+      Result := FSocket.SSLAcceptConnection;
 
       if not Result then
-        LBLogger.Write(1, 'THTTPRequestManager.setSSLConnection', lmt_Warning, 'Error setting ssl connection with client <%s:%d>: %s', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort, FSocket.SSL.LastErrorDesc]);
+      begin
+        if (FSocket.LastError = WSAETIMEDOUT) or (FSocket.SSL.LastError = WSAETIMEDOUT) then
+          LBLogger.Write(1, 'THTTPRequestManager.setSSLConnection', lmt_Warning, 'Error setting ssl connection with client <%s:%d>: connection timeout!', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort])
+        else
+          LBLogger.Write(1, 'THTTPRequestManager.setSSLConnection', lmt_Warning, 'Error setting ssl connection with client <%s:%d>: <%s>', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort, FSocket.SSL.LastErrorDesc]);
+      end;
     end;
 
   except
@@ -1054,18 +1440,17 @@ end;
 
 { TRequestChainProcessor }
 
-function TRequestChainProcessor.ProcessRequest(HTTPParser: THTTPRequestParser;
-  ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
+function TRequestChainProcessor.ProcessRequest(RequestManager: THTTPRequestManager; HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
   try
 
-    Result := Self.DoProcessRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
+    Result := Self.DoProcessRequest(RequestManager, HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
 
     // if Result = True the chain is blocked
     if (not Result) and (FNext <> nil) then
     begin
       LBLogger.Write(5, 'TRequestChainProcessor.ProcessRequest', lmt_Debug, 'Running next processor');
-      Result := FNext.ProcessRequest(HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
+      Result := FNext.ProcessRequest(RequestManager, HTTPParser, ResponseHeaders, ResponseData, ResponseCode);
     end;
 
   except
@@ -1103,9 +1488,9 @@ begin
     end;
 
     if not Self.WaitForDestruction() then
-      LBLogger.Write(1, 'TLBmWsListener.DestroyAllConnections', lmt_Warning, 'Timeout reached!')
-    else
-      LBLogger.Write(1, 'TLBmWsListener.DestroyAllConnections', lmt_Debug, 'All connections destroyed!');
+      LBLogger.Write(1, 'TLBmWsListener.DestroyAllConnections', lmt_Warning, 'Timeout reached!');
+//    else
+//      LBLogger.Write(1, 'TLBmWsListener.DestroyAllConnections', lmt_Debug, 'All connections destroyed!');
   end;
 end;
 
@@ -1477,11 +1862,27 @@ begin
 end;
 
 initialization
-  gv_SSLConnectionCS := TTimedOutCriticalSection.Create;
+
+  gv_AnswerDescription := TFPStringHashTable.Create;
+  gv_AnswerDescription.Add('200', ' OK');
+  gv_AnswerDescription.Add('201', ' Created');
+  gv_AnswerDescription.Add('204', ' No Content');
+  gv_AnswerDescription.Add('206', ' Partial Content');
+  gv_AnswerDescription.Add('400', ' Bad Request');
+  gv_AnswerDescription.Add('401', ' Unauthorized');
+  gv_AnswerDescription.Add('403', ' Forbidden');
+  gv_AnswerDescription.Add('404', ' Not Found');
+  gv_AnswerDescription.Add('405', ' Method Not Allowed');
+  gv_AnswerDescription.Add('408', ' Request Timeout');
+  gv_AnswerDescription.Add('416', ' Range Not Satisfiable');
+  gv_AnswerDescription.Add('500', ' Internal Server Error');
+  gv_AnswerDescription.Add('501', ' Not Implemented');
+  gv_AnswerDescription.Add('503', ' Service Unavailable');
+
 
 finalization
-  if gv_SSLConnectionCS <> nil then
-    FreeAndNil(gv_SSLConnectionCS);
+  if gv_AnswerDescription <> nil then
+    FreeAndNil(gv_AnswerDescription);
 
 end.
 

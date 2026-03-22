@@ -25,6 +25,7 @@ type
       cINI_DEFAULT_SECTION  = 'LBWebServer';
       cINI_LISTENING_PORT   = 'Port';
       cINI_DOCUMENTS_FOLDER = 'DocumentFolder';
+      cINI_UPLOAD_ENDPOINT  = 'UploadEndpoint';
 
   public
     function LoadConfig(aWebServer: TLBmicroWebServer): Boolean; override;
@@ -42,10 +43,10 @@ type
     FXMLNode: TDOMNode;
 
     const
-      cXML_ROOT_NODENAME  = 'LBWebServer';
-      cXML_SSLDATA_NODENAME = 'SSLData';
+      cXML_ROOT_NODENAME      = 'LBWebServer';
+      cXML_SSLDATA_NODENAME   = 'SSLData';
       cXML_DOCFOLDER_NODENAME = 'DocumentFolder';
-      cXML_PORT_NODENAME = 'ListeningPort';
+      cXML_PORT_NODENAME      = 'ListeningPort';
 
   public
     function setFilename(const aFilename: String): Boolean;
@@ -126,6 +127,7 @@ begin
 
               aWebServer.createDocumentFolder();
               aWebServer.DocumentsFolder.DocumentFolder := _DocumentFolder;
+              aWebServer.DocumentsFolder.UploadEndpoint := _IniFile.ReadString(FSection, cINI_UPLOAD_ENDPOINT, '');
             end
             else begin
               Result := False;

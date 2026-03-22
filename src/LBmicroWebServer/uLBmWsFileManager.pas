@@ -277,6 +277,7 @@ function TLBmWsFileManager.sendData(aSocket: TTCPBlockSocket; out AllOk: Boolean
 var
   _BytesRead : Int64;
   _BytesToRead : Int64;
+  _Err : String;
 
 begin
   Result := False;
@@ -305,8 +306,11 @@ begin
             Dec(FRemainingBytes, _BytesRead);
             Result := True;
           end
-          else
-            LBLogger.Write(1, 'TLBmWsFileManager.sendData', lmt_Warning, 'Error sending file <%s>: <%s>', [FFileStream.FileName, aSocket.LastErrorDesc]);
+          else begin
+            _Err := aSocket.LastErrorDesc;
+            if _Err <> '' then
+              LBLogger.Write(1, 'TLBmWsFileManager.sendData', lmt_Warning, 'Error sending file <%s>: <%s>', [FFileStream.FileName, _Err]);
+          end;
         end
         else
           LBLogger.Write(1, 'TLBmWsFileManager.sendData', lmt_Debug, 'Error reading file <%s>!', [FFileStream.FileName]);

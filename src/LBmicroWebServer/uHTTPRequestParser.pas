@@ -158,17 +158,13 @@ begin
 
     if High(_tokens) >= 1 then
     begin
-//      LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Tokens: <%s>', [_tokens[1]]);
       _Params := _tokens[1].Split('&');
-//      LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Params: <%s>', [_Params[0]]);
+
       for i := 0 to High(_Params) do
         FParams.Add(_Params[i].Trim);
     end;
 
     Result := True;
-
-//    LBLogger.Write(5, 'THTTPRequestParser.SplitURIIntoResourceAndParameters', lmt_Debug, 'Resource: <%s>  -  Params: <%s>', [FResource, FParams.CommaText]);
-
   end;
 end;
 

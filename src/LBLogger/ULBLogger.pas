@@ -856,6 +856,7 @@ begin
       Self.setFilePath('');
       Self.setFileName('');
     end;
+
     if FAlternativeLoggers <> nil then
     begin
       if FCSAlternativeLoggers.Acquire('TLBLogger.setLogFile') then

@@ -22,12 +22,21 @@ type
 
 
   function BrokenPipeSignalManager(aCallback: tsigactionhandler): TSignalManager;
+  function TerminateSignalManager(aCallback: tsigactionhandler): TSignalManager;
+
 
 implementation
 
 uses
   ULBLogger;
 
+
+function TerminateSignalManager(aCallback: tsigactionhandler): TSignalManager;
+begin
+  Result := TSignalManager.Create;
+  if not Result.SetSignalAction(SIGTERM, aCallback) then
+    FreeAndNil(Result);
+end;
 
 function BrokenPipeSignalManager(aCallback: tsigactionhandler): TSignalManager;
 begin

@@ -21,24 +21,23 @@ type
       FDBManager : TSQLiteDBManager;
       FUpdater   : TDBTokenUpdater;
 
-      FTokensLoaded     : Boolean;
+      FTokensLoaded : Boolean;
 
       FRemoveTokens : Boolean;
       FInactiveTime : Int64;
 
 
 
-      function CreateToken(): String;
       procedure StopUpdater();
       function CreateTokenTable(Sender: TObject; anUTCCreationTime: TDateTime): Boolean;
 
       function LoadActiveTokens(): Boolean;
 
       const
-        cTimelessTokenNodeName = DOMString('TimelessToken');
-        cTokenManagerSessionName = String('TokenManager');
-        cTokenExpirationTime = String('TokenExpirationTime');
-        cDBFile = String('DBFile');
+        cTimelessTokenNodeName      = DOMString('TimelessToken');
+        cTokenManagerSessionName    = String('TokenManager');
+        cTokenExpirationTime        = String('TokenExpirationTime');
+        cDBFile                     = String('DBFile');
         cDefaultTokenExpirationTime = Int64(20 * 60); // 20 min
 
     private
@@ -64,7 +63,13 @@ type
       function LockTokens(): TStringList;
       procedure UnlockTokens();
 
-      function isValidRequest(aRequest: TJSONObject; out anUserId: Integer; out anUserConfig: TJSONObject): Boolean;
+      function isValidRequest(const aToken: String; out anUserId: Integer; out anUserConfig: TJSONObject): Boolean; overload;
+      function isValidRequest(aRequest: TJSONObject; out anUserId: Integer; out anUserConfig: TJSONObject): Boolean; overload;
+      function isValidRequest(requestHeaders, responseHeaders: TStringList; out anUserId: Integer; out anUserConfig: TJSONObject): Boolean; overload;
+
+      function insertTokenAsCookie(const aToken: String; responseHeaders: TStringList): Boolean;
+
+      function CreateToken(): String;
 
       function getToken(const aToken: String): TJSONObject;
       function addNewToken(IdUser: Integer; ConfigData: TJSONObject; out aTokenData: TJSONObject): Boolean;
@@ -98,7 +103,7 @@ const
 implementation
 
 uses
-  strutils, System.NetEncoding, ULBLogger, LazSysUtils, DateUtils, jsonparser, jsonscanner
+  strutils, System.NetEncoding, ULBLogger, LazSysUtils, DateUtils, jsonparser, jsonscanner, uHTTPConsts
   {$IFDEF MSWINDOWS}
   , Windows
   {$ENDIF}
@@ -242,7 +247,7 @@ var
 begin
   Result := False;
   SetLength(aBuffer, 0);
-  hProv := 0;
+  hProv := nil;
   if not CryptAcquireContextA(hProv, nil, nil, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT) then
   begin
     LBLogger.Write(1, 'GenerateSecureRandomBytes', lmt_Error, 'CryptAcquireContext failed');
@@ -436,21 +441,88 @@ begin
   if aRequest <> nil then
   begin
     if aRequest.Find(cToken_Field_Token, _sToken) then
-    begin
-      _Token := Self.getToken(_sToken.AsString);
-      if _Token <> nil then
-      begin
-        anUserId := _Token.Elements[cToken_Field_IdUser].AsInteger;
-        anUserConfig := TJSONObject(_Token.Elements[cToken_Field_UserConfig]);
-        Result := True;
-      end
-      else
-        LBLogger.Write(1, 'TTokenManager.isValidRequest', lmt_Warning, 'Invalid token <%s>!', [_sToken]);
-
-    end
+      Result := Self.isValidRequest(_sToken.AsString, anUserId, anUserConfig)
     else
       LBLogger.Write(1, 'TTokenManager.isValidRequest', lmt_Warning, 'Token field not found: <%s>', [aRequest.AsJSON]);
   end;
+end;
+
+function TTokenManager.isValidRequest(const aToken: String; out anUserId: Integer; out anUserConfig: TJSONObject): Boolean;
+var
+  _Token : TJSONObject;
+
+begin
+  Result := False;
+  anUserId := 0;
+  anUserConfig := nil;
+
+  if aToken <> '' then
+  begin
+    _Token := Self.getToken(aToken);
+    if _Token <> nil then
+    begin
+      anUserId := _Token.Elements[cToken_Field_IdUser].AsInteger;
+      anUserConfig := TJSONObject(_Token.Elements[cToken_Field_UserConfig]);
+      Result := True;
+    end
+    else
+      LBLogger.Write(1, 'TTokenManager.isValidRequest', lmt_Warning, 'Invalid token <%s>!', [aToken]);
+  end
+  else
+    LBLogger.Write(1, 'TTokenManager.isValidRequest', lmt_Warning, 'No token!', []);
+end;
+
+function TTokenManager.isValidRequest(requestHeaders, responseHeaders: TStringList; out anUserId: Integer; out anUserConfig: TJSONObject): Boolean;
+var
+  _Cookies : String;
+  _Items : TStringArray;
+  _Token : String;
+  i : Integer;
+
+begin
+  Result := False;
+  anUserId := 0;
+  anUserConfig := nil;
+
+  if requestHeaders <> nil then
+  begin
+    _Cookies := requestHeaders.Values[HTTP_HEADER_COOKIE];
+    if _Cookies <> '' then
+    begin
+      _Items := _Cookies.Split(';');
+      if Length(_Items) > 0 then
+      begin
+        _Token := '';
+        for i := 0 to High(_Items) do
+        begin
+          _Items[i] := Trim(_Items[i]);
+          if _Items[i].StartsWith(cToken_Field_Token) then
+          begin
+            _Token := RightStr(_Items[i], Length(_Items[i]) - Length(cToken_Field_Token) - 1);  // Tolgo la parte di sinistra token=
+            Break;
+          end;
+        end;
+
+        Result := Self.isValidRequest(_Token, anUserId, anUserConfig);
+        if Result then   // Update token timeout
+          Self.insertTokenAsCookie(_Token, responseHeaders)
+        else
+          LBLogger.Write(1, 'TTokenManager.isValidRequest', lmt_Warning, 'Token <%s> not found!', [_Token]);
+      end;
+    end
+    else
+      LBLogger.Write(1, 'TTokenManager.isValidRequest', lmt_Warning, 'Cookies not found!');
+
+  end;
+end;
+
+function TTokenManager.insertTokenAsCookie(const aToken: String; responseHeaders: TStringList): Boolean;
+const
+  cCookieData = cToken_Field_Token + '=%s; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=%d;';
+
+begin
+  Result := True;
+  responseHeaders.Add(HTTP_HEADER_SET_COOKIE + ': ' + Format(cCookieData, [aToken, FInactiveTime]));
 end;
 
 function TTokenManager.getToken(const aToken: String): TJSONObject;
@@ -495,76 +567,70 @@ end;
 function TTokenManager.addNewToken(IdUser: Integer; ConfigData: TJSONObject; out aTokenData: TJSONObject): Boolean;
 var
   _Index: Integer;
-//  _DBSuccess: Boolean;
 begin
   Result := False;
   aTokenData := nil;
   _Index := -1;
 
-  if (IdUser <= 0) or (ConfigData = nil) then
-    Exit;
-
-  // Create the token object first
-  aTokenData := TJSONObject.Create();
-  aTokenData.Add(cToken_Field_Token, Self.CreateToken());
-  aTokenData.Add(cToken_Field_IdUser, IdUser);
-  aTokenData.Add(cToken_Field_LastUpdate, Int64(Trunc(NowUTC() * SecsPerDay)));
-  aTokenData.Add(cToken_Field_UserConfig, ConfigData);
-
-  // Acquire a single lock to ensure atomicity for memory and DB operations
-  if FCS.Acquire('TTokenManager.addNewToken') then
+  if (IdUser > 0) and (ConfigData <> nil) then
   begin
 
-    try
-      // 1. Add to in-memory cache
-      _Index := FTokens.AddObject(aTokenData.Elements[cToken_Field_Token].AsString, aTokenData);
-      Result := True;
+    aTokenData := TJSONObject.Create();
+    aTokenData.Add(cToken_Field_Token, Self.CreateToken());
+    aTokenData.Add(cToken_Field_IdUser, IdUser);
+    aTokenData.Add(cToken_Field_LastUpdate, Int64(Trunc(NowUTC() * SecsPerDay)));
+    aTokenData.Add(cToken_Field_UserConfig, ConfigData);
 
-      // 2. Add to database (if available)
-      if FDBManager <> nil then
-      begin
-        Result := False;
+    if FCS.Acquire('TTokenManager.addNewToken') then
+    begin
 
-        if FDBManager.Lock('TTokenManager.addNewToken') then
+      try
+        // 1. Add to in-memory cache
+        _Index := FTokens.AddObject(aTokenData.Elements[cToken_Field_Token].AsString, aTokenData);
+        Result := True;
+
+        // 2. Add to database (if available)
+        if FDBManager <> nil then
         begin
-          try
-            // It's better to remove unneeded tokens in the background thread,
-            // but if we must do it here, it should be inside the transaction.
-            // Self.RemoveUnneededTokens(nil);
-            FDBManager.prepareSQLStatement('INSERT INTO Tokens (Token, IdUser, LastRequestTime, Config) ' +
-                                           'VALUES (:aTk, :IdUsr, :LastReq, :Cnf);');
-            FDBManager.setParam(1, aTokenData.Elements[cToken_Field_Token].AsString, False);
-            FDBManager.setParam(2, IdUser);
-            FDBManager.setParam(3, aTokenData.Elements[cToken_Field_LastUpdate].AsInt64);
-            ConfigData.CompressedJSON := True;
-            FDBManager.setParam(4, ConfigData.AsJSON, False);
+          Result := False;
 
-            FDBManager.executeQuery();
-            FDBManager.Commit();
+          if FDBManager.Lock('TTokenManager.addNewToken') then
+          begin
+            try
+              FDBManager.prepareSQLStatement('INSERT INTO Tokens (Token, IdUser, LastRequestTime, Config) ' +
+                                             'VALUES (:aTk, :IdUsr, :LastReq, :Cnf);');
+              FDBManager.setParam(1, aTokenData.Elements[cToken_Field_Token].AsString, False);
+              FDBManager.setParam(2, IdUser);
+              FDBManager.setParam(3, aTokenData.Elements[cToken_Field_LastUpdate].AsInt64);
+              ConfigData.CompressedJSON := True;
+              FDBManager.setParam(4, ConfigData.AsJSON, False);
 
-            Result := True;
-          except
-            on E: Exception do
-              LBLogger.Write(1, 'TTokenManager.addNewToken', lmt_Error, '1. %s', [E.Message]);
+              FDBManager.executeQuery();
+              FDBManager.Commit();
+
+              Result := True;
+            except
+              on E: Exception do
+                LBLogger.Write(1, 'TTokenManager.addNewToken', lmt_Error, '1. %s', [E.Message]);
+            end;
+            FDBManager.Unlock();
           end;
-          FDBManager.Unlock();
         end;
+
+        // If anything failed, undo the in-memory add.
+        if not Result then
+        begin
+          if _Index > -1 then
+            FTokens.Delete(_Index); // This will free aTokenData as OwnsObjects is true
+          aTokenData := nil; // The object is freed by FTokens.Delete
+        end;
+
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'TTokenManager.addNewToken', lmt_Error, '2. %s', [E.Message]);
       end;
-
-
-      // If anything failed, undo the in-memory add.
-      if not Result then
-      begin
-        if _Index > -1 then
-          FTokens.Delete(_Index); // This will free aTokenData as OwnsObjects is true
-        aTokenData := nil; // The object is freed by FTokens.Delete
-      end;
-
-    except
-      on E: Exception do
-        LBLogger.Write(1, 'TTokenManager.addNewToken', lmt_Error, '2. %s', [E.Message]);
+      FCS.Release();
     end;
-    FCS.Release();
   end;
 
   // If we failed to acquire the lock in the first place

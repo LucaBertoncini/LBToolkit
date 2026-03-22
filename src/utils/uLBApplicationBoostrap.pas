@@ -24,6 +24,8 @@ type
         TWebServerConfig = record
           Port            : Integer;
           DocumentsFolder : String;
+          DefaultFile     : String;
+          UploadEndpoint  : String;
 
           CertificateFile   : String;
           CACertificateFile : String;
@@ -33,6 +35,7 @@ type
         pWebServerConfig = ^TWebServerConfig;
 
     strict private
+      FOnDestroyed : TNotifyEvent;
       {$IFDEF Linux}
       FSigPipeAction : TSignalManager;
       {$ENDIF}
@@ -61,29 +64,35 @@ type
 
       function LoadConfiguration(const aFilename: String; out anErrorMsg: String): Boolean;
 
+      property OnDestroyed: TNotifyEvent write FOnDestroyed;
+
       const
         // Sezioni
-        cINI_CFG_SEC_LOGGER          = 'LBLogger';
-        cINI_CFG_SEC_WEBSERVER       = 'LBmicroWebServer';
+        cINI_CFG_SEC_LOGGER           = 'LBLogger';
+        cINI_CFG_SEC_WEBSERVER        = 'LBmicroWebServer';
 
         // Logger keys
-        cINI_CFG_KEY_LOGFILE         = 'LogFile';
-        cINI_CFG_KEY_LOGLEVEL        = 'LogLevel';
-        cINI_CFG_KEY_LOGFILESIZE     = 'MaxFileSize';
+        cINI_CFG_KEY_LOGFILE          = 'LogFile';
+        cINI_CFG_KEY_LOGLEVEL         = 'LogLevel';
+        cINI_CFG_KEY_LOGFILESIZE      = 'MaxFileSize';
 
         // WebServer keys
-        cINI_CFG_KEY_PORT            = 'Port';
-        cINI_CFG_KEY_DOCUMENTSFOLDER = 'DocumentsFolder';
+        cINI_CFG_KEY_PORT             = 'Port';
+        cINI_CFG_KEY_DOCUMENTSFOLDER  = 'DocumentsFolder';
+        cINI_CFG_KEY_DEFAULTDOCUMENT  = 'DefaultFile';
+        cINI_CFG_KEY_UPLOAD_ENDPOINT  = 'UploadEndpoint';
 
-        cXML_CFG_Logger              = cINI_CFG_SEC_LOGGER;
-        cXML_CFG_WEBSERVER           = cINI_CFG_SEC_WEBSERVER;
+        cXML_CFG_Logger               = cINI_CFG_SEC_LOGGER;
+        cXML_CFG_WEBSERVER            = cINI_CFG_SEC_WEBSERVER;
 
-        cXML_CFG_ATTR_LOGFILE        = cINI_CFG_KEY_LOGFILE;
-        cXML_CFG_ATTR_LOGLEVEL       = cINI_CFG_KEY_LOGLEVEL;
-        cXML_CFG_ATTR_LOGFILESIZE    = cINI_CFG_KEY_LOGFILESIZE;
+        cXML_CFG_ATTR_LOGFILE         = cINI_CFG_KEY_LOGFILE;
+        cXML_CFG_ATTR_LOGLEVEL        = cINI_CFG_KEY_LOGLEVEL;
+        cXML_CFG_ATTR_LOGFILESIZE     = cINI_CFG_KEY_LOGFILESIZE;
 
-        cXML_CFG_ATTR_WEBPORT        = cINI_CFG_KEY_PORT;
-        cXML_CFG_ATTR_DOCUMENTROOT   = cINI_CFG_KEY_DOCUMENTSFOLDER;
+        cXML_CFG_ATTR_WEBPORT         = cINI_CFG_KEY_PORT;
+        cXML_CFG_ATTR_DOCUMENTROOT    = cINI_CFG_KEY_DOCUMENTSFOLDER;
+        cXML_CFG_ATTR_DEFAULTDOCUMENT = cINI_CFG_KEY_DEFAULTDOCUMENT;
+        cXML_CFG_ATTR_UPLOAD_ENDPOINT = cINI_CFG_KEY_UPLOAD_ENDPOINT;
 
 
         cExtension_INIFile = '.ini';
@@ -134,6 +143,8 @@ begin
       begin
         _WebCfg.Port := StrToIntDef(_Item.GetAttribute(cXML_CFG_ATTR_WEBPORT), 0);
         _WebCfg.DocumentsFolder := Trim(_Item.GetAttribute(cXML_CFG_ATTR_DOCUMENTROOT));
+        _WebCfg.DefaultFile := Trim(_Item.GetAttribute(cXML_CFG_ATTR_DEFAULTDOCUMENT));
+        _WebCfg.UploadEndpoint := Trim(_Item.GetAttribute(cXML_CFG_ATTR_UPLOAD_ENDPOINT));
       end
       else
         FillChar(_WebCfg, SizeOf(_WebCfg), 0);
@@ -199,6 +210,8 @@ begin
       begin
         _WebCfg.Port := _IniF.ReadInteger(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_PORT, 0);
         _WebCfg.DocumentsFolder := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_DOCUMENTSFOLDER, '');
+        _WebCfg.UploadEndpoint := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_UPLOAD_ENDPOINT, '');
+        _WebCfg.DefaultFile := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_DEFAULTDOCUMENT, '');
         if _IniF.SectionExists(TSSLConnectionData.cDEFAULT_INI_SECTION) then
         begin
           _WebCfg.CertificateFile   := _IniF.ReadString(TSSLConnectionData.cDEFAULT_INI_SECTION, TSSLConnectionData.cSSLCertificateNodeName, '');
@@ -275,6 +288,8 @@ begin
           begin
             FWebServer.createDocumentFolder();
             FWebServer.DocumentsFolder.DocumentFolder := _DocRoot;
+            FWebServer.DocumentsFolder.DefaultFile := aConfiguration^.DefaultFile;
+            FWebServer.DocumentsFolder.UploadEndpoint := aConfiguration^.UploadEndpoint;
           end;
         end;
 
@@ -325,7 +340,17 @@ end;
 
 destructor TLBApplicationBoostrap.Destroy;
 begin
+  try
+    if Assigned(FOnDestroyed) then
+      FOnDestroyed(Self);
+
+  except
+    on E: Exception do
+      LBLogger.Write(1, 'LBApplicationBoostrap.Destroy', lmt_Error, '1. %s', [E.Message]);
+  end;
+
   FreeAndNil(FWebServer);
+
   ReleaseLogger();
   inherited Destroy;
 end;
@@ -333,6 +358,7 @@ end;
 function TLBApplicationBoostrap.LoadConfiguration(const aFilename: String; out anErrorMsg: String): Boolean;
 var
   _Ext : String;
+  _Filename : String;
 
 begin
   Result := False;
@@ -340,18 +366,19 @@ begin
 
   if aFilename <> '' then
   begin
-    if FileExists(aFilename) then
+    _Filename := ResolvePath(aFilename);
+    if FileExists(_Filename) then
     begin
-      _Ext := LowerCase(ExtractFileExt(aFileName));
+      _Ext := LowerCase(ExtractFileExt(_Filename));
       case _Ext of
-        cExtension_INIFile : Result := Self.LoadConfigurationFromINIFile(aFilename, anErrorMsg);
-        cExtension_XMLFile : Result := Self.LoadConfigurationFromXMLFile(aFilename, anErrorMsg);
+        cExtension_INIFile : Result := Self.LoadConfigurationFromINIFile(_Filename, anErrorMsg);
+        cExtension_XMLFile : Result := Self.LoadConfigurationFromXMLFile(_Filename, anErrorMsg);
 
-        else                 anErrorMsg := 'Unsupported file format';
+        else  anErrorMsg := 'Unsupported file format';
       end
     end
     else
-      anErrorMsg := Format('File <%s> not found!', [aFilename]);
+      anErrorMsg := Format('File <%s> not found!', [_Filename]);
   end;
 end;
 

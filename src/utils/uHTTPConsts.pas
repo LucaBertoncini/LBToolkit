@@ -8,6 +8,7 @@ const
   // 🔹 Standard HTTP Headers
   HTTP_HEADER_CONTENT_TYPE                 = 'Content-Type';
   HTTP_HEADER_CONTENT_LENGTH               = 'Content-Length';
+  HTTP_HEADER_CONTENT_DISPOSITION          = 'Content-Disposition';
   HTTP_HEADER_CONNECTION                   = 'Connection';
   HTTP_HEADER_UPGRADE                      = 'Upgrade';
   HTTP_HEADER_HOST                         = 'Host';
@@ -20,6 +21,8 @@ const
   HTTP_HEADER_ACCESS_CONTROL_ALLOW_ORIGIN  = 'Access-Control-Allow-Origin';
   HTTP_HEADER_ACCESS_CONTROL_ALLOW_METHODS = 'Access-Control-Allow-Methods';
   HTTP_HEADER_ACCESS_CONTROL_ALLOW_HEADERS = 'Access-Control-Allow-Headers';
+  HTTP_HEADER_SET_COOKIE                   = 'Set-Cookie';
+  HTTP_HEADER_COOKIE                       = 'Cookie';
 
   // 🔹 HTTP Methods
   HTTP_METHOD_GET                = 'GET';
@@ -45,6 +48,7 @@ const
   MIME_TYPE_CSS                  = 'text/css';
   MIME_TYPE_JAVASCRIPT           = 'application/javascript';
   MIME_TYPE_XML                  = 'application/xml';
+  MIME_TYPE_MULTIPART            = 'multipart/form-data';
 
   // 🔹 Image MIME Types
   MIME_TYPE_JPEG                 = 'image/jpeg';
@@ -92,20 +96,20 @@ const
   FILE_EXT_WOFF2                 = '.woff2';
 
   // 🔹 HTTP Status Codes
-  HTTP_STATUS_OK                 = 200;
-  HTTP_STATUS_CREATED            = 201;
-  HTTP_STATUS_NO_CONTENT         = 204;
-  HTTP_STATUS_PARTIAL_CONTENT    = 206;
-  HTTP_STATUS_BAD_REQUEST        = 400;
-  HTTP_STATUS_UNAUTHORIZED       = 401;
-  HTTP_STATUS_FORBIDDEN          = 403;
-  HTTP_STATUS_NOT_FOUND          = 404;
-  HTTP_STATUS_METHOD_NOT_ALLOWED = 405;
-  HTTP_STATUS_REQUEST_TIMEOUT    = 408;
+  HTTP_STATUS_OK                    = 200;
+  HTTP_STATUS_CREATED               = 201;
+  HTTP_STATUS_NO_CONTENT            = 204;
+  HTTP_STATUS_PARTIAL_CONTENT       = 206;
+  HTTP_STATUS_BAD_REQUEST           = 400;
+  HTTP_STATUS_UNAUTHORIZED          = 401;
+  HTTP_STATUS_FORBIDDEN             = 403;
+  HTTP_STATUS_NOT_FOUND             = 404;
+  HTTP_STATUS_METHOD_NOT_ALLOWED    = 405;
+  HTTP_STATUS_REQUEST_TIMEOUT       = 408;
   HTTP_STATUS_RANGE_NOT_SATISFIABLE = 416;
-  HTTP_STATUS_INTERNAL_ERROR     = 500;
-  HTTP_STATUS_NOT_IMPLEMENTED    = 501;
-  HTTP_STATUS_SERVICE_UNAVAILABLE = 503;
+  HTTP_STATUS_INTERNAL_ERROR        = 500;
+  HTTP_STATUS_NOT_IMPLEMENTED       = 501;
+  HTTP_STATUS_SERVICE_UNAVAILABLE   = 503;
 
   // 🔹 WebSocket Specific Headers
   WS_HEADER_SEC_KEY              = 'Sec-WebSocket-Key';

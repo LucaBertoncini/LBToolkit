@@ -88,7 +88,7 @@ type
       function setSSLConnection(aSSLData: TSSLConnectionData): Boolean;
 
       function SendData(): Boolean; virtual;
-      function ProcessHttpRequest({out KeepConnection: Boolean;} out NextState: THTTPRequestManagerState): Integer; virtual;
+      function ProcessHttpRequest(out NextState: THTTPRequestManagerState): Integer; virtual;
 
     private
       property OnExecuteTerminatedInternal: TNotifyEvent write FOnExecuteTerminatedInternal;
@@ -103,6 +103,8 @@ type
       function setFileToSend(const aFileRelativePath: String; const aRange: String; out ResCode: Integer): Boolean;
       function setFileToSendByAbsolutePath(const aFilename: String; const aRange: String; out ResCode: Integer): Boolean;
 
+
+      property WebSocketManager: TLBWebSocketSession read FWebSocketManager;
       property OnExecuteTerminated: TNotifyEvent write FOnExecuteTerminated;
 
       const
@@ -1048,6 +1050,7 @@ begin
                   if (FWebServerOwner <> nil) and Assigned(FWebServerOwner.OnWebSocketConnectionEstablished) then
                     FWebServerOwner.OnWebSocketConnectionEstablished(Self);
 
+                  LBLogger.Write(5, 'THTTPRequestManager.InternalExecute', lmt_Debug, 'Delegating to websocket manager ...');
                   FWebSocketManager.ExecuteSession();
                 end;
 

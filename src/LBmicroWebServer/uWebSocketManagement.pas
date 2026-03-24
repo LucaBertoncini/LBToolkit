@@ -621,13 +621,15 @@ end;
 
 function TLBWebSocketSession.ExecuteSession(): Boolean;
 var
-  _CloseRequested: Boolean;
+  _CloseRequested: Boolean = False;
   _Now : QWord;
 
 begin
   Result := False;
 
   try
+    _Now := GetTickCount64;
+    FLastActivity := GetTickCount64;
 
     repeat
       if Self.SendWebSocketMessages() then

@@ -994,7 +994,7 @@ begin
                     if FOutputData <> nil then
                       FOutputData.Clear;
                     FOutputHeaders.Clear;
-                    _ResultCode := Self.ProcessHttpRequest({_KeepConnection,} _InternalState);
+                    _ResultCode := Self.ProcessHttpRequest(_InternalState);
                   end
                   else
                     FKeepConnection := False;
@@ -1374,6 +1374,9 @@ end;
 
 function TRequestChainProcessor.ProcessRequest(RequestManager: THTTPRequestManager; HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList; var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
+  Result := False;
+  ResponseCode := HTTP_STATUS_NOT_FOUND;
+
   try
 
     Result := Self.DoProcessRequest(RequestManager, HTTPParser, ResponseHeaders, ResponseData, ResponseCode);

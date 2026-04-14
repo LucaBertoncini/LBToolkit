@@ -114,32 +114,37 @@ begin
   try
     if aFilename <> '' then
     begin
-      _Filename := ExpandFileName(aFilename);
-      if FileExists(_Filename) then
-      begin
-        FLibHandle := dynlibs.LoadLibrary(_Filename);
-        if FLibHandle <> dynlibs.NilHandle then
+      FLibHandle := dynlibs.LoadLibrary(aFilename);
+      if FLibHandle <> dynlibs.NilHandle then
+        Result := True
+      else begin
+        _Filename := ExpandFileName(aFilename);
+        if FileExists(_Filename) then
         begin
-          Result := True;
-
-          for i := 0 to FCorrelations.Count - 1 do
-          begin
-            _PointerCorrelation := pPointerCorrelation(FCorrelations.Items[i]);
-            _PointerCorrelation^.FunctionPointer^ := dynlibs.GetProcAddress(FLibHandle, _PointerCorrelation^.FunctionName);
-            if (_PointerCorrelation^.FunctionPointer^ = nil) then
-            begin
-              Result := False;
-              anErrorMsg := Format('Error retrieving procedure address <%s>', [_PointerCorrelation^.FunctionName]);
-              Break;
-            end;
-          end;
+          FLibHandle := dynlibs.LoadLibrary(_Filename);
+          if FLibHandle <> dynlibs.NilHandle then
+            Result := True
+          else
+            anErrorMsg := Format('Library <%s> not loaded!', [_Filename]);
         end
         else
-          anErrorMsg := Format('Library <%s> not loaded!', [_Filename]);
-      end
-      else
-        anErrorMsg := Format('Library file <%s> not found!', [_Filename]);
+          anErrorMsg := Format('Library file <%s> not found!', [_Filename]);
+      end;
 
+      if Result then
+      begin
+        for i := 0 to FCorrelations.Count - 1 do
+        begin
+          _PointerCorrelation := pPointerCorrelation(FCorrelations.Items[i]);
+          _PointerCorrelation^.FunctionPointer^ := dynlibs.GetProcAddress(FLibHandle, _PointerCorrelation^.FunctionName);
+          if (_PointerCorrelation^.FunctionPointer^ = nil) then
+          begin
+            Result := False;
+            anErrorMsg := Format('Error retrieving procedure address <%s>', [_PointerCorrelation^.FunctionName]);
+            Break;
+          end;
+        end;
+      end;
     end
     else
       anErrorMsg := 'No library filename!';

@@ -94,7 +94,7 @@ type
       property OnExecuteTerminatedInternal: TNotifyEvent write FOnExecuteTerminatedInternal;
 
     protected
-      procedure InternalExecute; override;
+      procedure Execute; override;
 
     public
       constructor Create(ASocket: TSocket; AOwner: TLBmicroWebServer); reintroduce; virtual;
@@ -196,7 +196,7 @@ type
       procedure RemoveConnection(Sender: TObject);
 
     protected
-      procedure InternalExecute; override;
+      procedure Execute; override;
 
     public
       constructor Create(aListeningPort: Integer; aOwner: TLBmicroWebServer); reintroduce;
@@ -929,7 +929,7 @@ begin
 
 end;
 
-procedure THTTPRequestManager.InternalExecute;
+procedure THTTPRequestManager.Execute;
 var
   _ResultCode             : Integer;
   _InternalState          : THTTPRequestManagerState = rms_ReadIncomingHTTPRequest;
@@ -940,6 +940,7 @@ var
   _CanUpload : Boolean;
   _ContentType, _Boundary, _UploadedFilePath : String;
   i: Integer;
+
 begin
   FKeepConnection := False;
   _SocketError := False;
@@ -968,8 +969,8 @@ begin
       _DocFolder := FWebServerOwner.DocumentsFolder;
       _CanUpload := (_DocFolder <> nil) and (_DocFolder.UploadEndpoint <> '');
 
-      if not _CanUpload then
-        LBLogger.Write(5, 'THTTPRequestManager.InternalExecute', lmt_Debug, 'Cannot upload data');
+      //if not _CanUpload then
+      //  LBLogger.Write(5, 'THTTPRequestManager.InternalExecute', lmt_Debug, 'Cannot upload data');
 
       while not Self.Terminated do
       begin
@@ -1690,7 +1691,7 @@ begin
 end;
 
 
-procedure TLBmWsListener.InternalExecute;
+procedure TLBmWsListener.Execute;
 var
   _InternalState : TInternalState;
 

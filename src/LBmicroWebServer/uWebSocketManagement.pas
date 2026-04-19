@@ -402,7 +402,7 @@ begin
 
                 wsd_Ping, wsd_Pong:
                   begin
-                    LBLogger.Write(5, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Debug, 'Control frame received: %s', [GetEnumName(TypeInfo(TWebSocketDataType), Ord(Opcode))]);
+                    LBLogger.Write(6, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Debug, 'Control frame received: %s', [GetEnumName(TypeInfo(TWebSocketDataType), Ord(Opcode))]);
                     State := wsrs_LenByte; // prosegui per leggere e scartare
                   end;
 

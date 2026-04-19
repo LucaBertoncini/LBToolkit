@@ -80,7 +80,7 @@ type
       FOnWebSocketBinaryMessage : TWebSocketBinaryCallback;
 
     protected
-      procedure InternalExecute; override;
+      procedure Execute; override;
       function ElaborateWebSocketMessage(isLastFrame: Boolean; aDataType: TWebSocketFrameType; aBuffer: pByte; aBufferLen: Int64): Boolean; virtual;
 
     public
@@ -758,7 +758,7 @@ begin
   end;
 end;
 
-procedure TLBWebSocketClient.InternalExecute;
+procedure TLBWebSocketClient.Execute;
 const
   cWaitBeforeReconnect = Integer(5000);
   cConnectionDataTimeout = Integer(20000);

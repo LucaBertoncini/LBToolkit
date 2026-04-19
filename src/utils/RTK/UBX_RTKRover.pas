@@ -2,46 +2,41 @@ unit UBX_RTKRover;
 
 {
   Gestione rover simpleRTK2B (ZED-F9P) su thread dedicato.
-  Protocollo: UBX binario (NAV-PVT) — nessun parsing NMEA.
 
-  ── Configurazione automatica all'avvio ──────────────────────────────────
-  All'apertura della porta il thread chiama Configure(VALSET_LAYER_RAM):
-  in un singolo messaggio CFG-VALSET vengono impostati:
-    - Output USB: solo UBX (NMEA e RTCM3X disabilitati)
-    - Input  USB: UBX + RTCM3X (per le correzioni), NMEA disabilitato
-    - Frequenza di navigazione (Hz configurabile)
-    - NAV-PVT abilitato su USB
-  La configurazione viene applicata solo alla RAM: è persa al riavvio
-  ma non consuma cicli flash. Chiamare SaveConfig per renderla permanente.
+  ── Modalità di output posizione ─────────────────────────────────────────
+  Selezionabile tramite la property OutputMode prima di chiamare Open:
 
-  ── Layer di configurazione ───────────────────────────────────────────────
-  Configure accetta un parametro ALayer (da UBXProtocol):
+    romUBX   (default)
+      Il modulo emette NAV-PVT binario. Il thread lo decodifica
+      internamente. Massima precisione (hAcc/vAcc/sAcc al mm).
+      Adatto per uso embedded e logging ad alta frequenza.
 
-    VALSET_LAYER_RAM        Solo RAM — persa al riavvio (default)
-    VALSET_LAYER_RAM_FLASH  RAM + Flash — permanente, consuma cicli flash
-    VALSET_LAYER_FLASH      Solo Flash — utile per aggiornare la config
-                            permanente senza modificare la RAM corrente
+    romNMEA
+      Il modulo emette GGA + RMC in ASCII NMEA 0183.
+      Facile da intercettare con qualsiasi applicazione esterna
+      (u-center, QGIS, app mobile) che legge la stessa porta COM.
+      Il thread parsifica GGA e RMC e produce lo stesso TPVTData
+      dell'altra modalità — l'interfaccia pubblica è identica.
+      I campi HAccMm, VAccMm, SpeedAccMms non sono disponibili in
+      NMEA e restano a zero.
 
-  SaveConfig è una scorciatoia che chiama Configure(VALSET_LAYER_RAM_FLASH).
+  In entrambe le modalità le correzioni RTCM3 vengono ricevute
+  tramite PushCorrections e scritte sulla stessa porta USB.
 
-  ── Consegna dati PVT senza Synchronize ──────────────────────────────────
-  OnPVT viene chiamato dal thread seriale direttamente, senza rimbalzare
-  sul thread principale. Il chiamante deve gestire la thread-safety del
-  proprio handler (es. accodare il dato e processarlo nel thread UI).
-  Per proteggere la lettura/scrittura del record condiviso (FLastPVT)
-  viene usata una CriticalSection: il thread scrive sotto lock, il
-  consumer legge con GetLastPVT sotto lo stesso lock.
+  ── Configurazione VALSET ────────────────────────────────────────────────
+  Configure(ALayer, AMode) costruisce il payload appropriato:
+    romUBX:  OUTPROT UBX=On, NMEA=Off;  NAV-PVT=1, GGA=0, RMC=0
+    romNMEA: OUTPROT UBX=Off, NMEA=On;  NAV-PVT=0, GGA=1, RMC=1
+  In entrambi: INPROT UBX=On, RTCM3X=On, NMEA=Off.
 
-  ── Correzioni RTCM3 ─────────────────────────────────────────────────────
-  Le correzioni ricevute dall'esterno (es. via NTRIP) vengono passate
-  tramite PushCorrections e inviate al modulo nel loop del thread.
-  Il buffer usa semantica last-write-wins (i dati RTCM3 obsoleti
-  sono inutili; si preferisce sempre il blocco più recente).
+  ── Consegna dati PVT ────────────────────────────────────────────────────
+  OnPVT è chiamato dal thread seriale (non dal thread UI).
+  L'handler deve essere thread-safe. Per leggere l'ultimo valore
+  in modo sincronizzato usare GetLastPVT.
 
   ── Dipendenze ───────────────────────────────────────────────────────────
-  UBXProtocol (framing e helper VALSET), SynaSer (Synapse),
-  uLBCircularBuffer, RTKTypes (TCorrectionBuffer, TRTKStatus),
-  uLBBaseThread, ULBLogger.
+  UBXProtocol, SynaSer, uLBCircularBuffer, RTKTypes, uLBBaseThread,
+  uTimedoutCriticalSection, ULBLogger.
 }
 
 interface
@@ -52,9 +47,15 @@ uses
 
 type
 
+  { ── Modalità output posizione ────────────────────────────────────────── }
+
+  TRoverOutputMode = (
+    romUBX,   // NAV-PVT binario — precisione massima
+    romNMEA   // GGA + RMC ASCII — interoperabile con app esterne
+  );
+
   { ── Payload UBX-NAV-PVT (92 byte, packed) ───────────────────────────────
-    Ref: u-blox F9 HPG 1.51 Interface Description §3.15.13
-         UBXDOC-963802114-13124 — verificato offset per offset.          }
+    Ref: u-blox F9 HPG 1.51 Interface Description §3.15.13             }
 
   TFixType = (
     ftNoFix    = 0,
@@ -66,365 +67,240 @@ type
   );
 
   TUBXNavPVT = packed record
-    iTOW      : UInt32;              // offset  0  U4  GPS time of week (ms)
-    year      : UInt16;              // offset  4  U2  Year (UTC)
-    month     : Byte;                // offset  6  U1  Month 1..12
-    day       : Byte;                // offset  7  U1  Day 1..31
-    hour      : Byte;                // offset  8  U1  Hour 0..23
-    min       : Byte;                // offset  9  U1  Minute 0..59
-    sec       : Byte;                // offset 10  U1  Second 0..60
-    valid     : Byte;                // offset 11  X1  Validity flags
-                                     //                bit0=validDate, bit1=validTime
-    tAcc      : UInt32;              // offset 12  U4  Time accuracy estimate (ns)
-    nano      : Int32;               // offset 16  I4  Fraction of second (ns)
-    fixType   : Byte;                // offset 20  U1  GNSS fix type (0..5)
-    flags     : Byte;                // offset 21  X1  Fix flags
-                                     //                bit0=gnssFixOK, bits7:6=carrSoln
-    flags2    : Byte;                // offset 22  X1  Additional flags
-    numSV     : Byte;                // offset 23  U1  Number of satellites used
-    lon       : Int32;               // offset 24  I4  Longitude (deg * 1e-7)
-    lat       : Int32;               // offset 28  I4  Latitude  (deg * 1e-7)
-    height    : Int32;               // offset 32  I4  Height above ellipsoid (mm)
-    hMSL      : Int32;               // offset 36  I4  Height above mean sea level (mm)
-    hAcc      : UInt32;              // offset 40  U4  Horizontal accuracy estimate (mm)
-    vAcc      : UInt32;              // offset 44  U4  Vertical accuracy estimate (mm)
-    velN      : Int32;               // offset 48  I4  NED north velocity (mm/s)
-    velE      : Int32;               // offset 52  I4  NED east velocity (mm/s)
-    velD      : Int32;               // offset 56  I4  NED down velocity (mm/s)
-    gSpeed    : Int32;               // offset 60  I4  Ground speed 2-D (mm/s)
-    headMot   : Int32;               // offset 64  I4  Heading of motion 2-D (deg * 1e-5)
-    sAcc      : UInt32;              // offset 68  U4  Speed accuracy estimate (mm/s)
-    headAcc   : UInt32;              // offset 72  U4  Heading accuracy estimate (deg * 1e-5)
-    pDOP      : UInt16;              // offset 76  U2  Position DOP (* 0.01)
-    flags3    : UInt16;              // offset 78  X2  Additional flags
-                                     //                bit0=invalidLlh, bits4:1=lastCorrection
-    reserved0 : array[0..3] of Byte; // offset 80  U1[4]  Reserved
-    headVeh   : Int32;               // offset 84  I4  Heading of vehicle 2-D (deg * 1e-5)
-    magDec    : Int16;               // offset 88  I2  Magnetic declination (deg * 1e-2)
-    magAcc    : UInt16;              // offset 90  U2  Magnetic declination accuracy (deg * 1e-2)
-  end;                               // totale: 92 byte ✓
+    iTOW      : UInt32;
+    year      : UInt16;
+    month     : Byte;
+    day       : Byte;
+    hour      : Byte;
+    min       : Byte;
+    sec       : Byte;
+    valid     : Byte;
+    tAcc      : UInt32;
+    nano      : Int32;
+    fixType   : Byte;
+    flags     : Byte;
+    flags2    : Byte;
+    numSV     : Byte;
+    lon       : Int32;
+    lat       : Int32;
+    height    : Int32;
+    hMSL      : Int32;
+    hAcc      : UInt32;
+    vAcc      : UInt32;
+    velN      : Int32;
+    velE      : Int32;
+    velD      : Int32;
+    gSpeed    : Int32;
+    headMot   : Int32;
+    sAcc      : UInt32;
+    headAcc   : UInt32;
+    pDOP      : UInt16;
+    flags3    : UInt16;
+    reserved0 : array[0..3] of Byte;
+    headVeh   : Int32;
+    magDec    : Int16;
+    magAcc    : UInt16;
+  end;  // 92 byte ✓
 
-  { ── Dati PVT decodificati ───────────────────────────────────────────────  }
+  { ── Dati PVT decodificati ─────────────────────────────────────────────── }
 
   TPVTData = record
     Valid       : Boolean;
     FixType     : TFixType;
     RTKStatus   : TRTKStatus;
-    GNSSFixOK   : Boolean;      // fix utilizzabile (gnssFixOK = 1)
-    UTCTime     : TDateTime;    // valido solo se validDate e validTime = 1
+    GNSSFixOK   : Boolean;
+    UTCTime     : TDateTime;
     Latitude    : Double;       // gradi decimali, + = Nord
     Longitude   : Double;       // gradi decimali, + = Est
-    AltitudeMSL : Double;       // altezza sul livello del mare (m)
-    SpeedKmH    : Double;       // velocità al suolo (km/h)
-    HeadingDeg  : Double;       // direzione di movimento (gradi 0..360)
-    HAccMm      : Cardinal;     // accuratezza orizzontale (mm)
-    VAccMm      : Cardinal;     // accuratezza verticale (mm)
-    SpeedAccMms : Cardinal;     // accuratezza velocità (mm/s)
-    NumSV       : Byte;         // satelliti utilizzati
+    AltitudeMSL : Double;       // m
+    SpeedKmH    : Double;       // km/h
+    HeadingDeg  : Double;       // gradi 0..360
+    HAccMm      : Cardinal;     // mm — 0 in modalità NMEA
+    VAccMm      : Cardinal;     // mm — 0 in modalità NMEA
+    SpeedAccMms : Cardinal;     // mm/s — 0 in modalità NMEA
+    NumSV       : Byte;
   end;
 
-  { ── Tipo callback ────────────────────────────────────────────────────── }
+  { ── Callback ─────────────────────────────────────────────────────────── }
 
   { Chiamato dal thread seriale — NON dal thread principale.
-    L'handler deve essere thread-safe: accodare il dato e processarlo
-    nel thread UI, oppure usare GetLastPVT per leggere l'ultimo valore
-    in modo sincronizzato. }
+    L'handler deve essere thread-safe. }
   TOnPVTReceived = procedure(Sender: TObject; const Data: TPVTData) of object;
 
-  { ── Forward ──────────────────────────────────────────────────────────── }
+  { Chiamato dal thread seriale con la stringa NMEA originale (in romNMEA)
+    o generata sinteticamente (in romUBX). Include \r\n finale.
+    Usato da TNMEAForwarder per scrivere sulla porta virtuale. }
+  TOnNMEARawReceived = procedure(Sender: TObject; const Line: string) of object;
 
-  TUBXRTKRover = class;
 
   { ── Thread seriale ───────────────────────────────────────────────────── }
 
+  { TUBXRoverThread }
+
   TUBXRoverThread = class(TLBBaseThread)
   strict private
-    FRover    : TUBXRTKRover;
-    FSerial   : TBlockSerial;
+    type
+      TInternalState = (
+          is_OpenPort    = 1,   // Connect + Config seriale
+          is_Configure   = 2,   // CFG-VALSET + attesa ACK
+          is_Running     = 3,   // ExecuteUBXLoop / ExecuteNMEALoop
+          is_ResetPort   = 4
+        );
 
-    { Invia un frame UBX già costruito sulla porta seriale.
-      Restituisce True se tutti i byte sono stati inviati. }
+    var
+      FOnPVT       : TOnPVTReceived;
+      FOnNMEARaw   : TOnNMEARawReceived;
+      FSerial      : TBlockSerial;
+      FOutputMode  : TRoverOutputMode;
+      FPort        : string;
+      FHz          : Byte;
+      FCorrections : TCorrectionBuffer;
+      FRxBuf       : TLBCircularBuffer;
+
+      FLastPVT     : TPVTData;
+      FPVTLock     : TTimedOutCriticalSection;
+
+    { UBX }
     function  SendUBX(const Msg: TBytes): Boolean;
-
-    { Decodifica un payload NAV-PVT grezzo in TPVTData.
-      Restituisce False se il fix non è utilizzabile. }
     function  DecodePVT(const Raw: TUBXNavPVT; out PVT: TPVTData): Boolean;
 
-  private
-    { Configura il modulo via CFG-VALSET.
-      ALayer: destinazione della configurazione — usare le costanti
-      VALSET_LAYER_* definite in UBXProtocol:
-        VALSET_LAYER_RAM        solo RAM, persa al riavvio (default)
-        VALSET_LAYER_RAM_FLASH  RAM + Flash, permanente
-      Restituisce True se il modulo ha risposto con ACK. }
-    function  Configure(ALayer: Byte = VALSET_LAYER_RAM): Boolean;
+    { NMEA }
+    function  ParseNMEAField(const S: string; Index: Integer): string;
+    function  NMEALatLon(const Value, Hemi: string; IsLon: Boolean): Double;
+    function  VerifyNMEAChecksum(const Line: string): Boolean;
+    function  ParseGGA(const Line: string; out PVT: TPVTData): Boolean;
+    function  ParseRMC(const Line: string; var PVT: TPVTData): Boolean;
+
+    { Loop specializzati }
+    function ExecuteUBXLoop(): Boolean;
+    function ExecuteNMEALoop(): Boolean;
+
+    { Pubblica il PVT verso il rover (lock + callback) }
+    procedure PublishPVT(const PVT: TPVTData);
+
+    { Genera GGA + RMC sintetici da TPVTData e chiama OnNMEARaw.
+      Usato in romUBX per produrre il flusso NMEA sulla porta virtuale. }
+    procedure FireNMEARaw(const PVT: TPVTData);
+
+    function  Configure(ALayer: Byte = VALSET_LAYER_RAM): Boolean;  // use VALSET_LAYER_RAM_FLASH to save into flash (available ~10000 cicles)
+
+    function SendRetrieveData(): Boolean;
+
+    function OpenSerialPort(): Boolean;
+    procedure CloseSerialPort();
 
   protected
-    procedure InternalExecute; override;
+    procedure Execute; override;
 
   public
-    constructor Create(ARover: TUBXRTKRover; const APort: string; AHz: Byte); reintroduce;
-    destructor  Destroy; override;
-    function    SerialOK: Boolean;
-    function    SerialErrorDesc: string;
-  end;
-
-  { ── Classe pubblica ──────────────────────────────────────────────────── }
-
-  TUBXRTKRover = class(TObject)
-  strict private
-    FThread      : TUBXRoverThread;
-    FCorrections : TCorrectionBuffer;
-    FPort        : string;
-    FHz          : Byte;
-    FActive      : Boolean;
-    FOnPVT       : TOnPVTReceived;
-
-
-  private
-    { Protezione di FLastPVT: scritto dal thread seriale, letto
-      dal thread chiamante tramite GetLastPVT. }
-    FPVTLock     : TTimedOutCriticalSection;
-    FLastPVT     : TPVTData;
-
-  public
-    constructor Create(const APort: string; AHz: Byte = 5);
+    constructor Create(const APort: string; AHz: Byte; OutputMode: TRoverOutputMode = romUBX); reintroduce;
     destructor  Destroy; override;
 
-    { Apre la porta e avvia il thread seriale.
-      Restituisce True se la porta è stata aperta correttamente. }
-    function  Open: Boolean;
-    procedure Close;
-
-    { Rende permanente la configurazione corrente scrivendola in Flash.
-      Internamente chiama Configure(VALSET_LAYER_RAM_FLASH).
-      ATTENZIONE: la flash del ZED-F9P ha ~10.000 cicli di scrittura.
-      Chiamare solo quando la configurazione è definitiva e verificata. }
-    function SaveConfig: Boolean;
-
-    { Legge l'ultimo record PVT ricevuto in modo thread-safe.
-      Restituisce False se non è ancora stato ricevuto nessun dato valido. }
+    { Legge l'ultimo PVT in modo thread-safe.
+      Restituisce False se nessun dato valido è ancora arrivato. }
     function  GetLastPVT(out PVT: TPVTData): Boolean;
 
     procedure PushCorrections(const Data: array of Byte; Len: Integer); overload;
     procedure PushCorrections(const Data: TBytes); overload;
 
-    property Active      : Boolean           read FActive;
-    property Port        : string            read FPort        write FPort;
-    property Hz          : Byte              read FHz          write FHz;
-    property Corrections : TCorrectionBuffer read FCorrections;
+    { Chiamato dal thread seriale — l'handler deve essere thread-safe. }
+    property OnPVT : TOnPVTReceived     read FOnPVT      write FOnPVT;
 
-    { OnPVT: chiamato dal thread seriale — l'handler deve essere thread-safe.
-      Per leggere l'ultimo dato dal thread principale usare GetLastPVT. }
-    property OnPVT       : TOnPVTReceived    read FOnPVT       write FOnPVT;
+    { Stringa NMEA pronta per la porta virtuale (include \r\n finale).
+      In romNMEA: righe GGA e RMC originali del modulo.
+      In romUBX:  GGA e RMC sintetici generati da TPVTData.
+      Chiamato dal thread seriale — l'handler deve essere thread-safe. }
+    property OnNMEARaw : TOnNMEARawReceived read FOnNMEARaw  write FOnNMEARaw;
+
   end;
 
+
 const
-  { Qualità derivata da FixType + RTKStatus, pronta per il client:
-    0 = GNSS standalone  (~1–3 m)
-    1 = RTK Float        (~0.2–0.5 m)
-    2 = RTK Fixed        (~1–2 cm)        }
   RTK_QUALITY: array[TRTKStatus] of Byte = (0, 1, 2);
-
-
 
 implementation
 
 uses
-  ULBLogger;
+  ULBLogger, StrUtils;
 
-{ ══ Costanti specifiche ZED-F9P ══════════════════════════════════════════════
-
-  Key ID CFG-VALSET per USB — Ref: §6.9.38, §6.9.39, §6.9.11, §6.9.18
-  Tutti di tipo U1 salvo dove indicato.                                  }
+{ ══ Costanti ═════════════════════════════════════════════════════════════════ }
 
 const
-  { ── NAV-PVT ─────────────────────────────────────────────────────────── }
   UBX_ID_NAV_PVT  = $07;
   UBX_PVT_PAYLOAD = 92;
   UBX_PVT_TOTAL   = UBX_HDR_SIZE + UBX_PVT_PAYLOAD + UBX_CRC_SIZE;  // 100
 
-  { ── Protocolli input USB (CFG-USBINPROT) — tipo L (bool) ────────────── }
-  KEY_USBINPROT_UBX    = $10770001;  // abilita ricezione comandi UBX
-  KEY_USBINPROT_NMEA   = $10770002;  // abilita ricezione NMEA
-  KEY_USBINPROT_RTCM3X = $10770004;  // abilita ricezione correzioni RTCM3
+  KEY_USBINPROT_UBX    = $10770001;
+  KEY_USBINPROT_NMEA   = $10770002;
+  KEY_USBINPROT_RTCM3X = $10770004;
 
-  { ── Protocolli output USB (CFG-USBOUTPROT) — tipo L (bool) ──────────── }
-  KEY_USBOUTPROT_UBX    = $10780001;  // abilita output messaggi UBX
-  KEY_USBOUTPROT_NMEA   = $10780002;  // abilita output NMEA
-  KEY_USBOUTPROT_RTCM3X = $10780004;  // abilita output RTCM3X
+  KEY_USBOUTPROT_UBX    = $10780001;
+  KEY_USBOUTPROT_NMEA   = $10780002;
+  KEY_USBOUTPROT_RTCM3X = $10780004;
 
-  { ── Frequenza di navigazione (CFG-RATE) ─────────────────────────────── }
-  KEY_RATE_MEAS    = $30210001;  // U2 — periodo misure in ms
-  KEY_RATE_NAV     = $30210002;  // U2 — soluzioni per misura (1 = ogni misura)
-  KEY_RATE_TIMEREF = $20210003;  // E1 — riferimento tempo: 1 = GPS
+  KEY_RATE_MEAS    = $30210001;
+  KEY_RATE_NAV     = $30210002;
+  KEY_RATE_TIMEREF = $20210003;
 
-  { ── Output NAV-PVT su USB (CFG-MSGOUT) ──────────────────────────────── }
-  KEY_MSGOUT_NAVPVT_USB = $20910009;  // U1 — rate (0=off, 1=ogni epoch)
+  KEY_MSGOUT_NAVPVT_USB = $20910009;
+  KEY_NMEA_GGA_USB      = $209100BD;
+  KEY_NMEA_GLL_USB      = $209100CC;
+  KEY_NMEA_GSA_USB      = $209100C2;
+  KEY_NMEA_GSV_USB      = $209100C7;
+  KEY_NMEA_RMC_USB      = $209100AE;
+  KEY_NMEA_VTG_USB      = $209100B3;
+  KEY_NMEA_ZDA_USB      = $209100DB;
+  KEY_NMEA_GNS_USB      = $209100B8;
 
-  { ── Output NMEA su USB (CFG-MSGOUT) — disabilitare tutti ────────────── }
-  { Default factory: GGA, GLL, GSA, GSV, RMC, VTG = 1; ZDA, GNS = 0      }
-  KEY_NMEA_GGA_USB = $209100BD;
-  KEY_NMEA_GLL_USB = $209100CC;
-  KEY_NMEA_GSA_USB = $209100C2;
-  KEY_NMEA_GSV_USB = $209100C7;
-  KEY_NMEA_RMC_USB = $209100AE;
-  KEY_NMEA_VTG_USB = $209100B3;
-  KEY_NMEA_ZDA_USB = $209100DB;
-  KEY_NMEA_GNS_USB = $209100B8;
+  { Entrambe le modalità hanno esattamente lo stesso numero di key-value:
+      6 bool L × 5 byte =  30   (3 USBINPROT + 3 USBOUTPROT)
+      2 U2     × 6 byte =  12   (RATE_MEAS, RATE_NAV)
+     10 U1     × 5 byte =  50   (RATE_TIMEREF + NAV-PVT + 8 NMEA MSGOUT)
+      header fisso       =   4
+      ─────────────────────────────────────
+      payload totale     =  96                                                }
+  VALSET_PAY_SIZE = VALSET_HDR_SIZE + 92;  // 96
 
-  { ── Dimensione payload VALSET ────────────────────────────────────────── }
-  {    6 coppie bool (L)  × 5 byte  =  30
-      10 coppie U1        × 5 byte  =  50
-       2 coppie U2        × 6 byte  =  12
-      ────────────────────────────────────
-      totale dati                   =  92 byte
-      header VALSET fisso           =   4 byte
-      ────────────────────────────────────
-      payload totale               =  96 byte                           }
-  VALSET_DATA_SIZE = 92;
-  VALSET_PAY_SIZE  = VALSET_HDR_SIZE + VALSET_DATA_SIZE;  // 96
-
-  { ── Nomi leggibili per il log ────────────────────────────────────────── }
-  FIX_TYPE_NAMES   : array[0..5] of string = ('NoFix', 'DeadReck', '2D', '3D', 'GNSS+DR', 'TimeOnly');
+  FIX_TYPE_NAMES   : array[0..5] of string = (
+    'NoFix', 'DeadReck', '2D', '3D', 'GNSS+DR', 'TimeOnly');
   RTK_STATUS_NAMES : array[TRTKStatus] of string = ('None', 'Float', 'Fixed');
-
-
-
-
-
-{ ══ Helpers interni ══════════════════════════════════════════════════════════ }
 
 function FixTypeName(AFixType: Byte): string;
 begin
-  if AFixType <= 5 then
-    Result := FIX_TYPE_NAMES[AFixType]
-  else
-    Result := 'Unknown(' + IntToStr(AFixType) + ')';
+  if AFixType <= 5 then Result := FIX_TYPE_NAMES[AFixType]
+  else Result := 'Unknown(' + IntToStr(AFixType) + ')';
 end;
 
-{ ══ TUBXRoverThread ══════════════════════════════════════════════════════════ }
+{ ══ TUBXRoverThread — UBX ════════════════════════════════════════════════════ }
 
 function TUBXRoverThread.SendUBX(const Msg: TBytes): Boolean;
 var
-  _MsgLen: Integer;
+  _Len: Integer;
 begin
-  Result  := False;
-  _MsgLen := Length(Msg);
-  if _MsgLen > 0 then
-    Result := FSerial.SendBuffer(@Msg[0], _MsgLen) = _MsgLen;
+  Result := False;
+  _Len   := Length(Msg);
+  if _Len > 0 then
+    Result := FSerial.SendBuffer(@Msg[0], _Len) = _Len;
 end;
 
-{ ── Configure ───────────────────────────────────────────────────────────── }
-
-function TUBXRoverThread.Configure(ALayer: Byte): Boolean;
-{
-  Invia un unico CFG-VALSET che:
-    1. Imposta i protocolli input/output USB
-    2. Disabilita tutti i messaggi NMEA in uscita
-    3. Abilita NAV-PVT su USB a ogni epoch
-    4. Imposta la frequenza di navigazione
-
-  ALayer controlla dove viene scritta la configurazione:
-    VALSET_LAYER_RAM        → solo RAM (default, nessun consumo flash)
-    VALSET_LAYER_RAM_FLASH  → RAM + Flash (rende la config permanente)
-}
-var
-  Payload    : TBytes;
-  Pos        : Integer;
-  MeasRateMs : Word;
-begin
-  Result     := False;
-  MeasRateMs := 1000 div FRover.Hz;
-
-  SetLength(Payload, VALSET_PAY_SIZE);
-  FillChar(Payload[0], VALSET_PAY_SIZE, 0);
-
-  { ── Header CFG-VALSET (4 byte fissi) ─────────────────────────────────── }
-  Payload[0] := $00;     // version = 0
-  Payload[1] := ALayer;  // layer di destinazione
-  Payload[2] := $00;     // reserved0[0]
-  Payload[3] := $00;     // reserved0[1]
-  Pos := VALSET_HDR_SIZE;
-
-  { ── Protocolli input USB ────────────────────────────────────────────── }
-  AddBool(Payload, Pos, KEY_USBINPROT_UBX,    True);   // accetta comandi UBX
-  AddBool(Payload, Pos, KEY_USBINPROT_NMEA,   False);  // rifiuta NMEA in ingresso
-  AddBool(Payload, Pos, KEY_USBINPROT_RTCM3X, True);   // accetta correzioni RTCM3
-
-  { ── Protocolli output USB ───────────────────────────────────────────── }
-  AddBool(Payload, Pos, KEY_USBOUTPROT_UBX,    True);  // emette messaggi UBX
-  AddBool(Payload, Pos, KEY_USBOUTPROT_NMEA,   False); // non emette NMEA
-  AddBool(Payload, Pos, KEY_USBOUTPROT_RTCM3X, False); // non emette RTCM3X
-
-  { ── Frequenza di navigazione ────────────────────────────────────────── }
-  AddU2(Payload, Pos, KEY_RATE_MEAS,    MeasRateMs);  // periodo misure (ms)
-  AddU2(Payload, Pos, KEY_RATE_NAV,     1);            // 1 fix per misura
-  AddU1(Payload, Pos, KEY_RATE_TIMEREF, 1);            // riferimento: GPS
-
-  { ── Disabilita tutti i messaggi NMEA su USB ─────────────────────────── }
-  { Anche con USBOUTPROT_NMEA=False i singoli rate vengono azzerati
-    per garantire pulizia se la config viene letta da u-center.          }
-  AddU1(Payload, Pos, KEY_NMEA_GGA_USB, 0);
-  AddU1(Payload, Pos, KEY_NMEA_GLL_USB, 0);
-  AddU1(Payload, Pos, KEY_NMEA_GSA_USB, 0);
-  AddU1(Payload, Pos, KEY_NMEA_GSV_USB, 0);
-  AddU1(Payload, Pos, KEY_NMEA_RMC_USB, 0);
-  AddU1(Payload, Pos, KEY_NMEA_VTG_USB, 0);
-  AddU1(Payload, Pos, KEY_NMEA_ZDA_USB, 0);
-  AddU1(Payload, Pos, KEY_NMEA_GNS_USB, 0);
-
-  { ── Abilita NAV-PVT su USB a ogni epoch ─────────────────────────────── }
-  AddU1(Payload, Pos, KEY_MSGOUT_NAVPVT_USB, 1);
-
-  if Pos <> VALSET_PAY_SIZE then
-  begin
-    LBLogger.Write(1, 'TUBXRoverThread.Configure', lmt_Error, 'VALSET byte count mismatch: expected %d, got %d', [VALSET_PAY_SIZE, Pos]);
-    Exit;
-  end;
-
-  if not SendUBX(BuildUBX(UBX_CLASS_CFG, UBX_ID_CFG_VALSET, Payload)) then
-  begin
-    LBLogger.Write(1, 'TUBXRoverThread.Configure', lmt_Error, 'Send error on CFG-VALSET (layer=$%s, port=<%s>)', [IntToHex(ALayer, 2), FRover.Port]);
-    Exit;
-  end;
-
-  Result := WaitACK(FSerial, UBX_CLASS_CFG, UBX_ID_CFG_VALSET, 700);
-
-  if Result then
-    LBLogger.Write(2, 'TUBXRoverThread.Configure', lmt_Info, 'CFG-VALSET ACK received (layer=$%s, rate=%d Hz)', [IntToHex(ALayer, 2), FRover.Hz])
-  else
-    { NAK o timeout: almeno un Key ID è sconosciuto al firmware,
-      oppure la config non è valida. Non fatale: la comunicazione
-      può continuare se il modulo era già configurato correttamente. }
-    LBLogger.Write(1, 'TUBXRoverThread.Configure', lmt_Warning, 'CFG-VALSET: no ACK received (layer=$%s) — check firmware version', [IntToHex(ALayer, 2)]);
-end;
-
-{ ── DecodePVT ───────────────────────────────────────────────────────────── }
-
-function TUBXRoverThread.DecodePVT(const Raw: TUBXNavPVT; out PVT: TPVTData): Boolean;
+function TUBXRoverThread.DecodePVT(const Raw: TUBXNavPVT;
+                                   out PVT: TPVTData): Boolean;
 var
   CarrSoln: Byte;
 begin
   Result := False;
   FillChar(PVT, SizeOf(PVT), 0);
-
   PVT.FixType   := TFixType(Raw.fixType);
   PVT.GNSSFixOK := (Raw.flags and $01) <> 0;
-
-  { Valido solo se gnssFixOK e almeno fix 2D }
   if (not PVT.GNSSFixOK) or (Raw.fixType < 2) then Exit;
 
-  { Stato RTK: bit 7:6 di flags — carrSoln }
   CarrSoln := (Raw.flags shr 6) and $03;
   case CarrSoln of
     1: PVT.RTKStatus := rtkFloat;
     2: PVT.RTKStatus := rtkFixed;
-  else
-    PVT.RTKStatus := rtkNone;
+  else PVT.RTKStatus := rtkNone;
   end;
 
-  { Data e ora UTC — valide solo se validDate (bit0) e validTime (bit1) }
   if (Raw.valid and $03) = $03 then
     PVT.UTCTime := EncodeDate(Raw.year, Raw.month, Raw.day) +
                    EncodeTime(Raw.hour, Raw.min, Raw.sec, 0);
@@ -442,276 +318,677 @@ begin
   Result          := True;
 end;
 
-{ ── InternalExecute ─────────────────────────────────────────────────────── }
+{ ══ TUBXRoverThread — NMEA ═══════════════════════════════════════════════════ }
 
-procedure TUBXRoverThread.InternalExecute;
+function TUBXRoverThread.ParseNMEAField(const S: string;
+                                        Index: Integer): string;
+{ Restituisce il campo Index (0-based dal primo campo dopo l'ID sentenza).
+  Esempio: per $GNGGA,123519,... Index=0 → '123519'. }
 var
-  RxBuf    : TLBCircularBuffer;
+  i, Cur, _Start: Integer;
+
+begin
+  Result := '';
+  Cur    := 0;
+  _Start  := 2;  // salta '$'
+  for i := 2 to Length(S) do
+  begin
+    if S[i] = ',' then
+    begin
+      if Cur = Index then
+      begin
+        Result := Copy(S, _Start, i - _Start);
+        Exit;
+      end;
+      Inc(Cur);
+      _Start := i + 1;
+    end;
+  end;
+  if Cur = Index then
+    Result := Copy(S, _Start, Length(S) - _Start + 1);
+end;
+
+function TUBXRoverThread.NMEALatLon(const Value, Hemi: string;
+                                    IsLon: Boolean): Double;
+{ Converte DDMM.MMMMM (lat) o DDDMM.MMMMM (lon) + emisferio in gradi decimali. }
+var
+  FS  : TFormatSettings;
+  Deg : Integer;
+  Min : Double;
+begin
+  Result := 0.0;
+  if (Value = '') or (Hemi = '') then Exit;
+  FS := TFormatSettings.Create('en-US');
+  if IsLon then
+  begin
+    Deg := StrToIntDef(Copy(Value, 1, 3), 0);
+    Min := StrToFloatDef(Copy(Value, 4, Length(Value)), 0.0, FS);
+  end
+  else
+  begin
+    Deg := StrToIntDef(Copy(Value, 1, 2), 0);
+    Min := StrToFloatDef(Copy(Value, 3, Length(Value)), 0.0, FS);
+  end;
+  Result := Deg + Min / 60.0;
+  if (Hemi = 'S') or (Hemi = 'W') then Result := -Result;
+end;
+
+function TUBXRoverThread.VerifyNMEAChecksum(const Line: string): Boolean;
+{ Verifica checksum XOR tra '$' e '*'. Line deve includere '*XX'. }
+var
+  i, CS, Got, StarPos: Integer;
+begin
+  Result  := False;
+  StarPos := 0;
+  for i := Length(Line) downto 1 do
+    if Line[i] = '*' then begin StarPos := i; Break; end;
+  if StarPos = 0 then Exit;
+  Got := StrToIntDef('$' + Copy(Line, StarPos + 1, 2), -1);
+  if Got < 0 then Exit;
+  CS := 0;
+  for i := 2 to StarPos - 1 do
+    CS := CS xor Ord(Line[i]);
+  Result := CS = Got;
+end;
+
+function TUBXRoverThread.ParseGGA(const Line: string;
+                                  out PVT: TPVTData): Boolean;
+{
+  $GP/GNGGA — campi (0-based dopo talker ID):
+    0=UTC  1=Lat  2=N/S  3=Lon  4=E/W  5=Quality  6=NumSV  7=HDOP
+    8=AltMSL  9=M  10=Geoid  11=M  12=AgeCorr  13=StaID
+
+  Quality NMEA GGA:
+    0 = no fix          → rifiutato
+    1 = autonomous GPS  → rtkNone
+    2 = DGPS            → rtkNone
+    4 = RTK fixed       → rtkFixed
+    5 = RTK float       → rtkFloat
+    6 = estimated DR    → rtkNone
+}
+var
+  FS      : TFormatSettings;
+  Quality : Integer;
+  TimeStr : string;
+  H, M, S : Integer;
+begin
+  Result := False;
+  FillChar(PVT, SizeOf(PVT), 0);
+  FS := TFormatSettings.Create('en-US');
+
+  Quality := StrToIntDef(ParseNMEAField(Line, 5), 0);
+  if Quality = 0 then Exit;
+
+  PVT.GNSSFixOK := True;
+  PVT.FixType   := ft3D;
+  case Quality of
+    4: PVT.RTKStatus := rtkFixed;
+    5: PVT.RTKStatus := rtkFloat;
+  else PVT.RTKStatus := rtkNone;
+  end;
+
+  PVT.Latitude    := NMEALatLon(ParseNMEAField(Line, 1),
+                                 ParseNMEAField(Line, 2), False);
+  PVT.Longitude   := NMEALatLon(ParseNMEAField(Line, 3),
+                                 ParseNMEAField(Line, 4), True);
+  PVT.AltitudeMSL := StrToFloatDef(ParseNMEAField(Line, 8), 0.0, FS);
+  PVT.NumSV       := StrToIntDef(ParseNMEAField(Line, 6), 0);
+
+  { Ora UTC (data assente in GGA: verrà completata da RMC) }
+  TimeStr := ParseNMEAField(Line, 0);
+  if Length(TimeStr) >= 6 then
+  begin
+    H := StrToIntDef(Copy(TimeStr, 1, 2), 0);
+    M := StrToIntDef(Copy(TimeStr, 3, 2), 0);
+    S := StrToIntDef(Copy(TimeStr, 5, 2), 0);
+    PVT.UTCTime := EncodeTime(H, M, S, 0);
+  end;
+
+  PVT.Valid := True;
+  Result    := True;
+end;
+
+function TUBXRoverThread.ParseRMC(const Line: string;
+                                  var PVT: TPVTData): Boolean;
+{
+  $GP/GNRMC — campi (0-based dopo talker ID):
+    0=UTC  1=Status(A/V)  2=Lat  3=N/S  4=Lon  5=E/W
+    6=SpeedKn  7=CourseTrue  8=DateDDMMYY  9=MagVar  10=E/W  11=Mode
+}
+var
+  FS      : TFormatSettings;
+  DateStr : string;
+  SpeedKn : Double;
+  Day, Mon, Yr: Integer;
+begin
+  Result := False;
+  FS := TFormatSettings.Create('en-US');
+  if ParseNMEAField(Line, 1) <> 'A' then Exit;
+
+  SpeedKn      := StrToFloatDef(ParseNMEAField(Line, 6), 0.0, FS);
+  PVT.SpeedKmH := SpeedKn * 1.852;
+  PVT.HeadingDeg := StrToFloatDef(ParseNMEAField(Line, 7), 0.0, FS);
+
+  { Data DDMMYY — completa UTCTime preservando l'ora di GGA }
+  DateStr := ParseNMEAField(Line, 8);
+  if Length(DateStr) = 6 then
+  begin
+    Day := StrToIntDef(Copy(DateStr, 1, 2), 1);
+    Mon := StrToIntDef(Copy(DateStr, 3, 2), 1);
+    Yr  := 2000 + StrToIntDef(Copy(DateStr, 5, 2), 0);
+    PVT.UTCTime := EncodeDate(Yr, Mon, Day) + Frac(PVT.UTCTime);
+  end;
+
+  Result := True;
+end;
+
+{ ══ TUBXRoverThread — Configure ══════════════════════════════════════════════ }
+
+function TUBXRoverThread.Configure(ALayer: Byte): Boolean;
+{
+  Costruisce un CFG-VALSET con 18 key-value (payload 96 byte).
+  Il payload è identico per entrambe le modalità — cambiano solo i valori
+  di OUTPROT_UBX, OUTPROT_NMEA, NAV-PVT, GGA, RMC.
+
+  romUBX:
+    OUTPROT UBX=On NMEA=Off  |  NAV-PVT=1, GGA=0, RMC=0  (altri off)
+  romNMEA:
+    OUTPROT UBX=Off NMEA=On  |  NAV-PVT=0, GGA=1, RMC=1  (altri off)
+}
+var
+  Payload    : TBytes;
+  Pos        : Integer;
+  MeasRateMs : Word;
+  IsNMEA     : Boolean;
+begin
+  Result     := False;
+  IsNMEA     := (FOutputMode = romNMEA);
+  MeasRateMs := 1000 div FHz;
+
+  SetLength(Payload, VALSET_PAY_SIZE);
+  FillChar(Payload[0], VALSET_PAY_SIZE, 0);
+  Payload[0] := $00;
+  Payload[1] := ALayer;
+  Pos := VALSET_HDR_SIZE;
+
+  { ── Input USB: identico in entrambe le modalità ─────────────────────── }
+  AddBool(Payload, Pos, KEY_USBINPROT_UBX,    True);
+  AddBool(Payload, Pos, KEY_USBINPROT_NMEA,   False);
+  AddBool(Payload, Pos, KEY_USBINPROT_RTCM3X, True);
+
+  { ── Output USB: dipende dalla modalità ──────────────────────────────── }
+  AddBool(Payload, Pos, KEY_USBOUTPROT_UBX,    not IsNMEA);
+  AddBool(Payload, Pos, KEY_USBOUTPROT_NMEA,   IsNMEA);
+  AddBool(Payload, Pos, KEY_USBOUTPROT_RTCM3X, False);
+
+  { ── Frequenza ────────────────────────────────────────────────────────── }
+  AddU2(Payload, Pos, KEY_RATE_MEAS,    MeasRateMs);
+  AddU2(Payload, Pos, KEY_RATE_NAV,     1);
+  AddU1(Payload, Pos, KEY_RATE_TIMEREF, 1);
+
+  { ── Output messaggi ─────────────────────────────────────────────────── }
+  AddU1(Payload, Pos, KEY_MSGOUT_NAVPVT_USB, Byte(not IsNMEA));
+  AddU1(Payload, Pos, KEY_NMEA_GGA_USB,      Byte(IsNMEA));
+  AddU1(Payload, Pos, KEY_NMEA_GLL_USB,      Byte(IsNMEA));
+  AddU1(Payload, Pos, KEY_NMEA_GSA_USB,      Byte(IsNMEA));
+  AddU1(Payload, Pos, KEY_NMEA_GSV_USB,      Byte(IsNMEA));
+  AddU1(Payload, Pos, KEY_NMEA_RMC_USB,      Byte(IsNMEA));
+  AddU1(Payload, Pos, KEY_NMEA_VTG_USB,      0);
+  AddU1(Payload, Pos, KEY_NMEA_ZDA_USB,      0);
+  AddU1(Payload, Pos, KEY_NMEA_GNS_USB,      0);
+
+  if Pos <> VALSET_PAY_SIZE then
+  begin
+    LBLogger.Write(1, 'TUBXRoverThread.Configure', lmt_Error, 'VALSET byte count mismatch: expected %d, got %d', [VALSET_PAY_SIZE, Pos]);
+    Exit;
+  end;
+
+  if not SendUBX(BuildUBX(UBX_CLASS_CFG, UBX_ID_CFG_VALSET, Payload)) then
+  begin
+    LBLogger.Write(1, 'TUBXRoverThread.Configure', lmt_Error,
+      'Send error on CFG-VALSET (layer=$%s mode=%s port=<%s>)',
+      [IntToHex(ALayer, 2), IfThen(IsNMEA, 'NMEA', 'UBX'), FPort]);
+    Exit;
+  end;
+
+  Result := WaitACK(FSerial, UBX_CLASS_CFG, UBX_ID_CFG_VALSET, 700);
+
+  if Result then
+    LBLogger.Write(5, 'TUBXRoverThread.Configure', lmt_Info,
+      'CFG-VALSET ACK (layer=$%s mode=%s rate=%d Hz)',
+      [IntToHex(ALayer, 2), IfThen(IsNMEA, 'NMEA', 'UBX'), FHz])
+  else
+    LBLogger.Write(1, 'TUBXRoverThread.Configure', lmt_Warning,
+      'CFG-VALSET: no ACK (layer=$%s mode=%s) — check firmware',
+      [IntToHex(ALayer, 2), IfThen(IsNMEA, 'NMEA', 'UBX')]);
+end;
+
+function TUBXRoverThread.SendRetrieveData(): Boolean;
+var
+  _CorrLen  : Integer;
+  _CorrData : TBytes;
+
+begin
+  Result := True;
+
+  case FRxBuf.WriteFromSerial(FSerial) of
+    -1 : Exit(False);
+    0  : Self.PauseFor(5);
+  end;
+
+  _CorrLen := FCorrections.Flush(_CorrData);
+  if _CorrLen > 0 then
+  begin
+    if FSerial.SendBuffer(@_CorrData[0], _CorrLen) <> _CorrLen then
+      LBLogger.Write(1, 'TUBXRoverThread.SendRetrieveData', lmt_Warning, 'RTCM3 send incomplete (%d bytes)', [_CorrLen]);
+  end;
+
+end;
+
+function TUBXRoverThread.OpenSerialPort(): Boolean;
+begin
+  Result := False;
+
+  Self.CloseSerialPort();
+
+  if FPort = '' then
+  begin
+    LBLogger.Write(1, 'TUBXRoverThread.OpenSerialPort', lmt_Warning, 'Serial port not set!');
+    Exit;
+  end;
+
+  if (FHz = 0) or (FHz > 10) then
+  begin
+    LBLogger.Write(1, 'TUBXRoverThread.OpenSerialPort', lmt_Warning, 'Wrong frequency value %d!', [FHz]);
+    Exit;
+  end;
+
+  FSerial := TBlockSerial.Create;
+  FSerial.Connect(FPort);
+  if FSerial.LastError = 0 then
+  begin
+    FSerial.Config(115200, 8, 'N', SB1, False, False);
+    Result := FSerial.LastError = 0;
+  end;
+
+  if not Result then
+    LBLogger.Write(1, 'TUBXRoverThread.OpenSerialPort', lmt_Warning, 'Error opening serial port: %s', [FSerial.LastErrorDesc]);
+end;
+
+procedure TUBXRoverThread.CloseSerialPort();
+begin
+  if FSerial <> nil then
+  begin
+    FSerial.CloseSocket;
+    FreeAndNil(FSerial);
+  end;
+end;
+
+{ ══ TUBXRoverThread — PublishPVT ═════════════════════════════════════════════ }
+
+procedure TUBXRoverThread.PublishPVT(const PVT: TPVTData);
+begin
+  if FPVTLock.Acquire('TUBXRoverThread.PublishPVT') then
+  begin
+    try
+      FLastPVT := PVT;
+    finally
+      FPVTLock.Release;
+    end;
+  end;
+
+  if Assigned(FOnPVT) then
+    FOnPVT(Self, PVT);
+
+  { In modalità UBX il callback NMEA richiede la generazione sintetica
+    di GGA + RMC a partire dai dati decodificati. In modalità NMEA le
+    stringhe originali vengono già passate direttamente da FireNMEARaw. }
+  if Assigned(FOnNMEARaw) and (FOutputMode = romUBX) then
+    Self.FireNMEARaw(PVT);
+end;
+
+procedure TUBXRoverThread.FireNMEARaw(const PVT: TPVTData);
+{ Costruisce GGA + RMC sintetici a partire da TPVTData e li consegna
+  a OnNMEARaw. Usato in modalità romUBX quando il modulo emette binario
+  ma l'applicazione vuole anche il flusso NMEA sulla porta virtuale.  }
+var
+  FS                   : TFormatSettings;
+  LatDeg, LonDeg       : Integer;
+  LatMin, LonMin       : Double;
+  LatH, LonH           : Char;
+  Lat, Lon             : Double;
+  TimeStr, DateStr     : string;
+  QualityStr           : string;
+  GGABody, RMCBody     : string;
+  SpeedKn              : Double;
+
+  function CS(const Body: string): string;
+  var i, X: Integer;
+  begin X := 0; for i := 1 to Length(Body) do X := X xor Ord(Body[i]);
+    Result := IntToHex(X, 2);
+  end;
+
+begin
+  if not Assigned(FOnNMEARaw) then Exit;
+  FS := TFormatSettings.Create('en-US');
+
+  TimeStr := FormatDateTime('hhnnss.zzz', Frac(PVT.UTCTime), FS);
+  DateStr := FormatDateTime('ddmmyy', Int(PVT.UTCTime), FS);
+
+  Lat := Abs(PVT.Latitude);
+  Lon := Abs(PVT.Longitude);
+  LatH := IfThen(PVT.Latitude  >= 0, 'N', 'S')[1];
+  LonH := IfThen(PVT.Longitude >= 0, 'E', 'W')[1];
+  LatDeg := Trunc(Lat); LatMin := (Lat - LatDeg) * 60.0;
+  LonDeg := Trunc(Lon); LonMin := (Lon - LonDeg) * 60.0;
+
+  case PVT.RTKStatus of
+    rtkFixed: QualityStr := '4';
+    rtkFloat: QualityStr := '5';
+  else        QualityStr := '1';
+  end;
+
+  { ── GGA ─────────────────────────────────────────────────────────────── }
+  GGABody := Format(
+    'GNGGA,%s,%02d%08.5f,%s,%03d%08.5f,%s,%s,%02d,1.0,%.3f,M,0.000,M,,',
+    [TimeStr,
+     LatDeg, LatMin, LatH,
+     LonDeg, LonMin, LonH,
+     QualityStr,
+     PVT.NumSV,
+     PVT.AltitudeMSL], FS);
+  FOnNMEARaw(Self, '$' + GGABody + '*' + CS(GGABody) + #13#10);
+
+  { ── RMC ─────────────────────────────────────────────────────────────── }
+  SpeedKn := PVT.SpeedKmH / 1.852;
+  RMCBody := Format(
+    'GNRMC,%s,A,%02d%08.5f,%s,%03d%08.5f,%s,%.3f,%.2f,%s,,,A',
+    [TimeStr,
+     LatDeg, LatMin, LatH,
+     LonDeg, LonMin, LonH,
+     SpeedKn,
+     PVT.HeadingDeg,
+     DateStr], FS);
+  FOnNMEARaw(Self, '$' + RMCBody + '*' + CS(RMCBody) + #13#10);
+end;
+
+{ ══ TUBXRoverThread — ExecuteUBXLoop ════════════════════════════════════════ }
+
+function TUBXRoverThread.ExecuteUBXLoop: Boolean;
+var
   SyncPat  : array[0..1] of Byte;
   SyncPos  : Integer;
   PayLen   : Word;
   FrameBuf : array[0..UBX_PVT_TOTAL - 1] of Byte;
   PVT      : TUBXNavPVT;
   PVTData  : TPVTData;
-  CorrData : TBytes;
-  CorrLen  : Integer;
   _tmp     : TBytes;
 
 begin
+  Result := True;
+
   SyncPat[0] := UBX_SYNC1;
   SyncPat[1] := UBX_SYNC2;
+  FRxBuf.Clear;
 
-  LBLogger.Write(5, 'TUBXRoverThread.InternalExecute', lmt_Info, 'Thread started on port <%s> at %d Hz', [FRover.Port, FRover.Hz]);
+  while not Self.Terminated do
+  begin
+    if not Self.SendRetrieveData() then
+      Exit(False);
 
-  { Configurazione iniziale — solo RAM, non consuma cicli flash }
-  Self.Configure(VALSET_LAYER_RAM);
-
-  RxBuf := TLBCircularBuffer.Create(4096);
-  try
-    while not Terminated do
+    while FRxBuf.AvailableForRead >= UBX_PVT_TOTAL do
     begin
-      { ── 1. Leggi dalla seriale ────────────────────────────────────── }
-      if FSerial.WaitingData > 0 then
-        RxBuf.WriteFromSerial(FSerial)
-      else
-        Self.PauseFor(5);
-
-      { ── 2. Invia correzioni RTCM3 pendenti ───────────────────────── }
-      CorrLen := FRover.Corrections.Flush(CorrData);
-      if CorrLen > 0 then
+      SyncPos := FRxBuf.FindPattern(@SyncPat[0], 2, 0);
+      if SyncPos < 0 then
       begin
-        if FSerial.SendBuffer(@CorrData[0], CorrLen) <> CorrLen then
-          LBLogger.Write(1, 'TUBXRoverThread.InternalExecute', lmt_Warning, 'RTCM3 corrections send incomplete (%d bytes)', [CorrLen]);
+        SetLength(_tmp, FRxBuf.AvailableForRead);
+        FRxBuf.Read(@_tmp[0], Length(_tmp));
+        LBLogger.Write(5, 'TUBXRoverThread.ExecuteUBXLoop', lmt_Debug, 'No UBX sync, clearing %d bytes: %s', [Length(_tmp), HexString(@_tmp[0], Length(_tmp))]);
+        FRxBuf.Clear;
+        Break;
       end;
-
-      { ── 3. Elabora frame UBX completi nel buffer ─────────────────── }
-      while RxBuf.AvailableForRead >= UBX_PVT_TOTAL do
+      if SyncPos > 0 then
       begin
-        SyncPos := RxBuf.FindPattern(@SyncPat[0], 2, 0);
-
-        if SyncPos < 0 then
+        LBLogger.Write(5, 'TUBXRoverThread.ExecuteUBXLoop', lmt_Debug, 'Skipping %d spurious bytes before sync', [SyncPos]);
+        FRxBuf.Skip(SyncPos);
+      end;
+      if FRxBuf.AvailableForRead < UBX_HDR_SIZE then Break;
+      PayLen := FRxBuf.PeekByte(4) or (Word(FRxBuf.PeekByte(5)) shl 8);
+      if FRxBuf.AvailableForRead < UBX_HDR_SIZE + PayLen + UBX_CRC_SIZE then
+        Break;
+      if (FRxBuf.PeekByte(2) = UBX_CLASS_NAV) and
+         (FRxBuf.PeekByte(3) = UBX_ID_NAV_PVT) and
+         (PayLen = UBX_PVT_PAYLOAD) then
+      begin
+        FRxBuf.Read(@FrameBuf[0], UBX_PVT_TOTAL);
+        if ValidUBXChecksum(FrameBuf, 0, PayLen) then
         begin
-          { Nessun sync nel buffer: scartiamo tutto. Probabile traffico
-            residuo di NMEA o protocollo non atteso. }
-          SetLength(_tmp, RxBuf.AvailableForRead);
-          RxBuf.Read(@_tmp[0], Length(_tmp));
-          LBLogger.Write(5, 'TUBXRoverThread.InternalExecute', lmt_Debug, 'No UBX sync found, clearing %d bytes', [RxBuf.AvailableForRead]);
-          LBLogger.Write(5, 'TUBXRoverThread.InternalExecute', lmt_Debug, '%s', [HexString(@_tmp[0], Length(_tmp))]);
-          RxBuf.Clear;
-          Break;
-        end;
-
-        if SyncPos > 0 then
-        begin
-          { Byte spuri prima del sync: possibile remnant NMEA o baud
-            errato in fase iniziale. }
-          LBLogger.Write(5, 'TUBXRoverThread.InternalExecute', lmt_Debug, 'Skipping %d spurious bytes before UBX sync', [SyncPos]);
-          RxBuf.Skip(SyncPos);
-        end;
-
-        if RxBuf.AvailableForRead < UBX_HDR_SIZE then
-          Break;
-
-        PayLen := RxBuf.PeekByte(4) or (Word(RxBuf.PeekByte(5)) shl 8);
-
-        if RxBuf.AvailableForRead < UBX_HDR_SIZE + PayLen + UBX_CRC_SIZE then
-          Break;  // Frame incompleto — aspetta più dati
-
-        if (RxBuf.PeekByte(2) = UBX_CLASS_NAV) and
-           (RxBuf.PeekByte(3) = UBX_ID_NAV_PVT) and
-           (PayLen = UBX_PVT_PAYLOAD) then
-        begin
-          RxBuf.Read(@FrameBuf[0], UBX_PVT_TOTAL);
-
-          if ValidUBXChecksum(FrameBuf, 0, PayLen) then
+          Move(FrameBuf[UBX_HDR_SIZE], PVT, UBX_PVT_PAYLOAD);
+          if DecodePVT(PVT, PVTData) then
           begin
-            Move(FrameBuf[UBX_HDR_SIZE], PVT, UBX_PVT_PAYLOAD);
-
-            if DecodePVT(PVT, PVTData) then
-            begin
-              { ── Log dato ricevuto ───────────────────────────────────
-              LBLogger.Write(5, 'TUBXRoverThread.InternalExecute', lmt_Info,
-                                'PVT fix=%s rtk=%s sv=%d lat=%.7f lon=%.7f ' +
-                                'alt=%.1fm hacc=%dmm vacc=%dmm spd=%.1fkm/h',
-                [FixTypeName(Byte(PVTData.FixType)),
-                 RTK_STATUS_NAMES[PVTData.RTKStatus],
-                 PVTData.NumSV,
-                 PVTData.Latitude,
-                 PVTData.Longitude,
-                 PVTData.AltitudeMSL,
-                 PVTData.HAccMm,
-                 PVTData.VAccMm,
-                 PVTData.SpeedKmH]);  }
-
-              { ── Aggiorna FLastPVT thread-safe ─────────────────────── }
-              if FRover.FPVTLock.Acquire('TUBXRoverThread.InternalExecute') then
-              begin
-                try
-                  FRover.FLastPVT := PVTData;
-                finally
-                  FRover.FPVTLock.Release;
-                end;
-
-                { ── Notifica il chiamante (da thread seriale) ─────────── }
-                if Assigned(FRover.OnPVT) then
-                  FRover.OnPVT(FRover, PVTData);
-              end;
-            end
-            else begin
-              { Fix non valido o gnssFixOK = 0: normale all'avvio o in
-                ambienti con scarsa visibilità satellite. }
-              LBLogger.Write(3, 'TUBXRoverThread.InternalExecute', lmt_Debug, 'PVT discarded: no valid fix (fixType=%s gnssFixOK=%s)',
-                [FixTypeName(PVT.fixType),
-                 BoolToStr((PVT.flags and $01) <> 0, True)]);
-              LBLogger.Write(5, 'TUBXRoverThread.InternalExecute', lmt_Debug, '%s', [HexString(@PVT, SizeOf(PVT))]);
-            end;
+            LBLogger.Write(5, 'TUBXRoverThread.ExecuteUBXLoop', lmt_Info,
+              'PVT fix=%s rtk=%s sv=%d lat=%.7f lon=%.7f alt=%.1fm hacc=%dmm',
+              [FixTypeName(Byte(PVTData.FixType)),
+               RTK_STATUS_NAMES[PVTData.RTKStatus],
+               PVTData.NumSV, PVTData.Latitude, PVTData.Longitude,
+               PVTData.AltitudeMSL, PVTData.HAccMm]);
+            PublishPVT(PVTData);
           end
           else
-            LBLogger.Write(1, 'TUBXRoverThread.InternalExecute', lmt_Warning, 'UBX-NAV-PVT: checksum mismatch — frame discarded');
+            LBLogger.Write(3, 'TUBXRoverThread.ExecuteUBXLoop', lmt_Debug,
+              'PVT discarded: fixType=%s gnssFixOK=%s',
+              [FixTypeName(PVT.fixType),
+               BoolToStr((PVT.flags and $01) <> 0, True)]);
         end
-        else begin
-          { Frame di tipo diverso (es. ACK residuo): consuma l'intero frame
-            per evitare il loop O(n²) che si avrebbe scartando solo 2 byte. }
-          LBLogger.Write(5, 'TUBXRoverThread.InternalExecute', lmt_Debug, 'Non-PVT UBX frame skipped (class=$%s id=$%s len=%d)',
-                             [IntToHex(RxBuf.PeekByte(2), 2),
-                              IntToHex(RxBuf.PeekByte(3), 2),
-                              PayLen]);
-          RxBuf.Skip(UBX_HDR_SIZE + PayLen + UBX_CRC_SIZE);
-        end;
+        else
+          LBLogger.Write(1, 'TUBXRoverThread.ExecuteUBXLoop', lmt_Warning,
+            'NAV-PVT checksum mismatch — frame discarded');
+      end
+      else
+      begin
+        LBLogger.Write(5, 'TUBXRoverThread.ExecuteUBXLoop', lmt_Debug,
+          'Non-PVT frame skipped (class=$%s id=$%s len=%d)',
+          [IntToHex(FRxBuf.PeekByte(2), 2),
+           IntToHex(FRxBuf.PeekByte(3), 2), PayLen]);
+        FRxBuf.Skip(UBX_HDR_SIZE + PayLen + UBX_CRC_SIZE);
       end;
-
-    end;  // while not Terminated
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'TUBXRoverThread.InternalExecute', lmt_Error, E.Message);
-
+    end;
   end;
-  RxBuf.Free;
-
-  LBLogger.Write(5, 'TUBXRoverThread.InternalExecute', lmt_Info, 'Thread terminated on port <%s>', [FRover.Port]);
 end;
 
-{ ── Lifecycle thread ────────────────────────────────────────────────────── }
+{ ══ TUBXRoverThread — ExecuteNMEALoop ═══════════════════════════════════════ }
 
-constructor TUBXRoverThread.Create(ARover: TUBXRTKRover;
-                                   const APort: string; AHz: Byte);
+function TUBXRoverThread.ExecuteNMEALoop: Boolean;
+{
+  Legge righe NMEA ASCII da FSerial carattere per carattere.
+  Accumula GGA e RMC: quando arriva RMC valido dopo un GGA valido,
+  costruisce TPVTData e chiama PublishPVT.
+
+  Strategia di abbinamento:
+  - GGA porta posizione, altitudine, qualità, NumSV, ora UTC.
+  - RMC porta velocità, heading, data completa.
+  - Si pubblica a ogni RMC valido usando l'ultimo GGA ricevuto.
+    Al frame rate tipico (1–5 Hz) GGA e RMC arrivano consecutivi
+    nella stessa epoca, quindi l'abbinamento è corretto.
+  - Se non è ancora arrivato un GGA, RMC viene ignorato.
+}
+var
+  DollarPos : Integer;
+  LFPos     : Integer;
+  SentLen   : Cardinal;
+  RawBuf    : array[0..255] of Byte;  // max NMEA 82 char + terminatori
+  RawLine   : string;
+  ParseLine : string;
+  GGAData   : TPVTData;
+  HaveGGA   : Boolean;
+  PVTData   : TPVTData;
+  Talker    : string;
+  i         : Integer;
+begin
+  Result := True;
+  FillChar(GGAData, SizeOf(GGAData), 0);
+  HaveGGA := False;
+  FRxBuf.Clear;
+
+  while not Terminated do
+  begin
+    if not Self.SendRetrieveData() then
+      Exit(False);
+
+    { Estrazione sentence complete }
+    while True do
+    begin
+      { 1. Trova '$' — inizio sentence, scarta garbage precedente }
+      DollarPos := FRxBuf.FindByte(Ord('$'), 0);
+      if DollarPos < 0 then begin FRxBuf.Clear; Break; end;
+      if DollarPos > 0 then FRxBuf.Skip(DollarPos);
+
+      { 2. Trova LF — fine sentence }
+      LFPos := FRxBuf.FindByte(10, 1);
+      if LFPos < 0 then Break; // sentence incompleta, aspetta altri dati
+
+      SentLen := LFPos + 1;
+      if SentLen > SizeOf(RawBuf) then
+      begin
+        { Sentence anomala: salta il '$' e riprova }
+        FRxBuf.Skip(1);
+        Continue;
+      end;
+
+      { 3. Estrae i byte raw e consuma dal buffer }
+      FRxBuf.Read(@RawBuf[0], SentLen);
+
+      { 4. Costruisce la stringa raw esattamente com'è nel buffer }
+      SetLength(RawLine, SentLen);
+      for i := 1 to SentLen do
+        RawLine[i] := Chr(RawBuf[i - 1]);
+
+      { 5. FORWARD RAW — nessuna modifica, include i terminatori originali }
+      if Assigned(FOnNMEARaw) then
+        FOnNMEARaw(Self, RawLine);
+
+      { 6. Normalizza solo per il parser interno }
+      // ParseLine := Trim(RawLine);
+      if (Length(RawLine) > 6) and (RawLine[1] = '$') then
+      begin
+        if not VerifyNMEAChecksum(RawLine) then
+        begin
+          LBLogger.Write(2, 'TUBXRoverThread.ExecuteNMEALoop', lmt_Warning, 'NMEA checksum error: %s', [RawLine]);
+          Continue;
+        end;
+        ParseLine := Copy(RawLine, 1, Pos('*', RawLine) - 1);
+        Talker := Copy(RawLine, 3, 3);
+
+        if Talker = 'GGA' then
+        begin
+          if ParseGGA(ParseLine, GGAData) then
+            HaveGGA := True;
+        end
+        else if Talker = 'RMC' then
+        begin
+          if HaveGGA then
+          begin
+            PVTData := GGAData;
+            if ParseRMC(ParseLine, PVTData) then
+              Self.PublishPVT(PVTData);
+          end;
+        end;
+      end;
+    end; // inner while
+
+  end; // outer while
+end;
+
+{ ══ TUBXRoverThread — InternalExecute ════════════════════════════════════════ }
+
+procedure TUBXRoverThread.Execute;
+var
+  _InternalState : TInternalState = is_OpenPort;
+
+begin
+  while not Self.Terminated do
+  begin
+    case _InternalState of
+      is_OpenPort:
+        begin
+          if Self.OpenSerialPort() then
+            _InternalState := is_Configure
+          else
+            Self.PauseFor(5000);
+        end;
+
+      is_Configure:
+        begin
+          if Self.Configure(VALSET_LAYER_RAM) then
+            _InternalState := is_Running
+          else
+            _InternalState := is_ResetPort;
+        end;
+
+      is_Running:
+        begin
+          case FOutputMode of
+            romUBX:
+              begin
+                if not Self.ExecuteUBXLoop then
+                  _InternalState := is_ResetPort;
+              end;
+
+            romNMEA:
+              begin
+                if not Self.ExecuteNMEALoop then
+                  _InternalState := is_ResetPort;
+              end;
+          end;
+        end;
+
+      is_ResetPort:
+        begin
+          _InternalState := is_OpenPort;
+          Self.CloseSerialPort();
+          Self.PauseFor(5000);
+        end;
+    end;
+  end;
+
+  LBLogger.Write(5, 'TUBXRoverThread.InternalExecute', lmt_Info, 'Thread terminated on port <%s>', [FPort]);
+end;
+
+{ ══ TUBXRoverThread — lifecycle ══════════════════════════════════════════════ }
+
+constructor TUBXRoverThread.Create(const APort: string; AHz: Byte; OutputMode: TRoverOutputMode);
 begin
   inherited Create();
-  { TLBBaseThread imposta FreeOnTerminate := True nel suo costruttore.
-    Lo sovrascriviamo a False: la vita del thread è gestita da TUBXRTKRover
-    tramite Terminate + WaitFor + FreeAndNil, che è incompatibile con
-    FreeOnTerminate = True (causa double-free). }
+
   FreeOnTerminate := False;
-  FRover  := ARover;
-  FSerial := TBlockSerial.Create;
-  FSerial.Connect(APort);
-  { USB nativo: il baud rate è irrilevante per la comunicazione, ma
-    TBlockSerial richiede un valore — usiamo 115200 come convenzione. }
-  FSerial.Config(115200, 8, 'N', SB1, False, False);
+
+  FPort := APort;
+  FHz := AHz;
+  FOutputMode := OutputMode;
+  FSerial := nil;
+
+  FCorrections := TCorrectionBuffer.Create;
+
+  FRxBuf := TLBCircularBuffer.Create(4096);
+
+  FPVTLock := TTimedOutCriticalSection.Create;
+  FillChar(FLastPVT, SizeOf(FLastPVT), 0);
 end;
 
 destructor TUBXRoverThread.Destroy;
 begin
-  FSerial.CloseSocket;
-  FSerial.Free;
-  inherited;
+  inherited Destroy;
+  Self.CloseSerialPort();
+
+  FreeAndNil(FPVTLock);
+  FreeAndNil(FCorrections);
+  FreeAndNil(FRxBuf);
 end;
 
-function TUBXRoverThread.SerialOK: Boolean;
-begin
-  Result := FSerial.LastError = 0;
-end;
-
-function TUBXRoverThread.SerialErrorDesc: string;
-begin
-  Result := FSerial.LastErrorDesc;
-end;
-
-{ ══ TUBXRTKRover ══════════════════════════════════════════════════════════════ }
-
-constructor TUBXRTKRover.Create(const APort: string; AHz: Byte);
-begin
-  inherited Create;
-  FPort        := APort;
-  FHz          := AHz;
-  FActive      := False;
-  FThread      := nil;
-  FCorrections := TCorrectionBuffer.Create;
-
-  FillChar(FLastPVT, SizeOf(FLastPVT), 0);
-  FPVTLock     := TTimedOutCriticalSection.Create;
-end;
-
-destructor TUBXRTKRover.Destroy;
-begin
-  Self.Close;
-  FPVTLock.Free;
-  FCorrections.Free;
-  inherited;
-end;
-
-function TUBXRTKRover.Open: Boolean;
-begin
-  if not FActive then
-  begin
-
-    FThread := TUBXRoverThread.Create(Self, FPort, FHz);
-
-    if FThread.SerialOK then
-    begin
-      FActive := True;
-      FThread.Start;
-      LBLogger.Write(5, 'TUBXRTKRover.Open', lmt_Info, 'Rover opened on port <%s> at %d Hz', [FPort, FHz]);
-    end
-    else
-    begin
-      LBLogger.Write(1, 'TUBXRTKRover.Open', lmt_Warning, 'Cannot open port <%s>: %s', [FPort, FThread.SerialErrorDesc]);
-      { AddReference ha impostato FThread^ = @FThread; FreeAndNil lo azzera
-        prima che il destructor del thread tenti di accedervi. }
-      FreeAndNil(FThread);
-    end;
-  end;
-
-  Result := FActive;
-end;
-
-procedure TUBXRTKRover.Close;
-begin
-  if FActive then
-  begin
-    LBLogger.Write(5, 'TUBXRTKRover.Close', lmt_Info, 'Closing rover on port <%s>', [FPort]);
-    FThread.Terminate;
-    FThread.WaitFor;
-    FreeAndNil(FThread);
-    FActive := False;
-  end;
-end;
-
-function TUBXRTKRover.SaveConfig(): Boolean;
-{
-  Rende permanente la configurazione corrente scrivendola in Flash.
-  Chiama Configure(VALSET_LAYER_RAM_FLASH): il modulo applica la config
-  alla RAM (effetto immediato) e la scrive in Flash (effetto permanente)
-  in un singolo messaggio — nessun round-trip aggiuntivo.
-
-  ATTENZIONE: la flash del ZED-F9P ha ~10.000 cicli di scrittura.
-  Chiamare solo quando la configurazione è definitiva e verificata.
-}
+function TUBXRoverThread.GetLastPVT(out PVT: TPVTData): Boolean;
 begin
   Result := False;
-
-  if FActive then
-  begin
-    LBLogger.Write(5, 'TUBXRTKRover.SaveConfig', lmt_Info, 'Saving configuration to flash on port <%s>', [FPort]);
-    Result := FThread.Configure(VALSET_LAYER_RAM_FLASH);
-  end
-  else
-    LBLogger.Write(1, 'TUBXRTKRover.SaveConfig', lmt_Warning, 'SaveConfig called but rover is not active');
-end;
-
-function TUBXRTKRover.GetLastPVT(out PVT: TPVTData): Boolean;
-begin
-  if FPVTLock.Acquire('TUBXRTKRover.GetLastPVT') then
+  if FPVTLock.Acquire('TUBXRoverThread.GetLastPVT') then
   begin
     try
       PVT    := FLastPVT;
@@ -722,14 +999,15 @@ begin
   end;
 end;
 
-procedure TUBXRTKRover.PushCorrections(const Data: array of Byte; Len: Integer);
+procedure TUBXRoverThread.PushCorrections(const Data: array of Byte; Len: Integer);
 begin
   FCorrections.Push(Data, Len);
 end;
 
-procedure TUBXRTKRover.PushCorrections(const Data: TBytes);
+procedure TUBXRoverThread.PushCorrections(const Data: TBytes);
 begin
   FCorrections.Push(Data);
 end;
+
 
 end.

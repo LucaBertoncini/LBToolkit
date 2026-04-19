@@ -17,17 +17,12 @@ type
       FOnAsyncTerminate : TNotifyEvent;
 
     strict protected
-      FTerminatedEvent : PRTLEvent;
       FExitFromPauseEvent : PRTLEvent;  // Evento usato per interrompere le pause
       FReferences : TMultiReferenceObject;  // Lista dei riferimenti al thread
 
       procedure PauseFor(mSecs: Integer); overload;  // PauseFor è preferibile a Sleep perché reattiva al Terminate
 
       class function getThreadName(): String; virtual;
-
-    protected
-      procedure Execute; override;  // ⚠️ Do NOT override this procedure, use InternalExecute instead
-      procedure InternalExecute(); virtual; abstract;
 
     public
       constructor Create(); virtual;
@@ -37,6 +32,8 @@ type
         è garantita la terminazione completa del thread.
       }
       destructor Destroy(); override;
+
+      function WaitFor(): Integer; reintroduce;
 
       procedure setThreadName(const aValue: AnsiString);
 
@@ -56,17 +53,6 @@ uses
   ULBLogger, uThreadsUtils;
 
 { TLBBaseThread }
-
-procedure TLBBaseThread.Execute;
-begin
-  try
-    Self.InternalExecute;
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'TLBBaseThread.Execute', lmt_Error, E.Message);
-  end;
-  RTLEventSetEvent(FTerminatedEvent);
-end;
 
 procedure TLBBaseThread.PauseFor(mSecs: Integer);
 begin
@@ -88,7 +74,6 @@ begin
   FReferences := TMultiReferenceObject.Create;
 
   FExitFromPauseEvent := RTLEventCreate();
-  FTerminatedEvent := RTLEventCreate();
 
   Self.setDebugName(Self.getThreadName);
 end;
@@ -109,12 +94,11 @@ begin
         Self.Terminate;
         // Attende la terminazione vera
         LBLogger.Write(6, 'TLBBaseThread.Destroy', lmt_Debug, 'Waiting thread <%s> termination ...', [Self.ClassName]);
-        RTLEventWaitFor(FTerminatedEvent, 2000);
+        Self.WaitFor;
       end;
 
       FreeAndNil(FReferences);
       RTLEventDestroy(FExitFromPauseEvent);
-      RTLEventDestroy(FTerminatedEvent);
 
     except
       on E: Exception do
@@ -124,6 +108,12 @@ begin
     inherited Destroy;
 
   end;
+end;
+
+function TLBBaseThread.WaitFor(): Integer;
+begin
+  FreeOnTerminate := False;
+  Result := inherited WaitFor();
 end;
 
 procedure TLBBaseThread.setThreadName(const aValue: AnsiString);
@@ -145,7 +135,9 @@ end;
 function TLBBaseThread.AddReference(AReference: pThread): Boolean;
 begin
   if (Self <> nil) and (FReferences <> nil) then
-    Result := FReferences.AddReference(AReference);
+    Result := FReferences.AddReference(AReference)
+  else
+    Result := False;
 end;
 
 procedure TLBBaseThread.RemoveReference(AReference: pThread);

@@ -44,7 +44,7 @@ type
     { Scrittura nel circular buffer}
     function Write(aBuffer: Pointer; aCount: Cardinal): Boolean;
     function WriteFromSocket(aSocket: TTCPBlockSocket): Integer;
-    function WriteFromSerial(aSerial: TBlockSerial): Integer;
+    function WriteFromSerial(aSerial: TBlockSerial): Integer;  // return -1 on serial port error
 
 
     { Utilità }
@@ -523,66 +523,74 @@ begin
 
   if Assigned(aSerial) then
   begin
-
-    _AvailableToWrite := Self.GetAvailableForWrite;
-    if _AvailableToWrite > 0 then
+    if (aSerial.LastError = 0) and (aSerial.WaitingData > 0) then
     begin
-      _BytesToRead := aSerial.WaitingData;
-      if _BytesToRead > _AvailableToWrite then
+      _AvailableToWrite := Self.GetAvailableForWrite;
+      if _AvailableToWrite > 0 then
       begin
-        LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Debug, 'Available bytes in serial buffer: %d  -  Available space: %d', [_AvailableToWrite, _BytesToRead]);
-        _BytesToRead := _AvailableToWrite;
-      end;
-
-      if _BytesToRead > 0 then
-      begin
-        if (FWritePos + _BytesToRead <= FMemorySize) then
+        _BytesToRead := aSerial.WaitingData;
+        if _BytesToRead > _AvailableToWrite then
         begin
-          // Contiguous write
-          _BytesRead := aSerial.RecvBuffer(@FData[FWritePos], _BytesToRead);
-          if _BytesRead > 0 then
-          begin
-            FWritePos := Self.WrapPosition(FWritePos + _BytesRead);
-            Inc(FCount, _BytesRead);
-            Result := _BytesRead;
-          end;
-        end
-        else begin
-          // Wrap-around write
-          _FirstChunk := FMemorySize - FWritePos;
-          _BytesRead := aSerial.RecvBuffer(@FData[FWritePos], _FirstChunk);
+          LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Debug, 'Available bytes in serial buffer: %d  -  Available space: %d', [_AvailableToWrite, _BytesToRead]);
+          _BytesToRead := _AvailableToWrite;
+        end;
 
-          if _BytesRead = _FirstChunk then
+        if _BytesToRead > 0 then
+        begin
+          if (FWritePos + _BytesToRead <= FMemorySize) then
           begin
-            Inc(FCount, _BytesRead);
-            Result := _BytesRead;
-            FWritePos := Self.WrapPosition(FWritePos + _BytesRead);
-
-            _SecondChunk := _BytesToRead - _FirstChunk;
-            if _SecondChunk > 0 then
+            // Contiguous write
+            _BytesRead := aSerial.RecvBuffer(@FData[FWritePos], _BytesToRead);
+            if _BytesRead > 0 then
             begin
-              _BytesRead := aSerial.RecvBuffer(@FData[FWritePos], _SecondChunk);
-              if _BytesRead = _SecondChunk then
-              begin
-                Inc(FCount, _BytesRead);
-                Inc(Result, _BytesRead);
-                FWritePos := self.WrapPosition(FWritePos + _BytesRead);
-              end
-              else
-                LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'Error reading second chunck. Needed %d bytes  -  Read %d bytes', [_SecondChunk, _BytesRead]);
-
+              FWritePos := Self.WrapPosition(FWritePos + _BytesRead);
+              Inc(FCount, _BytesRead);
+              Result := _BytesRead;
             end;
           end
-          else
-            LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'Error reading first chunck. Needed %d bytes  -  Read %d bytes', [_FirstChunk, _BytesRead]);
+          else begin
+            // Wrap-around write
+            _FirstChunk := FMemorySize - FWritePos;
+            _BytesRead := aSerial.RecvBuffer(@FData[FWritePos], _FirstChunk);
 
-        end;
+            if _BytesRead = _FirstChunk then
+            begin
+              Inc(FCount, _BytesRead);
+              Result := _BytesRead;
+              FWritePos := Self.WrapPosition(FWritePos + _BytesRead);
+
+              _SecondChunk := _BytesToRead - _FirstChunk;
+              if _SecondChunk > 0 then
+              begin
+                _BytesRead := aSerial.RecvBuffer(@FData[FWritePos], _SecondChunk);
+                if _BytesRead = _SecondChunk then
+                begin
+                  Inc(FCount, _BytesRead);
+                  Inc(Result, _BytesRead);
+                  FWritePos := self.WrapPosition(FWritePos + _BytesRead);
+                end
+                else
+                  LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'Error reading second chunck. Needed %d bytes  -  Read %d bytes', [_SecondChunk, _BytesRead]);
+
+              end;
+            end
+            else
+              LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'Error reading first chunck. Needed %d bytes  -  Read %d bytes', [_FirstChunk, _BytesRead]);
+
+          end;
+        end
+        else
+          LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'No data to read!');
       end
       else
-        LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'No data to read!');
-    end
-    else
-      LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'Buffer is full!');
+        LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'Buffer is full!');
+    end;
+
+    if aSerial.LastError <> 0 then
+    begin
+      Result := -1;
+      LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'Error on serial port: <%s>', [aSerial.LastErrorDesc]);
+    end;
   end
   else
     LBLogger.Write(1, 'TLBCircularBuffer.WriteFromSerial', lmt_Warning, 'No socket available!');

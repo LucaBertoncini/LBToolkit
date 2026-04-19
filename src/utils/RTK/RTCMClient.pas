@@ -33,11 +33,12 @@ unit RTCMClient;
 interface
 
 uses
-  SysUtils, Classes, BlckSock, Math, DateUtils, uLBBaseThread;
+  SysUtils, Classes, BlckSock, Math, DateUtils, uLBBaseThread, uLBWebSocketClient;
 
 type
 
   TNTRIPVersion = (nvAuto, nvV1, nvV2);
+  TRTCMSourceType = (stNTRIP, stIPDirect, stWebSocket);
 
   TOnCorrectionsReceived = procedure(Sender: TObject; const Data: TBytes) of object;
 
@@ -45,14 +46,16 @@ type
 
   { ── Thread di ricezione ─────────────────────────────────────────────── }
 
+  { TRTCMClientThread }
+
   TRTCMClientThread = class(TLBBaseThread)
   private
     FClient          : TRTCMClient;
     FSock            : TTCPBlockSocket;
     FTmpData         : TBytes;
-//    FTmpLen          : Integer;
     FDetectedVersion : TNTRIPVersion;
     FLastGGASent     : TDateTime;
+    FSourceType      : TRTCMSourceType;
 
     procedure FireCorrections;
 
@@ -65,12 +68,16 @@ type
     procedure SendGGAIfDue;
     procedure ReceiveLoopRaw;
     procedure ReceiveLoopChunked;
+
   protected
-    procedure InternalExecute; override;
+    procedure Execute; override;
+
   public
     constructor Create(AClient: TRTCMClient); reintroduce;
     destructor  Destroy; override;
+
     property DetectedVersion: TNTRIPVersion read FDetectedVersion;
+    property SourceType: TRTCMSourceType write FSourceType;
   end;
 
   { ── Classe pubblica ─────────────────────────────────────────────────── }
@@ -78,25 +85,30 @@ type
   { TRTCMClient }
 
   TRTCMClient = class(TObject)
-  private
-    FThread         : TRTCMClientThread;
-    FHost           : string;
-    FPort           : Integer;
-    FMountpoint     : string;
-    FUsername       : string;
-    FPassword       : string;
-    FActive         : Boolean;
-    FReconnectDelay : Integer;
-//    FUseMainThread  : Boolean;
-    FNTRIPVersion   : TNTRIPVersion;
-    FGGASentence    : string;
-    FGGAIntervalSec : Integer;
-    FOnCorrections  : TOnCorrectionsReceived;
-//    FOnStatus       : TOnClientStatus;
+  strict private
+    FThread          : TRTCMClientThread;
+    FWebSocketClient : TLBWebSocketClient;
+
+    FWebSocketURI    : String;
+    FHost            : string;
+    FPort            : Integer;
+    FMountpoint      : string;
+    FUsername        : string;
+    FPassword        : string;
+    FActive          : Boolean;
+    FReconnectDelay  : Integer;
+    FNTRIPVersion    : TNTRIPVersion;
+    FGGASentence     : string;
+    FGGAIntervalSec  : Integer;
+    FOnCorrections   : TOnCorrectionsReceived;
+    FSourceType      : TRTCMSourceType;
 
     function GetDetectedVersion: TNTRIPVersion;
+
+    procedure OnWebSocketData(Sender: TObject; aBuffer: pByte; aBufferLen: Int64);
+
   public
-    constructor Create(const aMountPoint, aHost: string; APort: Integer = 2101);
+    constructor Create(aSourceType: TRTCMSourceType; aHost: string; APort: Integer = 2101);
     destructor  Destroy; override;
 
     function Open(): Boolean;
@@ -113,6 +125,8 @@ type
     property Mountpoint      : string          read FMountpoint     write FMountpoint;
     property Username        : string          read FUsername       write FUsername;
     property Password        : string          read FPassword       write FPassword;
+
+    property WebSocketURI    : string          read FWebSocketURI   write FWebSocketURI;
 
     { nvAuto (default): tenta v2, ricade su v1 se il server risponde ICY.
       nvV1 / nvV2: forza la versione specificata. }
@@ -132,12 +146,9 @@ type
       I caster VRS tipicamente richiedono ogni 5–30 s. }
     property GGAIntervalSec  : Integer         read FGGAIntervalSec write FGGAIntervalSec;
 
-    { False (default): OnCorrections chiamato nel thread TCP — minima latenza.
-      True: via Synchronize — VCL-safe ma aggiunge latenza. }
-//    property UseMainThread   : Boolean         read FUseMainThread  write FUseMainThread;
+    property SourceType: TRTCMSourceType       read FSourceType write FSourceType;
 
     property OnCorrections   : TOnCorrectionsReceived read FOnCorrections  write FOnCorrections;
-//    property OnStatus        : TOnClientStatus read FOnStatus       write FOnStatus;
   end;
 
 { ── Costruisce una stringa GGA NMEA con checksum ─────────────────────────── }
@@ -353,7 +364,9 @@ var
 begin
   while not Terminated do
   begin
-    Self.SendGGAIfDue;
+    if FSourceType = stNTRIP then
+      Self.SendGGAIfDue;
+
     NRead := FSock.RecvBufferEx(@Buf, SizeOf(Buf), RECV_TIMEOUT_MS);
     if Terminated then Break;
     if NRead > 0 then
@@ -442,7 +455,7 @@ end;
 
 { ── Execute ── }
 
-procedure TRTCMClientThread.InternalExecute;
+procedure TRTCMClientThread.Execute;
 var
   TryVer    : TNTRIPVersion;
   FirstLine : string;
@@ -460,93 +473,101 @@ begin
       Continue;
     end;
 
-    { ── 2. Versione da tentare ─────────────────────────────────────────── }
-    TryVer := FClient.NTRIPVersion;
-    if TryVer = nvAuto then TryVer := nvV2;
+    case FSourceType of
+      stIPDirect: Self.ReceiveLoopRaw;
 
-    { ── 3. Invia richiesta NTRIP ───────────────────────────────────────── }
-    if not Self.SendRequest(TryVer) then
-    begin
-      FSock.CloseSocket;
-      Self.PauseFor(FClient.ReconnectDelay);
-      Continue;
+      stNTRIP:
+        begin
+          { ── 2. Versione da tentare ─────────────────────────────────────────── }
+          TryVer := FClient.NTRIPVersion;
+          if TryVer = nvAuto then TryVer := nvV2;
+
+          { ── 3. Invia richiesta NTRIP ───────────────────────────────────────── }
+          if not Self.SendRequest(TryVer) then
+          begin
+            FSock.CloseSocket;
+            Self.PauseFor(FClient.ReconnectDelay);
+            Continue;
+          end;
+
+          { ── 4. Leggi prima riga risposta ───────────────────────────────────── }
+          FirstLine := Self.ReadLine(3000);
+          if FSock.LastError <> 0 then
+          begin
+            FSock.CloseSocket;
+            Self.PauseFor(FClient.ReconnectDelay);
+            Continue;
+          end;
+
+          IsICY := Pos('ICY', FirstLine) > 0;
+
+          { ── 5. Auto-detection: v2 tentato ma server risponde ICY → riprova v1 }
+          if (TryVer = nvV2) and IsICY then
+          begin
+            LBLogger.Write(1, 'TRTCMClientThread.InternalExecute', lmt_Debug, 'Server is NTRIP v1');
+            FSock.CloseSocket;
+            if not DoConnect then
+            begin
+              Self.PauseFor(FClient.ReconnectDelay);
+              Continue;
+            end;
+            if not SendRequest(nvV1) then
+            begin
+              FSock.CloseSocket;
+              Self.PauseFor(FClient.ReconnectDelay);
+              Continue;
+            end;
+
+            FirstLine := Self.ReadLine(3000);
+            if FSock.LastError <> 0 then
+            begin
+              FSock.CloseSocket;
+              Self.PauseFor(FClient.ReconnectDelay);
+              Continue;
+            end;
+            IsICY  := Pos('ICY', FirstLine) > 0;
+            TryVer := nvV1;
+          end;
+
+          { ── 6. Verifica 200 ────────────────────────────────────────────────── }
+          if Pos('200', FirstLine) = 0 then
+          begin
+            LBLogger.Write(1, 'TRTCMClientThread.InternalExecute', lmt_Warning, 'Wrong answer: <%s>', [FirstLine]);
+            FSock.CloseSocket;
+            Self.PauseFor(FClient.ReconnectDelay);
+            Continue;
+          end;
+
+          { ── 7. Leggi header rimanenti (HTTP standard, non ICY) ─────────────── }
+          IsChunked := False;
+          if not IsICY then
+          begin
+            Line := Self.ReadLine(2000);
+            while (FSock.LastError = 0) and (Trim(Line) <> '') do
+            begin
+              if LowerCase(Trim(Line)) = 'transfer-encoding: chunked' then
+                IsChunked := True;
+              Line := Self.ReadLine(2000);
+            end;
+          end;
+
+          { ── 8. Aggiorna versione rilevata e notifica ────────────────────────── }
+          FDetectedVersion := TryVer;
+          FLastGGASent     := 0;  // forza GGA immediato
+
+          LBLogger.Write(1, 'TRTCMClientThread.InternalExecute', lmt_Info, 'NTRIP v%s connected to %s/%s%s', [IfThen(TryVer = nvV2, '2', '1'),
+             FClient.Host,
+             FClient.Mountpoint,
+             IfThen(IsChunked, ' (chunked)', '')]);
+
+          { ── 9. Loop ricezione dati ──────────────────────────────────────────── }
+          if IsChunked then
+            Self.ReceiveLoopChunked
+          else
+            Self.ReceiveLoopRaw;
+
+        end;
     end;
-
-    { ── 4. Leggi prima riga risposta ───────────────────────────────────── }
-    FirstLine := Self.ReadLine(3000);
-    if FSock.LastError <> 0 then
-    begin
-      FSock.CloseSocket;
-      Self.PauseFor(FClient.ReconnectDelay);
-      Continue;
-    end;
-
-    IsICY := Pos('ICY', FirstLine) > 0;
-
-    { ── 5. Auto-detection: v2 tentato ma server risponde ICY → riprova v1 }
-    if (TryVer = nvV2) and IsICY then
-    begin
-      LBLogger.Write(1, 'TRTCMClientThread.InternalExecute', lmt_Debug, 'Server is NTRIP v1');
-      FSock.CloseSocket;
-      if not DoConnect then
-      begin
-        Self.PauseFor(FClient.ReconnectDelay);
-        Continue;
-      end;
-      if not SendRequest(nvV1) then
-      begin
-        FSock.CloseSocket;
-        Self.PauseFor(FClient.ReconnectDelay);
-        Continue;
-      end;
-
-      FirstLine := Self.ReadLine(3000);
-      if FSock.LastError <> 0 then
-      begin
-        FSock.CloseSocket;
-        Self.PauseFor(FClient.ReconnectDelay);
-        Continue;
-      end;
-      IsICY  := Pos('ICY', FirstLine) > 0;
-      TryVer := nvV1;
-    end;
-
-    { ── 6. Verifica 200 ────────────────────────────────────────────────── }
-    if Pos('200', FirstLine) = 0 then
-    begin
-      LBLogger.Write(1, 'TRTCMClientThread.InternalExecute', lmt_Warning, 'Wrong answer: <%s>', [FirstLine]);
-      FSock.CloseSocket;
-      Self.PauseFor(FClient.ReconnectDelay);
-      Continue;
-    end;
-
-    { ── 7. Leggi header rimanenti (HTTP standard, non ICY) ─────────────── }
-    IsChunked := False;
-    if not IsICY then
-    begin
-      Line := Self.ReadLine(2000);
-      while (FSock.LastError = 0) and (Trim(Line) <> '') do
-      begin
-        if LowerCase(Trim(Line)) = 'transfer-encoding: chunked' then
-          IsChunked := True;
-        Line := Self.ReadLine(2000);
-      end;
-    end;
-
-    { ── 8. Aggiorna versione rilevata e notifica ────────────────────────── }
-    FDetectedVersion := TryVer;
-    FLastGGASent     := 0;  // forza GGA immediato
-
-    LBLogger.Write(1, 'TRTCMClientThread.InternalExecute', lmt_Info, 'NTRIP v%s connected to %s/%s%s', [IfThen(TryVer = nvV2, '2', '1'),
-       FClient.Host,
-       FClient.Mountpoint,
-       IfThen(IsChunked, ' (chunked)', '')]);
-
-    { ── 9. Loop ricezione dati ──────────────────────────────────────────── }
-    if IsChunked then
-      Self.ReceiveLoopChunked
-    else
-      Self.ReceiveLoopRaw;
 
     FSock.CloseSocket;
     if not Terminated then
@@ -556,22 +577,25 @@ end;
 
 { ══ TRTCMClient ══════════════════════════════════════════════════════════════ }
 
-constructor TRTCMClient.Create(const aMountPoint, aHost: string; APort: Integer);
+constructor TRTCMClient.Create(aSourceType: TRTCMSourceType; aHost: string; APort: Integer);
 begin
   inherited Create;
 
   FHost           := AHost;
   FPort           := APort;
-  FMountpoint     := aMountPoint;
+  FWebSocketURI   := '';
+
+  FSourceType     := aSourceType;
+  FMountpoint     := '';
   FUsername       := '';
   FPassword       := '';
   FActive         := False;
   FReconnectDelay := 5000;
-//  FUseMainThread  := False;
   FNTRIPVersion   := nvAuto;
   FGGASentence    := '';
   FGGAIntervalSec := 0;
   FThread         := nil;
+
 end;
 
 destructor TRTCMClient.Destroy;
@@ -588,6 +612,19 @@ begin
     Result := nvAuto;
 end;
 
+procedure TRTCMClient.OnWebSocketData(Sender: TObject; aBuffer: pByte; aBufferLen: Int64);
+var
+  _Data : TBytes;
+
+begin
+  if Assigned(FOnCorrections) and (aBuffer <> nil) and (aBufferLen > 0) then
+  begin
+    SetLength(_Data, aBufferLen);
+    Move(aBuffer^, _Data[0], aBufferLen);
+    FOnCorrections(Self, _Data);
+  end;
+end;
+
 procedure TRTCMClient.UpdateGGA(const AGGASentence: string);
 begin
   FGGASentence := AGGASentence;
@@ -597,14 +634,38 @@ function TRTCMClient.Open: Boolean;
 begin
   if not FActive then
   begin
-    if FMountpoint <> '' then
+    if (FHost <> '') and (FPort > 0) then
     begin
-      FThread := TRTCMClientThread.Create(Self);
-      FActive := True;
-      FThread.Start;
+      case FSourceType of
+        stNTRIP, stIPDirect:
+          begin
+            FThread := TRTCMClientThread.Create(Self);
+            FThread.SourceType := FSourceType;
+            FActive := True;
+            FThread.Start;
+          end;
+
+        stWebSocket:
+          begin
+            if FWebSocketClient = nil then
+            begin
+              FWebSocketClient := TLBWebSocketClient.Create;
+              FWebSocketClient.RemoteConnectionData.Host      := FHost;
+              FWebSocketClient.RemoteConnectionData.Port      := FPort;
+              FWebSocketClient.URI                            := FWebSocketURI;
+              FWebSocketClient.OnWebSocketBinaryMessage       := @Self.OnWebSocketData;
+
+              // Facoltativo: abilitare auto-ping per mantenere viva la connessione
+              FWebSocketClient.AutoPingEnabled := True;
+              FWebSocketClient.PingInterval    := 30000;
+            end;
+            FWebSocketClient.Start;
+            FActive := True;
+          end;
+      end;
     end
     else
-      LBLogger.Write(1, 'TRTCMClient.Open', lmt_Warning, 'Mountpoint not set!');
+      LBLogger.Write(1, 'TRTCMClient.Open', lmt_Warning, 'No host or port!');
   end;
 
   Result := FActive;
@@ -614,9 +675,12 @@ procedure TRTCMClient.Close;
 begin
   if FActive then
   begin
-    FThread.Terminate;
-    FThread.WaitFor;
-    FreeAndNil(FThread);
+    if FThread <> nil then
+      FreeAndNil(FThread);
+
+    if FWebSocketClient <> nil then
+      FreeAndNil(FWebSocketClient);
+
     FActive := False;
   end;
 end;

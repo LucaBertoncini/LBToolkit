@@ -38,7 +38,7 @@ type
         cTokenManagerSessionName    = String('TokenManager');
         cTokenExpirationTime        = String('TokenExpirationTime');
         cDBFile                     = String('DBFile');
-        cDefaultTokenExpirationTime = Int64(20 * 60); // 20 min
+        cDefaultTokenExpirationTime = Int64(60 * 60); // 1 h
 
     private
       function isUnNeededToken(aToken: TJSONObject): Boolean;

@@ -821,8 +821,12 @@ begin
         Result := True;
       end;
     end;
+  end
+  {$IFDEF Linux}
+  else
+    writeln(Sender, ' - ', MsgText);
+  {$ENDIF}
 
-  end;
 end;
 
 function TLBLogger.logWrite(LogLevel: Byte; Sender: PChar; MsgType: TLBLoggerMessageType; MsgText: PChar): Boolean; cdecl;

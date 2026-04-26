@@ -220,21 +220,25 @@ begin
 end;
 
 function OpenXMLFile(const aFilename: String; out aDocument: TXMLDocument): Boolean;
+var
+  _Filename : String;
+
 begin
   Result := False;
   aDocument := nil;
 
   try
+    _Filename := ExpandFileName(aFilename);
 
-    if FileExists(aFilename) then
+    if FileExists(_Filename) then
     begin
 
-      ReadXMLFile(aDocument, aFilename);
+      ReadXMLFile(aDocument, _Filename);
       Result := aDocument <> nil;
 
     end
     else
-      LBLogger.Write(1, 'OpenXMLFile', lmt_Warning, 'File <%s> not found!', [aFilename]);
+      LBLogger.Write(1, 'OpenXMLFile', lmt_Warning, 'File <%s> not found!', [_Filename]);
 
   except
     on E: Exception do

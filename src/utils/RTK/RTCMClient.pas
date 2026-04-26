@@ -650,6 +650,7 @@ begin
             if FWebSocketClient = nil then
             begin
               FWebSocketClient := TLBWebSocketClient.Create;
+              FWebSocketClient.AddReference(@FWebSocketClient);
               FWebSocketClient.RemoteConnectionData.Host      := FHost;
               FWebSocketClient.RemoteConnectionData.Port      := FPort;
               FWebSocketClient.URI                            := FWebSocketURI;

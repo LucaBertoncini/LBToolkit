@@ -223,6 +223,7 @@ type
    public
      constructor Create(const aName: String; AppendToMainLogger: Boolean = True); override;
      destructor Destroy; override;
+
      procedure ReleaseLogFile();
      function Write(LogLevel: Byte; const Sender: String; MsgType: TLBLoggerMessageType; const MsgText: String; Parameters: array of const): Boolean; overload;
      function Write(LogLevel: Byte; const Sender: String; MsgType: TLBLoggerMessageType; const MsgText: String): Boolean; overload;
@@ -572,22 +573,30 @@ end;
 
 procedure TLBLogger.DestroyWriter;
 begin
+  // Acquisiamo il lock per proteggere l'accesso a FWriter
   if FCSWriter.Acquire('TLBLogger.DestroyWriter', 20000) then
   begin
     try
       if FWriter <> nil then
       begin
-        if FWriter.Suspended then
-          FreeAndNil(FWriter)
-        else begin
-         FWriter.Terminate;
-         while (FWriter <> nil) do
-           Sleep(20);
-        end;
+        // Se il thread non è già terminato, richiediamo la terminazione
+        if not FWriter.Terminated then
+          FWriter.Terminate;
+
+        // Attendiamo la fine.
+        // Nota: Se FreeOnTerminate=False (come deve essere), FWriter resta valido qui.
+        // Il thread stesso, morendo, eseguirà FWriter := nil grazie al meccanismo Reference.
+        FWriter.WaitFor;
+
+        // A questo punto il thread è morto e FWriter dovrebbe essere nil.
+        // Ma per sicurezza estrema (nel caso raro in cui il meccanismo Reference fallisse),
+        // liberiamo esplicitamente se non è già nil.
+        if FWriter <> nil then
+          FreeAndNil(FWriter);
       end;
     finally
+      FCSWriter.Release;
     end;
-    FCSWriter.Release();
   end;
 end;
 

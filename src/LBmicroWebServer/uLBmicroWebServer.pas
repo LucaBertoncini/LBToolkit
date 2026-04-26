@@ -103,7 +103,7 @@ type
       function setFileToSend(const aFileRelativePath: String; const aRange: String; out ResCode: Integer): Boolean;
       function setFileToSendByAbsolutePath(const aFilename: String; const aRange: String; out ResCode: Integer): Boolean;
 
-
+      property Parser: THTTPRequestParser read FParser;
       property WebSocketManager: TLBWebSocketSession read FWebSocketManager;
       property OnExecuteTerminated: TNotifyEvent write FOnExecuteTerminated;
 
@@ -219,6 +219,7 @@ type
       FOnElaborateWebSocketMessage      : TWebSocketDataReceivedEvent;
 
       FCS : TTimedOutCriticalSection;
+      FRequestManagerType: THTTPRequestManagerClass;
 
       FProcessors : TRequestChainProcessorList;
 
@@ -260,11 +261,14 @@ type
       property OnElaborateWebSocketMessage: TWebSocketDataReceivedEvent read FOnElaborateWebSocketMessage write FOnElaborateWebSocketMessage;
       property OnWebSocketConnectionEstablished: TNotifyEvent read FOnWebSocketConnectionEstablished write FOnWebSocketConnectionEstablished;
 
-      property DocumentsFolder  : TLBmWsDocumentsFolder  read FDocumentsFolder;
-      property SSLData          : TSSLConnectionData     read FSSLData;
-      property ListeningPort    : Integer                read FListeningPort        write FListeningPort;
+      property DocumentsFolder    : TLBmWsDocumentsFolder    read FDocumentsFolder;
+      property SSLData            : TSSLConnectionData       read FSSLData;
+      property ListeningPort      : Integer                  read FListeningPort        write FListeningPort;
 
-      property AdditionalData   : TObject                read FAdditionalData       write FAdditionalData;
+      property AdditionalData     : TObject                  read FAdditionalData       write FAdditionalData;
+
+      property RequestManagerType : THTTPRequestManagerClass                            write FRequestManagerType;
+
   end;
 
   { TAnswerError }
@@ -325,6 +329,7 @@ begin
     begin
       FListener := TLBmWsListener.Create(FListeningPort, Self);
       FListener.AddReference(@FListener);
+      FListener.RequestManagerType := FRequestManagerType;
       FListener.Start();
       Result := True;
     end
@@ -381,6 +386,8 @@ begin
   FListener := nil;
 
   FCS := TTimedOutCriticalSection.Create;
+
+  FRequestManagerType := THTTPRequestManager;
 
   {$IFDEF CodeTyphon}
   {$IFDEF OldSSL}
@@ -968,9 +975,6 @@ begin
       FConnectionExecuted := True;
       _DocFolder := FWebServerOwner.DocumentsFolder;
       _CanUpload := (_DocFolder <> nil) and (_DocFolder.UploadEndpoint <> '');
-
-      //if not _CanUpload then
-      //  LBLogger.Write(5, 'THTTPRequestManager.InternalExecute', lmt_Debug, 'Cannot upload data');
 
       while not Self.Terminated do
       begin

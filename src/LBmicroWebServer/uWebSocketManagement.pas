@@ -70,13 +70,6 @@ type
                                    WS_HANDSHAKE_UPGRADE_HEADER + #13#10 +
                                    WS_HANDSHAKE_CONNECTION_HEADER + #13#10;
 
-  (*
-    const
-      cBaseWebsocketHeader = cWebSocket_HandshakeStatus +
-                             cWebSocket_HandshakeUpgrade +
-                             cWebSocket_HandshakeConnect;
-*)
-
     function ReadByte(out Value: Byte; Timeout: Integer): Boolean;
 
     function SendFrame(const Payload: TBytes; Opcode: TWebSocketDataType = wsd_FrameText; Final: Boolean = True): Boolean;

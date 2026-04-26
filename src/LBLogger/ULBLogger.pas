@@ -579,6 +579,8 @@ begin
     try
       if FWriter <> nil then
       begin
+        FWriter.FreeOnTerminate := False;
+
         // Se il thread non è già terminato, richiediamo la terminazione
         if not FWriter.Terminated then
           FWriter.Terminate;

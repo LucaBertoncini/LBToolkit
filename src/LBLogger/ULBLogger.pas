@@ -859,7 +859,7 @@ var
 begin
   if Self <> nil then
   begin
-    _File := strpas(aFilename);
+    _File := ResolvePath(strpas(aFilename));
     if _File <> '' then
     begin
       _Path := ExtractFilePath(_File);
@@ -1134,7 +1134,7 @@ begin
   FTime           := aMessage.Time;
   FMsgType        := aMessage.MsgType;
   FThreadId       := aMessage.ThreadId;
-  FPID            := aMessage.ThreadId;
+  FPID            := aMessage.PID;
   Result := True;
 end;
 

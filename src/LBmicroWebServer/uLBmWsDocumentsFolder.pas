@@ -147,6 +147,9 @@ begin
     if _RawURI <> '' then
     begin
 
+      if (_RawURI = '/') and (FDefaultFile <> '') then
+        _RawURI += FDefaultFile;
+
       if _RawURI[1] = '/' then
         Delete(_RawURI, 1, 1);
 

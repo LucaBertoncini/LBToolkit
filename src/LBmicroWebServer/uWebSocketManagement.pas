@@ -133,35 +133,34 @@ var
 begin
   Result := False;
 
+  New(_Msg);
+  SetLength(_Msg^.Payload, Length(aMessage));
+
   if aMessage <> '' then
-  begin
-    New(_Msg);
-    SetLength(_Msg^.Payload, Length(aMessage));
     Move(aMessage[1], _Msg^.Payload[0], Length(_Msg^.Payload));
 
-    _Msg^.Opcode  := Opcode;
-    _Msg^.Final   := Final;
+  _Msg^.Opcode  := Opcode;
+  _Msg^.Final   := Final;
 
-    if FCS.Acquire('TLBWebSocketSession.addMessageToSend') then
-    begin
-      try
-        FMessages.Add(_Msg);
-        _Msg := nil;
-        Result := True;
-      except
-        on E: Exception do
-          LBLogger.Write(1, 'TLBWebSocketSession.addMessageToSend', lmt_Error, E.Message);
-      end;
-
-      FCS.Release();
+  if FCS.Acquire('TLBWebSocketSession.addMessageToSend') then
+  begin
+    try
+      FMessages.Add(_Msg);
+      _Msg := nil;
+      Result := True;
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'TLBWebSocketSession.addMessageToSend', lmt_Error, E.Message);
     end;
 
-    if _Msg <> nil then
-      Dispose(_Msg);
-
-    if Result then
-      RTLEventSetEvent(FNewDataEvent);
+    FCS.Release();
   end;
+
+  if _Msg <> nil then
+    Dispose(_Msg);
+
+  if Result then
+    RTLEventSetEvent(FNewDataEvent);
 end;
 
 function TLBWebSocketSession.addMessageToSend(aBuffer: pByte; aBufferLen: Integer; Opcode: TWebSocketDataType; Final: Boolean): Boolean;
@@ -175,7 +174,7 @@ begin
   begin
     New(_Msg);
     SetLength(_Msg^.Payload, aBufferLen);
-    Move(aBuffer, _Msg^.Payload[0], aBufferLen);
+    Move(aBuffer^, _Msg^.Payload[0], aBufferLen);
 
     _Msg^.Opcode := Opcode;
     _Msg^.Final  := Final;
@@ -393,10 +392,17 @@ begin
                     LBLogger.Write(5, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Debug, 'Close frame received');
                   end;
 
-                wsd_Ping, wsd_Pong:
+                wsd_Ping:
                   begin
-                    LBLogger.Write(6, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Debug, 'Control frame received: %s', [GetEnumName(TypeInfo(TWebSocketDataType), Ord(Opcode))]);
-                    State := wsrs_LenByte; // prosegui per leggere e scartare
+                    LBLogger.Write(6, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Debug, 'Ping frame received');
+                    State := wsrs_LenByte;
+                  end;
+
+                wsd_Pong:
+                  begin
+                    LBLogger.Write(6, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Debug, 'Pong frame received');
+                    FLastActivity := GetTickCount64;  // aggiorna il keep-alive
+                    State := wsrs_LenByte;
                   end;
 
                 else
@@ -501,6 +507,12 @@ begin
                     _Buffer := pByte(_CompletedData.Memory);
                     _BufferLen := _CompletedData.Size;
                   end;
+
+                  if Opcode = wsd_Ping then
+                  begin
+                    LBLogger.Write(5, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Debug, 'Sending Pong in response to Ping');
+                    Self.addMessageToSend(_Buffer, _BufferLen, wsd_Pong, True);
+                  end;
                   State := wsrs_Done
                 end
                 else begin
@@ -508,8 +520,8 @@ begin
                     _CompletedData := TMemoryStream.Create;
 
                   _CompletedData.Write(PayloadPart[0], PayloadLen);
+                  State := wsrs_StartByte;
                 end;
-                State := wsrs_StartByte;
               end
               else begin
                 FConnectionError := True;
@@ -518,8 +530,19 @@ begin
               end;
             end
             else begin
-              LBLogger.Write(1, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Warning, '<%s:%d>  -  Error: payload length = 0!', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort]);
-              Break;
+              if Opcode in [wsd_Ping, wsd_Pong, wsd_ConnectionClose] then
+              begin
+                if Opcode = wsd_Ping then
+                begin
+                  LBLogger.Write(6, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Debug, 'Sending Pong (empty payload) in response to Ping');
+                  Self.addMessageToSend('', wsd_Pong, True);
+                end;
+                State := wsrs_Done;
+              end
+              else begin
+                LBLogger.Write(1, 'TLBWebSocketSession.ReceiveWebSocketMessage', lmt_Warning, 'Error: payload length = 0!');
+                Break;
+              end;
             end;
           end;
       end;
@@ -582,14 +605,14 @@ begin
       begin
 
         FSocket.SendBuffer(@Payload[0], PayloadLen);
-        if FSocket.LastError = 0 then
+        if FSocket.LastError <> 0 then
         begin
-          Result := True;
-          FLastActivity := GetTickCount64;
-        end
-        else
           LBLogger.Write(1, 'TLBWebSocketSession.SendFrame', lmt_Warning, '<%s:%d>  -  Error sending frame payload: %s', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort, FSocket.LastErrorDesc]);
+          Exit;
+        end;
       end;
+      Result := True;
+      FLastActivity := GetTickCount64;
     end
     else
       LBLogger.Write(1, 'TLBWebSocketSession.SendFrame', lmt_Warning, '<%s:%d>  -  Error sending frame header: %s', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort, FSocket.LastErrorDesc]);

@@ -161,56 +161,6 @@ const
   WS_SESSION_TIMEOUT_DEFAULT     = QWord(180000);  // 3 minutes
   WS_SLEEP_INTERVAL              = 50;
 
-  // 🔹 WebSocket Limits
-  WS_MAX_FRAME_SIZE              = Int64(16 * 1024 * 1024); // 16MB
-
-// 🔹 WebSocket Enumerations
-type
-  TWebSocketState = (
-    wsState_StartByte,
-    wsState_MaskLenByte,
-    wsState_PayloadLen16Bit,
-    wsState_PayloadLen64Bit,
-    wsState_MaskValue,
-    wsState_Payload
-  );
-
-  TWebSocketFrameType = (
-    wsFrame_Continuation = 0,
-    wsFrame_Text         = 1,
-    wsFrame_Binary       = 2,
-    wsFrame_Reserved3    = 3,
-    wsFrame_Reserved4    = 4,
-    wsFrame_Reserved5    = 5,
-    wsFrame_Reserved6    = 6,
-    wsFrame_Reserved7    = 7,
-    wsFrame_Close        = 8,
-    wsFrame_Ping         = 9,
-    wsFrame_Pong         = 10,
-    wsFrame_Reserved11   = 11,
-    wsFrame_Reserved12   = 12,
-    wsFrame_Reserved13   = 13,
-    wsFrame_Reserved14   = 14,
-    wsFrame_Reserved15   = 15
-  );
-
-  TWebSocketCloseCode = (
-    wsClose_Normal             = 1000,
-    wsClose_GoingAway          = 1001,
-    wsClose_ProtocolError      = 1002,
-    wsClose_UnsupportedData    = 1003,
-    wsClose_NoStatus           = 1005,
-    wsClose_AbnormalClosure    = 1006,
-    wsClose_InvalidFrameData   = 1007,
-    wsClose_PolicyViolation    = 1008,
-    wsClose_MessageTooBig      = 1009,
-    wsClose_MandatoryExtension = 1010,
-    wsClose_InternalError      = 1011,
-    wsClose_ServiceRestart     = 1012,
-    wsClose_TryAgainLater      = 1013,
-    wsClose_TLSHandshake       = 1015
-  );
-
 implementation
 
 end.

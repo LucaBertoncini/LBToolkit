@@ -8,14 +8,14 @@ uses
   Classes, SysUtils, sqldb, ULBLogger, Laz2_DOM, uTimedoutCriticalSection, fgl;
 
 type
-  TDBType = (dbt_Unknown   = 0,
-             dbt_ODBC      = 1,
-             dbt_Posgresql = 2,
-             dbt_MySQL51   = 3,
-             dbt_MySQL55   = 4,
-             dbt_MySQL56   = 5,
-             dbt_MySQL57   = 6,
-             dbt_MySQL80   = 7);
+  TDBType = (dbt_Unknown    = 0,
+             dbt_ODBC       = 1,
+             dbt_Postgresql = 2,
+             dbt_MySQL51    = 3,
+             dbt_MySQL55    = 4,
+             dbt_MySQL56    = 5,
+             dbt_MySQL57    = 6,
+             dbt_MySQL80    = 7);
 
   TDBNameToTypeMap = specialize TFPGMap <String, TDBType>;
 
@@ -138,11 +138,28 @@ const
   cAcquireTimeout = Integer(10000);
 
 type
+
+  { IPooledQuery
+    Guard RAII: quando la variabile locale che lo tiene esce di scope, il
+    distruttore rilascia la query al connection manager (ReleaseQuery). Cosi'
+    il chiamante non deve mai ricordarsi il try/finally + ReleaseQuery: gli
+    basta tenere il guard in una variabile locale e usarlo tramite .Query.
+    Generato da TSQLConnectionManager.RetrieveQueryInterface. }
+  IPooledQuery = interface
+    ['{7F3A9C2E-1B4D-4E8A-9C6F-2D5B8E1A3F70}']
+    function Query: TSQLQueryEx;
+  end;
+
   ISQLConnectionManager = interface(IUnknown)
     ['{365813E9-D252-49F3-86E6-5B13F6BBDD26}']
 
     function RetrieveQuery(DBName: String = ''; aTimeout: Integer = cAcquireTimeout): TSQLQueryEx;
     function ReleaseQuery(var AQuery: TSQLQueryEx): Boolean;
+    // Variante che restituisce un guard auto-rilasciante (vedi IPooledQuery):
+    // stessa acquisizione di RetrieveQuery, ma il rilascio e' automatico
+    // quando il guard esce di scope. Overload per solo tipo di ritorno non
+    // e' ammesso in Object Pascal, quindi il nome e' diverso.
+    function RetrieveQueryInterface(DBName: String = ''; aTimeout: Integer = cAcquireTimeout): IPooledQuery;
   end;
 
   { TSQLConnectionManager }
@@ -177,6 +194,8 @@ type
 
       function RetrieveQuery(DBName: String = ''; aTimeout: Integer = cAcquireTimeout): TSQLQueryEx;
       function ReleaseQuery(var AQuery: TSQLQueryEx): Boolean;
+      // Vedi IPooledQuery / ISQLConnectionManager.RetrieveQueryInterface.
+      function RetrieveQueryInterface(DBName: String = ''; aTimeout: Integer = cAcquireTimeout): IPooledQuery;
 
       function DataCompleted(DBName: String = ''): Boolean;
 
@@ -320,7 +339,7 @@ function TSQLQueryEx.ExecuteInsert(): Integer;
 begin
   Result := 0;
 
-  if FDBType <> dbt_Posgresql then
+  if FDBType <> dbt_Postgresql then
   begin
     Self.ExecSQL;
     Self.Params.Clear;
@@ -374,6 +393,57 @@ begin
   end
   else
     LBLogger.Write(1, 'TSQLQueryEx.Rollback', lmt_Warning, 'Transaction not set!', []);
+end;
+
+
+{ TPooledQueryGuard
+  Guard RAII per IPooledQuery. Tiene il connection manager come OGGETTO
+  concreto (TSQLConnectionManager), NON come ISQLConnectionManager. E'
+  deliberato e importante: il manager e' un TInterfacedObject
+  (reference-counted). Se il guard lo tenesse tramite interfaccia, ogni guard
+  transitorio ne farebbe oscillare il refcount (es. 0 -> 1 alla creazione,
+  1 -> 0 alla distruzione). Poiche' il manager e' tipicamente posseduto e
+  distrutto altrove con FreeAndNil (riferimento a oggetto), quel ritorno a
+  zero durante l'operativita' lo autodistruggerebbe mentre e' ancora in uso
+  (use-after-free). Tenendolo come oggetto, il guard non tocca mai il
+  refcount del manager. }
+type
+  TPooledQueryGuard = class(TInterfacedObject, IPooledQuery)
+    strict private
+      FManager : TSQLConnectionManager;
+      FQuery   : TSQLQueryEx;
+    public
+      constructor Create(aManager: TSQLConnectionManager; aQuery: TSQLQueryEx);
+      destructor Destroy; override;
+      function Query: TSQLQueryEx;
+  end;
+
+constructor TPooledQueryGuard.Create(aManager: TSQLConnectionManager; aQuery: TSQLQueryEx);
+begin
+  inherited Create;
+  FManager := aManager;
+  FQuery   := aQuery;
+end;
+
+destructor TPooledQueryGuard.Destroy;
+begin
+  if (FManager <> nil) and (FQuery <> nil) then
+  begin
+    try
+      FManager.ReleaseQuery(FQuery);
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'TPooledQueryGuard.Destroy', lmt_Error, E.Message);
+    end;
+  end;
+  FQuery := nil;
+  FManager := nil;
+  inherited Destroy;
+end;
+
+function TPooledQueryGuard.Query: TSQLQueryEx;
+begin
+  Result := FQuery;
 end;
 
 
@@ -496,6 +566,21 @@ begin
   end;
 end;
 
+function TSQLConnectionManager.RetrieveQueryInterface(DBName: String; aTimeout: Integer): IPooledQuery;
+var
+  _Q : TSQLQueryEx;
+
+begin
+  Result := nil;
+
+  // Stessa acquisizione della RetrieveQuery classica (con tutto il suo
+  // locking e la sua diagnostica); qui si aggiunge solo l'avvolgimento nel
+  // guard che garantira' il ReleaseQuery automatico all'uscita di scope.
+  _Q := Self.RetrieveQuery(DBName, aTimeout);
+  if _Q <> nil then
+    Result := TPooledQueryGuard.Create(Self, _Q);
+end;
+
 function TSQLConnectionManager.DataCompleted(DBName: String): Boolean;
 var
   _Idx : Integer;
@@ -609,7 +694,7 @@ begin
 
       except
         on E: Exception do
-          LBLogger.Write(1, 'TSQLConnectionManager.Destroy', lmt_Error, PChar(E.Message));
+          LBLogger.Write(1, 'TSQLConnectionManager.Destroy', lmt_Error, E.Message);
       end;
 
       FCScm.Release();
@@ -619,7 +704,14 @@ begin
     FreeAndNil(FCScm);
 
     if FPostgresqlInitialized then
-      ReleasePostgres3();
+    begin
+      try
+        ReleasePostgres3();
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'TSQLConnectionManager.Destroy', lmt_Error, 'Error releasing postgresql library: <%s>', [E.Message]);
+      end;
+    end;
 
     inherited Destroy;
 
@@ -726,7 +818,7 @@ begin
               _AConnInfo.OnAccessViolation := FOnAccessViolation;
               if _AConnInfo.LoadConfiguration(_SingleConnNode) then
               begin
-                if _AConnInfo.DBType = dbt_Posgresql then
+                if _AConnInfo.DBType = dbt_Postgresql then
                   _InitializePostgresql := True;
 
                 FDatabaseInfo.AddObject(_Alias, _AConnInfo);
@@ -792,7 +884,7 @@ begin
   case FDBType of
     dbt_Unknown : ;
 
-    dbt_Posgresql,
+    dbt_Postgresql,
     dbt_MySQL80,
     dbt_MySQL57,
     dbt_MySQL56,
@@ -947,7 +1039,7 @@ begin
     case FDBType of
       dbt_Unknown: ;
 
-      dbt_Posgresql,
+      dbt_Postgresql,
       dbt_MySQL80,
       dbt_MySQL57,
       dbt_MySQL56,
@@ -974,7 +1066,7 @@ begin
           if _Item <> nil then
             FDBName := _Item.TextContent;
 
-          if FDBType = dbt_Posgresql then
+          if FDBType = dbt_Postgresql then
           begin
             _Item := ANode.FindNode(cSchemaName);
             if _Item <> nil then
@@ -1103,7 +1195,7 @@ begin
               _Conn.Password := FPassword;
             end;
 
-          dbt_Posgresql:
+          dbt_Postgresql:
             begin
               _Conn := TPQConnection.Create(nil);
               _Conn.HostName := FHost;
@@ -1379,7 +1471,8 @@ initialization
 
   gv_DBNameToTypeMap := TDBNameToTypeMap.Create;
   gv_DBNameToTypeMap.Add('ODBC', dbt_ODBC);
-  gv_DBNameToTypeMap.Add('Posgresql', dbt_Posgresql);
+  gv_DBNameToTypeMap.Add('Postgresql', dbt_Postgresql);
+  gv_DBNameToTypeMap.Add('Posgresql', dbt_Postgresql);
   gv_DBNameToTypeMap.Add('MySQL51', dbt_MySQL51);
   gv_DBNameToTypeMap.Add('MySQL55', dbt_MySQL55);
   gv_DBNameToTypeMap.Add('MySQL56', dbt_MySQL56);
@@ -1392,4 +1485,3 @@ finalization
   FreeAndNil(gv_DBNameToTypeMap);
 
 end.
-

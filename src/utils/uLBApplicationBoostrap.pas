@@ -366,7 +366,7 @@ begin
 
   if aFilename <> '' then
   begin
-    _Filename := ResolvePath(aFilename);
+    _Filename := ResolvePathDeterministic(aFilename);
     if FileExists(_Filename) then
     begin
       _Ext := LowerCase(ExtractFileExt(_Filename));

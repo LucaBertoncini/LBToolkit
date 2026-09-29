@@ -42,6 +42,7 @@ type
   function getTemporaryFolder(GlobalFolder: Boolean = false): String;
 
   function ResolvePath(const aPath: String): String;
+  function ResolvePathDeterministic(const aPath: String; const aBaseDir: String = ''): String;
 
   function FindFilesInFolder(const Path: String; const Mask: String; Recursive: Boolean; Files: TStringList): Boolean; overload;
   function FindFilesInFolder(Path: String; const Mask: String; aRecursiveLevel: Integer; Files: TStringList): Boolean; overload;
@@ -58,7 +59,7 @@ type
 implementation
 
 uses
-  fileinfo, ULBLogger, Laz2_XMLRead{$IFDEF Windows}, Windows{$ENDIF};
+  fileinfo, LazFileUtils, ULBLogger, Laz2_XMLRead{$IFDEF Windows}, Windows{$ENDIF};
 
 { TFileInfoRetriever }
 
@@ -228,7 +229,7 @@ begin
   aDocument := nil;
 
   try
-    _Filename := ExpandFileName(aFilename);
+    _Filename := ResolvePathDeterministic(aFilename);
 
     if FileExists(_Filename) then
     begin
@@ -271,6 +272,8 @@ begin
       Exit(ExpandFileName(aPath));
     {$ENDIF}
 
+
+
     // Relativo: ../..., ./..., logs/...
     if (Pos('..', aPath) > 0) or (Pos('./', aPath) = 1) or (Pos('/', aPath) > 0) then
       Exit(ExpandFileName(ExtractFilePath(ParamStr(0)) + aPath));
@@ -279,6 +282,42 @@ begin
     Result := ExpandFileName(getTemporaryFolder(False) + aPath);
   end;
 end;
+
+
+{ ============================================================================
+  Risolve un path file system locale in modo deterministico.
+  - Se aPath è assoluto: lo normalizza e basta.
+  - Se aPath è relativo: lo àncora a aBaseDir (che di default è la cartella
+    dell'eseguibile) e poi lo normalizza.
+
+  Usa CleanAndExpandFilename per risolvere ../ e ./ in modo cross-platform.
+  Non dipende dalla Current Working Directory del processo.
+============================================================================ }
+function ResolvePathDeterministic(const aPath: String; const aBaseDir: String = ''): String;
+var
+  _BaseDir: String;
+begin
+  Result := aPath;
+  if aPath = '' then Exit;
+
+  // Se il path è già assoluto, lo normalizziamo e basta
+  if FilenameIsAbsolute(aPath) then
+    Result := CleanAndExpandFilename(aPath)
+  else begin
+
+    // Determina la directory base
+    if aBaseDir <> '' then
+      _BaseDir := IncludeTrailingPathDelimiter(aBaseDir)
+    else
+      // Default: cartella dell'eseguibile
+      _BaseDir := ExtractFilePath(ParamStr(0));
+
+    // Concatena e normalizza (risolve ../ e ./)
+    Result := CleanAndExpandFilename(_BaseDir + aPath);
+
+  end;
+end;
+
 
 function FindFilesInFolder(const Path: String; const Mask: String; Recursive: Boolean; Files: TStringList): Boolean;
 var

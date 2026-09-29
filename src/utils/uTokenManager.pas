@@ -377,7 +377,7 @@ var
   _Path : String;
 
 begin
-  Result := False;
+  Result := True;
 
   if FDBManager <> nil then
     FreeAndNil(FDBManager);
@@ -409,7 +409,10 @@ begin
 
     except
       on E: Exception do
+      begin
         LBLogger.Write(1, 'TTokenManager.LoadConfigurationFromIniFile', lmt_Error, E.Message);
+        Result := False;
+      end;
     end;
   end;
 end;
@@ -518,7 +521,8 @@ end;
 
 function TTokenManager.insertTokenAsCookie(const aToken: String; responseHeaders: TStringList): Boolean;
 const
-  cCookieData = cToken_Field_Token + '=%s; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=%d;';
+  cCookieData = cToken_Field_Token + '=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d;';
+//  cCookieData = cToken_Field_Token + '=%s; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=%d;';  // vale solo in https
 
 begin
   Result := True;
@@ -645,7 +649,8 @@ var
   _Token, _Config: TJSONObject;
 begin
   Result := False;
-  if (aTokenList <> nil) and (aTokenList.Count > 0) then
+
+  if (FDBManager <> nil) and (aTokenList <> nil) and (aTokenList.Count > 0) then
   begin
     if FDBManager.Lock('TTokenManager.UpdateTokens') then
     begin

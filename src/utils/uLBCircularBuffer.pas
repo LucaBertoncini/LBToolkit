@@ -19,6 +19,12 @@ type
     function FindWord(aWord: Word; aOffset: Cardinal): Integer;
     function FindQWord(aQWord: UInt64; aOffset: Cardinal): Integer;
 
+    // Copia pura aCount byte a partire da aStartPos (gestendo il wrap-around),
+    // senza mai leggere né scrivere FReadPos/FWritePos/FCount: è la base
+    // condivisa da Read (che poi consuma) e Peek (che non consuma nulla).
+    // Il chiamante garantisce già aCount <= AvailableForRead a partire da aStartPos.
+    procedure CopyOut(aDestinationBuffer: Pointer; aCount: Cardinal; aStartPos: Cardinal);
+
   protected
     function GetAvailableForRead: Cardinal;
     function GetAvailableForWrite: Cardinal;
@@ -197,28 +203,33 @@ begin
 
 end;
 
-function TLBCircularBuffer.Read(aDestinationBuffer: Pointer; aCount: Cardinal): Boolean;
+procedure TLBCircularBuffer.CopyOut(aDestinationBuffer: Pointer; aCount: Cardinal; aStartPos: Cardinal);
 var
   _FirstChunk, _SecondChunk: Cardinal;
   _Dest: PByte;
+begin
+  _Dest := PByte(aDestinationBuffer);
+
+  // Calcola quanto copiare prima del wrap
+  if aStartPos + aCount <= FMemorySize then // Copia in un solo blocco
+    Move(FData[aStartPos], _Dest^, aCount)
+  else begin
+    // Copia in due blocchi (wrap around)
+    _FirstChunk := FMemorySize - aStartPos;
+    _SecondChunk := aCount - _FirstChunk;
+
+    Move(FData[aStartPos], _Dest^, _FirstChunk);
+    Move(FData[0], (_Dest + _FirstChunk)^, _SecondChunk);
+  end;
+end;
+
+function TLBCircularBuffer.Read(aDestinationBuffer: Pointer; aCount: Cardinal): Boolean;
 begin
   Result := False;
 
   if (aCount > 0) and (aDestinationBuffer <> nil) and (FCount >= aCount) then
   begin
-    _Dest := PByte(aDestinationBuffer);
-
-    // Calcola quanto leggere prima del wrap
-    if FReadPos + aCount <= FMemorySize then // Lettura in un solo blocco
-      Move(FData[FReadPos], _Dest^, aCount)
-    else begin
-      // Lettura in due blocchi (wrap around)
-      _FirstChunk := FMemorySize - FReadPos;
-      _SecondChunk := aCount - _FirstChunk;
-
-      Move(FData[FReadPos], _Dest^, _FirstChunk);
-      Move(FData[0], (_Dest + _FirstChunk)^, _SecondChunk);
-    end;
+    Self.CopyOut(aDestinationBuffer, aCount, FReadPos);
 
     FReadPos := WrapPosition(FReadPos + aCount);
     Dec(FCount, aCount);
@@ -295,20 +306,15 @@ begin
 end;
 
 function TLBCircularBuffer.Peek(aDestinationBuffer: Pointer; aCount: Cardinal; aOffset: Cardinal): Boolean;
-var
-  _OrigReadPos: Cardinal;
 begin
   Result := False;
 
-  if FCount >= (aOffset + aCount) then
+  if (aCount > 0) and (aDestinationBuffer <> nil) and (FCount >= (aOffset + aCount)) then
   begin
-    _OrigReadPos := FReadPos;
-    FReadPos := WrapPosition(FReadPos + aOffset);
-    Result := Self.Read(aDestinationBuffer, aCount);
-
-    // Ripristina posizione originale
-    FReadPos := _OrigReadPos;
-    Inc(FCount, aCount); // Ripristina il count
+    // Copia pura: CopyOut non legge né scrive FReadPos/FWritePos/FCount,
+    // quindi qui non c'è alcuno stato da salvare o ripristinare.
+    Self.CopyOut(aDestinationBuffer, aCount, WrapPosition(FReadPos + aOffset));
+    Result := True;
   end;
 end;
 

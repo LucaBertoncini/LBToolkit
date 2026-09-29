@@ -6,9 +6,56 @@ interface
 
 uses
   Classes, SysUtils, uLBBaseThread, Laz2_DOM, blcksock, uHTTPConsts,
-  uRemoteConnectionData, uLBTimers, uTimedoutCriticalSection, contnrs;
+  uRemoteConnectionData, uLBTimers, uTimedoutCriticalSection, contnrs,
+  uLBCircularBuffer;
 
 type
+  TWebSocketState = (
+    wsState_StartByte,
+    wsState_MaskLenByte,
+    wsState_PayloadLen16Bit,
+    wsState_PayloadLen64Bit,
+    wsState_MaskValue,
+    wsState_Payload
+  );
+
+  TWebSocketFrameType = (
+    wsFrame_Continuation = 0,
+    wsFrame_Text         = 1,
+    wsFrame_Binary       = 2,
+    wsFrame_Reserved3    = 3,
+    wsFrame_Reserved4    = 4,
+    wsFrame_Reserved5    = 5,
+    wsFrame_Reserved6    = 6,
+    wsFrame_Reserved7    = 7,
+    wsFrame_Close        = 8,
+    wsFrame_Ping         = 9,
+    wsFrame_Pong         = 10,
+    wsFrame_Reserved11   = 11,
+    wsFrame_Reserved12   = 12,
+    wsFrame_Reserved13   = 13,
+    wsFrame_Reserved14   = 14,
+    wsFrame_Reserved15   = 15
+  );
+
+  TWebSocketCloseCode = (
+    wsClose_Normal             = 1000,
+    wsClose_GoingAway          = 1001,
+    wsClose_ProtocolError      = 1002,
+    wsClose_UnsupportedData    = 1003,
+    wsClose_NoStatus           = 1005,
+    wsClose_AbnormalClosure    = 1006,
+    wsClose_InvalidFrameData   = 1007,
+    wsClose_PolicyViolation    = 1008,
+    wsClose_MessageTooBig      = 1009,
+    wsClose_MandatoryExtension = 1010,
+    wsClose_InternalError      = 1011,
+    wsClose_ServiceRestart     = 1012,
+    wsClose_TryAgainLater      = 1013,
+    wsClose_TLSHandshake       = 1015
+  );
+
+
   TWebSocketMessageCallback = procedure(Sender: TObject; isLastFrame: Boolean; aDataType: TWebSocketFrameType; aBuffer: pByte; aBufferLen: Int64) of object;
 
   // Callback alternativa per messaggi testuali
@@ -47,10 +94,31 @@ type
         FRestartConnection : Boolean;
         FDisconnect        : Boolean;
 
+        { True quando DataReceived ha ricevuto un Ping dal server e ha accodato
+          il Pong. Il loop di Execute lo controlla dopo ogni chiamata a
+          DataReceived e transita immediatamente a wscs_SendData, senza
+          aspettare il prossimo timeout di CanRead (cHeaderTimeout = 500 ms).
+          Questo garantisce che il Pong venga spedito in pochi ms, evitando
+          che il reader FXR90 chiuda la connessione per ping timeout. }
+        FPongPending       : Boolean;
+
+        FFragmentationActive : Boolean;         // True se è in corso un messaggio frammentato (FIN=0 su Text/Binary)
+        FFragmentedDataType  : TWebSocketFrameType; // Tipo originale (Text/Binary) del messaggio frammentato in corso
+
         FCSOutputDataList  : TTimedOutCriticalSection;
         FOutputDataList    : TObjectList;
 
         FRequestedURI      : AnsiString;
+
+        FWaitBeforeReconnect : Integer;
+        FConnectionDataTimeout : Integer;
+
+        // Buffer circolare usato come cache di ricezione: accumula in un'unica lettura
+        // tutti i byte disponibili sul socket, così i frame WebSocket vengono poi
+        // estratti dalla RAM invece di generare una syscall per ogni singolo campo
+        // (header, lunghezza estesa, payload). Riduce drasticamente il numero di
+        // accessi alla rete quando arrivano molti frame piccoli in sequenza.
+        FIncomingBuffer    : TLBCircularBuffer;
 
 
         function get_isConnected: Boolean;
@@ -58,6 +126,12 @@ type
         function SendHTTPConnectionRequest(): Boolean;
         function HandshakeAnswerReceived(out SocketError: Boolean): Boolean;
         function DataReceived(out SocketError: Boolean): Boolean;
+
+        // Legge esattamente aCount byte, prelevandoli prima dal buffer circolare
+        // (se già disponibili) e, solo se necessario, rifornendo il buffer con
+        // un'unica chiamata di rete. Sostituisce le vecchie letture dirette dal
+        // socket, campo per campo, con un accesso bufferizzato più efficiente.
+        function ReadBufferedBytes(aDestination: Pointer; aCount: Int64; aTimeoutMS: Integer; out SocketError: Boolean): Boolean;
 
         function SendData(out SocketError: Boolean): Boolean;
         function SendPingMessage(aPayload: AnsiString = ''): Boolean;
@@ -70,7 +144,10 @@ type
 
         const
           cHTTPAnswerTimeout = Int64(10000);
-          cDefaultPingInterval = Int64(30000); // 30 secondi di default
+          cDefaultPingInterval = Int64(3000); // 3 secondi di default
+          cIncomingBufferSize = Cardinal(64 * 1024); // 256 KB: dimensione del buffer di ricezione circolare
+          cWaitBeforeReconnect = Integer(5000);
+          cConnectionDataTimeout = Integer(20000);
 
     strict protected
       FOnDisconnected : TNotifyEvent;
@@ -84,7 +161,7 @@ type
       function ElaborateWebSocketMessage(isLastFrame: Boolean; aDataType: TWebSocketFrameType; aBuffer: pByte; aBufferLen: Int64): Boolean; virtual;
 
     public
-      constructor Create(); override;
+      constructor Create(aBufferSize: Integer = cIncomingBufferSize; aWaitBeforeReconnect: Integer = cWaitBeforeReconnect; aReceiveDataTimeout: Integer = cConnectionDataTimeout); reintroduce;
       destructor Destroy(); override;
 
       function LoadConfiguration(aParentNode: TDOMNode): Boolean;
@@ -113,11 +190,15 @@ type
 
   end;
 
+const
+  // 🔹 WebSocket Limits
+  WS_MAX_FRAME_SIZE              = Int64(16 * 1024 * 1024); // 16MB
+
 
 implementation
 
 uses
-  ULBLogger, laz2_XMLRead, uBase64Util, synsock, sha1, ssl_openssl3;
+  ULBLogger, laz2_XMLRead, uBase64Util, synsock, sha1, ssl_openssl3, uLBUtils;
 
 { TLBWebSocketClient }
 
@@ -331,201 +412,298 @@ begin
     _IncomingHeaders.Free;
 end;
 
-function TLBWebSocketClient.DataReceived(out SocketError: Boolean): Boolean;
-const
-  cSingleByteTimeout = Integer(500);
-  cPayloadTimeout = Integer(10000);
-  cMaxFrameSize = Int64(16 * 1024 * 1024);
-
+function TLBWebSocketClient.ReadBufferedBytes(aDestination: Pointer; aCount: Int64; aTimeoutMS: Integer; out SocketError: Boolean): Boolean;
 var
-  _tmp : Byte;
-  _Len : Byte;
-  _Buffer : TBytes;
-  _LastFrame : Boolean;
-  _DataType : TWebSocketFrameType;
-  _Length64 : Int64;
-  _LengthWord : Word;
-  _ProtocolElement : TWebSocketState;
+  _StartTick    : QWord;      // Istante di partenza, per calcolare il timeout residuo
+  _RemainingMS  : Int64;      // Millisecondi ancora disponibili prima di considerare l'operazione scaduta
+  _BytesPending : Int64;      // Byte ancora da consegnare al chiamante
+  _ChunkSize    : Cardinal;   // Quantità prelevabile dal buffer circolare in un colpo solo
+  _Dest         : PByte;      // Puntatore corrente nel buffer di destinazione
+  _Refilled     : Integer;    // Byte effettivamente travasati dall'ultimo rifornimento
 
 begin
   Result := False;
   SocketError := False;
 
+  if aCount <= 0 then
+    Exit(True); // Nulla da leggere: richiesta banalmente soddisfatta
 
-  try
+  _Dest := PByte(aDestination);
+  _BytesPending := aCount;
+  _StartTick := GetTickCount64;
 
-    SetLength(_Buffer, 0);
-
-    _ProtocolElement := wsState_StartByte;
-
-    while not Self.Terminated do
+  while (not Self.Terminated) and (_BytesPending > 0) do
+  begin
+    // 1. Preleva prima tutto ciò che è già presente nel buffer circolare:
+    //    questo passo NON comporta alcun accesso alla rete.
+    if FIncomingBuffer.AvailableForRead > 0 then
     begin
+      _ChunkSize := FIncomingBuffer.AvailableForRead;
+      if Int64(_ChunkSize) > _BytesPending then
+        _ChunkSize := Cardinal(_BytesPending);
 
-      case _ProtocolElement of
-
-        wsState_StartByte:
-          begin
-            FSocket.RecvBufferEx(@_tmp, SizeOf(_tmp), cSingleByteTimeout);
-            if FSocket.LastError = 0 then
-            begin
-              _LastFrame := _tmp and ($80) = $80;
-              _DataType := TWebSocketFrameType(_tmp and $0F);
-              case _DataType of
-                TWebSocketFrameType.wsFrame_Close:
-                  begin
-                    FInternalState := wscs_RestartConnection;
-                    LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Close connection request received!');
-                    Result := True;
-                    Break;
-                  end;
-
-                wsFrame_Text, wsFrame_Binary : _ProtocolElement := wsState_MaskLenByte;
-
-                wsFrame_Ping:
-                  begin
-                    LBLogger.Write(5, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Ping received - will respond with Pong');
-                    _ProtocolElement := wsState_MaskLenByte; // Continua a leggere il payload per includerlo nel Pong
-                  end;
-
-                wsFrame_Pong:
-                  begin
-                    LBLogger.Write(5, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Pong received');
-                    _ProtocolElement := wsState_MaskLenByte; // Leggi comunque il payload
-                  end;
-
-                else
-                  FInternalState := wscs_RestartConnection;
-                  LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Wrong data type received: %d!', [Integer(_DataType)]);
-                  Break;
-              end;
-            end
-            else begin
-              SocketError := FSocket.LastError <> WSAETIMEDOUT;
-              if SocketError then
-                LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Error receiving data: <%s>', [FSocket.LastErrorDesc]);
-              Break;
-            end;
-          end;
-
-        wsState_MaskLenByte:
-          begin
-            FSocket.RecvBufferEx(@_tmp, SizeOf(_tmp), cSingleByteTimeout);
-            if FSocket.LastError = 0 then
-            begin
-              if (_tmp and $80) > 0 then
-              begin
-                LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Received masked data!');
-                Break;
-              end
-              else begin
-                _Len := _tmp and $7F;
-
-                case _Len of
-                  WS_LEN_EXTENDED_16BIT: _ProtocolElement := wsState_PayloadLen16Bit;
-                  WS_LEN_EXTENDED_64BIT: _ProtocolElement := wsState_PayloadLen64Bit;
-                  else begin
-                    _Length64 := _Len;
-                    _ProtocolElement := wsState_Payload;
-                  end;
-                end;
-              end;
-            end
-            else begin
-              SocketError := True;
-              LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Error reading mask/len byte: %d  -  %s', [FSocket.LastError, FSocket.LastErrorDesc]);
-              Break;
-            end;
-          end;
-
-        wsState_PayloadLen16Bit:
-          begin
-            FSocket.RecvBufferEx(@_LengthWord, SizeOf(_LengthWord), cSingleByteTimeout);
-            if FSocket.LastError = 0 then
-            begin
-              _Length64 := BEtoN(_LengthWord);
-              _ProtocolElement := wsState_Payload;
-            end
-            else begin
-              LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Error reading word length from socket: %d  -  %s', [FSocket.LastError, FSocket.LastErrorDesc]);
-              SocketError := True;
-              Break;
-            end;
-          end;
-
-        wsState_PayloadLen64Bit:
-          begin
-            FSocket.RecvBufferEx(@_Length64, SizeOf(_Length64), cSingleByteTimeout);
-            if FSocket.LastError = 0 then
-            begin
-              _Length64 := BEtoN(_Length64);
-              _ProtocolElement := wsState_Payload;
-            end
-            else begin
-              LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Error reading Int64 length from socket: %s', [FSocket.LastErrorDesc]);
-              SocketError := True;
-              Break;
-            end;
-          end;
-
-        wsState_Payload:
-          begin
-            if _Length64 > 0 then
-            begin
-              if _Length64 <= cMaxFrameSize then
-              begin
-
-                SetLength(_Buffer, _Length64);
-                FSocket.RecvBufferEx(@_Buffer[0], _Length64, cPayloadTimeout);
-                if FSocket.LastError = 0 then
-                  Result := True
-                else begin
-                  LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Error reading payload from socket: %s', [FSocket.LastErrorDesc]);
-                  SocketError := True;
-                end;
-
-              end
-              else begin
-                LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Frame size too large: %d', [_Length64]);
-                SocketError := True;
-              end;
-            end
-            else
-              Result := True;  // Frame vuoto valido
-            Break;
-          end;
+      if FIncomingBuffer.Read(_Dest, _ChunkSize) then
+      begin
+        Inc(_Dest, _ChunkSize);
+        Dec(_BytesPending, _ChunkSize);
       end;
     end;
 
-    if Result and (not Self.Terminated) then
+    if _BytesPending = 0 then
+      Break; // Richiesta interamente soddisfatta dal buffer
+
+    // 2. Tenta SEMPRE un rifornimento diretto, PRIMA di eventualmente attendere
+    //    con CanRead. Fondamentale su socket SSL/TLS: il layer SSL può avere
+    //    già byte decifrati e pronti in un proprio buffer interno anche quando
+    //    il socket grezzo non segnala nulla di nuovo tramite select(); se ci si
+    //    affida solo a CanRead, quei byte restano invisibili finché non arriva
+    //    altro traffico TCP fresco, con il rischio di uno stallo silenzioso.
+    //    WriteFromSocket non ha controindicazioni a essere chiamato "a vuoto":
+    //    se non c'è nulla di pronto restituisce 0 senza alcun effetto collaterale.
+    _Refilled := FIncomingBuffer.WriteFromSocket(FSocket);
+    if _Refilled > 0 then
+      Continue; // Trovato qualcosa: si riparte subito dal punto 1, senza attendere
+
+    if (FSocket.LastError <> 0) and (FSocket.LastError <> WSAETIMEDOUT) then
     begin
-      case _DataType of
-        wsFrame_Ping:
-          begin
-            // Rispondi automaticamente con Pong includendo lo stesso payload
-            if Self.AddWebSocketMessageToSend(@_Buffer[0], Length(_Buffer), wsFrame_Pong, True) then
-              LBLogger.Write(5, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Pong response sent successfully')
-            else
-              LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Failed to send Pong response');
-          end;
-
-        wsFrame_Pong: LBLogger.Write(5, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Pong confirmed - connection alive');
-
-        wsFrame_Text, wsFrame_Binary:
-          begin
-            if Length(_Buffer) > 0 then
-              Self.ElaborateWebSocketMessage(_LastFrame, _DataType, @_Buffer[0], Length(_Buffer));
-          end;
-      end;
+      SocketError := True;
+      LBLogger.Write(1, 'TLBWebSocketClient.ReadBufferedBytes', lmt_Warning,
+        'Errore nel rifornire il buffer di ricezione: %d - %s', [FSocket.LastError, FSocket.LastErrorDesc]);
+      Exit;
     end;
 
-  except
-    on E: Exception do
-      LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Error, PChar(E.Message));
+    // 3. Davvero nulla di pronto: calcola il tempo residuo e attende un evento di rete
+    _RemainingMS := aTimeoutMS - Int64(GetTickCount64 - _StartTick);
+    if _RemainingMS <= 0 then
+    begin
+      // Timeout raggiunto. Se non avevamo ancora consumato nulla per QUESTA
+      // richiesta, è il caso normale ("nessun dato per ora": nessun errore,
+      // decide il chiamante, es. nessun frame in arrivo). Ma se avevamo già
+      // consumato una PARTE dei byte richiesti (es. metà di un payload) e ci
+      // fermiamo qui, lo stream resta disallineato per sempre da questo punto
+      // in poi: i byte successivi verrebbero interpretati come inizio di un
+      // nuovo frame quando in realtà sono il resto di quello corrente. Questa
+      // non è una condizione recuperabile: va segnalata come errore fatale,
+      // così il chiamante forza una riconnessione pulita invece di continuare
+      // a leggere da una posizione ormai sbagliata.
+      if _BytesPending < aCount then
+      begin
+        SocketError := True;
+        LBLogger.Write(1, 'TLBWebSocketClient.ReadBufferedBytes', lmt_Warning,
+          'Lettura parziale andata in timeout (%d di %d byte ricevuti): stream disallineato, forzo la riconnessione',
+          [aCount - _BytesPending, aCount]);
+      end;
+      Exit;
+    end;
+
+    if FSocket.CanRead(_RemainingMS) then
+    begin
+      if FSocket.LastError <> 0 then
+      begin
+        SocketError := FSocket.LastError <> WSAETIMEDOUT;
+        if SocketError then
+          LBLogger.Write(1, 'TLBWebSocketClient.ReadBufferedBytes', lmt_Warning,
+            'Errore in attesa di dati sul socket: %d - %s', [FSocket.LastError, FSocket.LastErrorDesc]);
+        Exit;
+      end;
+      // Torna in cima al ciclo: punto 1/2 troveranno ora qualcosa da leggere
+    end
+    else if FSocket.LastError <> 0 then
+    begin
+      SocketError := FSocket.LastError <> WSAETIMEDOUT;
+      if SocketError then
+        LBLogger.Write(1, 'TLBWebSocketClient.ReadBufferedBytes', lmt_Warning,
+          'Errore sul socket: %d - %s', [FSocket.LastError, FSocket.LastErrorDesc]);
+      Exit;
+    end;
+    // Se CanRead ritorna False senza errore, semplicemente non sono ancora
+    // arrivati dati: si ritenta finché resta tempo utile nel timeout.
   end;
 
-  SetLength(_Buffer, 0);
+  Result := _BytesPending = 0;
 end;
 
+function TLBWebSocketClient.DataReceived(out SocketError: Boolean): Boolean;
+const
+cHeaderTimeout = Integer(500);
+cPayloadTimeout = Integer(10000);
+cMaxFrameSize = Int64(16 * 1024 * 1024);
+
+var
+_Header: array[0..1] of Byte;
+_Buffer: TBytes;
+_LastFrame: Boolean;
+_DataType: TWebSocketFrameType;
+_Length64: Int64;
+_LengthWord: Word;
+_LengthQWord: Int64;
+_Len: Byte;
+
+begin
+Result := False;
+SocketError := False;
+SetLength(_Buffer, 0);
+
+try
+  if Self.Terminated then
+    Exit;
+
+  if not Self.ReadBufferedBytes(@_Header[0], SizeOf(_Header), cHeaderTimeout, SocketError) then
+    Exit;
+
+  _LastFrame := (_Header[0] and $80) = $80;
+  _DataType := TWebSocketFrameType(_Header[0] and $0F);
+
+  case _DataType of
+    wsFrame_Close:
+    begin
+      FInternalState := wscs_RestartConnection;
+      LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Close connection request received!');
+      Result := True;
+      Exit;
+    end;
+
+    wsFrame_Continuation:
+    begin
+      if FFragmentationActive then
+      begin
+        _DataType := FFragmentedDataType;
+        if _LastFrame then
+          FFragmentationActive := False;
+      end
+      else
+      begin
+        FInternalState := wscs_RestartConnection;
+        LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning,
+          'Continuation frame received without a preceding fragmented message!');
+        Exit;
+      end;
+    end;
+
+    wsFrame_Text, wsFrame_Binary:
+    begin
+      if _LastFrame then
+        FFragmentationActive := False
+      else
+      begin
+        FFragmentationActive := True;
+        FFragmentedDataType := _DataType;
+      end;
+    end;
+
+    wsFrame_Ping : LBLogger.Write(6, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Ping received');
+
+    wsFrame_Pong:
+    begin
+    end;
+
+  else
+    FInternalState := wscs_RestartConnection;
+    LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Wrong data type received: %d!', [Integer(_DataType)]);
+    Exit;
+  end;
+
+  if (_Header[1] and $80) > 0 then
+  begin
+    // Un server conforme non maschera mai i propri frame: se il bit MASK è
+    // impostato, o il server viola lo standard, o (più probabile con device
+    // embedded) c'è un bug nella sua implementazione WebSocket lato server.
+    // In ogni caso, a questo punto i 2 byte di header sono già stati
+    // consumati dal buffer circolare ma il resto del frame (lunghezza,
+    // eventuale mask, payload) NON è stato letto: continuare da qui
+    // significa interpretare quei byte residui come l'inizio di un frame
+    // nuovo, disallineando lo stream in modo permanente e silenzioso. Va
+    // quindi trattato come un errore fatale, non come "nessun dato pronto".
+    SocketError := True;
+    LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning,
+      'Received masked frame from server (protocol violation) - forcing reconnect to avoid stream desync');
+    Exit;
+  end;
+
+  _Len := _Header[1] and $7F;
+  case _Len of
+    WS_LEN_EXTENDED_16BIT:
+    begin
+      if not Self.ReadBufferedBytes(@_LengthWord, SizeOf(_LengthWord), cHeaderTimeout, SocketError) then
+        Exit;
+      _Length64 := BEtoN(_LengthWord);
+    end;
+
+    WS_LEN_EXTENDED_64BIT:
+    begin
+      if not Self.ReadBufferedBytes(@_LengthQWord, SizeOf(_LengthQWord), cHeaderTimeout, SocketError) then
+        Exit;
+      _Length64 := BEtoN(_LengthQWord);
+    end;
+
+  else
+    _Length64 := _Len;
+  end;
+
+  if _Length64 > 0 then
+  begin
+    if _Length64 <= cMaxFrameSize then
+    begin
+      SetLength(_Buffer, _Length64);
+      // Nota: anche se il payload supera la dimensione del buffer circolare,
+      // ReadBufferedBytes lo gestisce correttamente: rifornisce il buffer a
+      // blocchi e lo svuota progressivamente nel buffer di destinazione.
+      if not Self.ReadBufferedBytes(@_Buffer[0], _Length64, cPayloadTimeout, SocketError) then
+        Exit;
+    end
+    else
+    begin
+      LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Frame size too large: %d', [_Length64]);
+      SocketError := True;
+      Exit;
+    end;
+  end;
+
+  Result := True;
+
+  if not Self.Terminated then
+  begin
+    case _DataType of
+      wsFrame_Ping:
+      begin
+        if Length(_Buffer) > 0 then
+        begin
+          LBLogger.Write(6, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Sending PONG with buffer (%d)', [Length(_Buffer)]);
+          if not Self.AddWebSocketMessageToSend(@_Buffer[0], Length(_Buffer), wsFrame_Pong, True) then
+            LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Failed to send Pong response')
+          else
+            FPongPending := True;
+        end
+        else
+        begin
+          LBLogger.Write(6, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Sending PONG without buffer');
+          if not Self.AddWebSocketMessageToSend(nil, 0, wsFrame_Pong, True) then
+            LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Warning, 'Failed to send Pong response')
+          else
+            FPongPending := True;
+        end;
+      end;
+
+      wsFrame_Pong:
+        LBLogger.Write(6, 'TLBWebSocketClient.DataReceived', lmt_Debug, 'Pong confirmed - connection alive');
+
+      wsFrame_Text, wsFrame_Binary:
+      begin
+        if Length(_Buffer) > 0 then
+          Self.ElaborateWebSocketMessage(_LastFrame, _DataType, @_Buffer[0], Length(_Buffer))
+        else if _LastFrame then
+          Self.ElaborateWebSocketMessage(_LastFrame, _DataType, nil, 0);
+      end;
+    end;
+  end;
+
+except
+  on E: Exception do
+    LBLogger.Write(1, 'TLBWebSocketClient.DataReceived', lmt_Error, PChar(E.Message));
+end;
+
+SetLength(_Buffer, 0);
+end;
 
 function TLBWebSocketClient.SendData(out SocketError: Boolean): Boolean;
 var
@@ -562,7 +740,7 @@ begin
         end
         else begin
           SocketError := True;
-          LBLogger.Write(1, 'TLBWebSocketClient.SendData', lmt_Warning, 'Error sending data: <%s>', [FSocket.LastErrorDesc]);
+          LBLogger.Write(1, 'TLBWebSocketClient.SendData', lmt_Warning, 'Error sending data <%s>: (%d) <%s>', [HexString(pByte(_MemoryStream.Memory), _MemoryStream.Size), FSocket.LastError, FSocket.LastErrorDesc]);
         end;
         _MemoryStream.Free;
       end
@@ -580,12 +758,103 @@ begin
 end;
 
 
+function TLBWebSocketClient.AddWebSocketMessageToSend(aBuffer: pByte; aBufferLen: Int64; aDataType: TWebSocketFrameType; aPriority: Boolean): Boolean;
+var
+  _OutputData : TMemoryStream = nil;
+  _MaskValue : array [0..3] of Byte;
+  i : Integer;
+  _MaskedBuffer : TBytes;
+  _FirstByte : Byte;
+  _ByteTmp : Byte;
+  _WordTmp : Word;
+  _PayLoadLen : Int64;
+begin
+  Result := False;
+  if Self.Terminated then Exit;
+  if aBufferLen < 0 then Exit; // safety
+
+  try
+    _OutputData := TMemoryStream.Create;
+
+    // Primo byte (FIN + opcode)
+    case aDataType of
+      wsFrame_Text   : _FirstByte := $81;
+      wsFrame_Binary : _FirstByte := $82;
+      wsFrame_Close  : _FirstByte := $88;
+      wsFrame_Ping   : _FirstByte := $89;
+      wsFrame_Pong   : _FirstByte := $8A;
+      else
+        LBLogger.Write(1, 'TLBWebSocketClient.AddWebSocketMessageToSend', lmt_Warning, 'Unsupported WebSocket frame type %d', [Integer(aDataType)]);
+        Exit;
+    end;
+    _OutputData.Write(_FirstByte, 1);
+
+    // Byte di lunghezza con bit di maschera sempre attivo (client → server)
+    if aBufferLen > High(Word) then
+    begin
+      _ByteTmp := WS_LEN_EXTENDED_64BIT or $80;   // <-- MASK bit
+      _OutputData.Write(_ByteTmp, 1);
+      _PayLoadLen := NtoBE(aBufferLen);
+      _OutputData.Write(_PayLoadLen, 8);
+    end
+    else if aBufferLen > 125 then
+    begin
+      _ByteTmp := WS_LEN_EXTENDED_16BIT or $80;   // <-- MASK bit
+      _OutputData.Write(_ByteTmp, 1);
+      _WordTmp := NtoBE(Word(aBufferLen));
+      _OutputData.Write(_WordTmp, 2);
+    end
+    else
+    begin
+      _ByteTmp := (aBufferLen and $7F) or $80;
+      _OutputData.Write(_ByteTmp, 1);
+    end;
+
+    // Maschera
+    Randomize;
+    for i := 0 to 3 do _MaskValue[i] := Random(256);
+    _OutputData.Write(_MaskValue, 4);
+
+    // Payload (solo se > 0)
+    if aBufferLen > 0 then
+    begin
+      SetLength(_MaskedBuffer, aBufferLen);
+      for i := 0 to aBufferLen - 1 do
+        _MaskedBuffer[i] := aBuffer[i] xor _MaskValue[i mod 4];
+      _OutputData.Write(_MaskedBuffer[0], aBufferLen);
+    end;
+
+    // Accoda il frame
+    if FCSOutputDataList.Acquire('TLBWebSocketClient.AddWebSocketMessageToSend') then
+    begin
+      try
+        if FOutputDataList <> nil then
+        begin
+          if aPriority then
+            FOutputDataList.Insert(0, _OutputData)
+          else
+            FOutputDataList.Add(_OutputData);
+          _OutputData := nil;
+          Result := True;
+        end
+        else
+          LBLogger.Write(1, 'TLBWebSocketClient.AddWebSocketMessageToSend', lmt_Warning, 'No output data list!');
+      except
+        on E: Exception do
+          LBLogger.Write(1, 'TLBWebSocketClient.AddWebSocketMessageToSend', lmt_Error, 'Error inserting data into list: %s', [E.Message]);
+      end;
+      FCSOutputDataList.Release;
+    end;
+  finally
+    if _OutputData <> nil then
+      _OutputData.Free;
+  end;
+end;
+
+(*
 function TLBWebSocketClient.AddWebSocketMessageToSend(aBuffer: pByte; aBufferLen: Int64; aDataType: TWebSocketFrameType = wsFrame_Text; aPriority: Boolean = False): Boolean;
 var
   _OutputData : TMemoryStream = nil;
-  _PayLoadLen : Int64 = 0;
-  _WordTmp : Word;
-  _ByteTmp : Byte;
   _MaskValue : array [0 .. 3] of Byte;
   i : Integer;
   _MaskedBuffer : array of Byte;
@@ -593,6 +862,9 @@ var
 
 begin
   Result := False;
+
+  if aBufferLen < 0 then Exit;
+
 
   if not Self.Terminated then
   begin
@@ -687,16 +959,15 @@ begin
       LBLogger.Write(1, 'TLBWebSocketClient.AddWebSocketMessageToSend', lmt_Warning, 'No data to send!');
 
   end;
-
 end;
-
+*)
 
 function TLBWebSocketClient.AddWebSocketMessageToSend(aBuffer: AnsiString; aDataType: TWebSocketFrameType = wsFrame_Text; aPriority: Boolean = False): Boolean;
 begin
   if aBuffer <> EmptyStr then
-    Result := AddWebSocketMessageToSend(@aBuffer[1], Length(aBuffer), aDataType, aPriority)
+    Result := Self.AddWebSocketMessageToSend(@aBuffer[1], Length(aBuffer), aDataType, aPriority)
   else
-    Result := False;
+    Result := Self.AddWebSocketMessageToSend(nil, 0, aDataType, aPriority);
 end;
 
 
@@ -742,6 +1013,13 @@ const
 
 begin
 
+  FFragmentationActive := False; // Nessun messaggio frammentato può sopravvivere alla chiusura della connessione
+
+  // Scarta eventuali byte non ancora consumati: appartengono alla connessione
+  // che sta per essere chiusa e non devono contaminare quella successiva
+  if FIncomingBuffer <> nil then
+    FIncomingBuffer.Clear;
+
   if FSocket <> nil then
   begin
     try
@@ -759,10 +1037,6 @@ begin
 end;
 
 procedure TLBWebSocketClient.Execute;
-const
-  cWaitBeforeReconnect = Integer(5000);
-  cConnectionDataTimeout = Integer(20000);
-
 var
   _SocketError : Boolean = False;
 
@@ -777,7 +1051,7 @@ begin
     if FDisconnect then
     begin
       FInternalState := wscs_Suspend;
-      LBLogger.Write(1, 'TLBWebSocketClient.InternalExecute', lmt_Debug, 'Suspending web-socket connection ...');
+      LBLogger.Write(1, 'TLBWebSocketClient.Execute', lmt_Debug, 'Suspending web-socket connection ...');
     end
     else if FRestartConnection then
       FInternalState := wscs_RestartConnection;
@@ -793,8 +1067,8 @@ begin
           if FRemoteConnectionData.hasValidData then
             FInternalState := wscs_ConnectToServer
           else begin
-            LBLogger.Write(5, 'TLBWebSocketClient.InternalExecute', lmt_Warning, 'No valid data for connection!');
-            Self.PauseFor(cWaitBeforeReconnect);
+            LBLogger.Write(5, 'TLBWebSocketClient.Execute', lmt_Warning, 'No valid data for connection!');
+            Self.PauseFor(FWaitBeforeReconnect);
           end;
         end;
 
@@ -803,7 +1077,7 @@ begin
           if Self.RemoteHostConnected() then
           begin
             FInternalState := wscs_StartHandShake;
-            LBLogger.Write(5, 'TLBWebSocketClient.InternalExecute', lmt_Warning, 'Remote host connected ... starting handshake');
+            LBLogger.Write(5, 'TLBWebSocketClient.Execute', lmt_Debug, 'Remote host connected ... starting handshake');
           end
           else
             FInternalState := wscs_RestartConnection;
@@ -828,18 +1102,18 @@ begin
             if Assigned(FOnConnected) then
               FOnConnected(Self);
 
-            FHeartbeatTimer.Reset(cConnectionDataTimeout);
+            FHeartbeatTimer.Reset(FConnectionDataTimeout);
 
             if FEnableAutoPing then
               FPingTimer.Reset(FPingInterval);
 
-            LBLogger.Write(5, 'TLBWebSocketClient.InternalExecute', lmt_Debug, 'Connection done!');
+            LBLogger.Write(5, 'TLBWebSocketClient.Execute', lmt_Debug, 'Connection done!');
           end
           else begin
             if _SocketError or FHeartbeatTimer.Expired() then
             begin
               FInternalState := wscs_RestartConnection;
-              LBLogger.Write(1, 'TLBWebSocketClient.InternalExecute', lmt_Warning, 'Error reading socket or handshake timeout reached!');
+              LBLogger.Write(1, 'TLBWebSocketClient.Execute', lmt_Warning, 'Error reading socket or handshake timeout reached!');
             end;
           end;
         end;
@@ -848,7 +1122,7 @@ begin
         begin
           if Self.DataReceived(_SocketError) then
           begin
-            FHeartbeatTimer.Reset(cConnectionDataTimeout);
+            FHeartbeatTimer.Reset(FConnectionDataTimeout);
 
             if FEnableAutoPing then
               FPingTimer.Reset(FPingInterval);
@@ -858,21 +1132,32 @@ begin
             begin
               if FEnableAutoPing and FPingTimer.Expired() then
               begin
-                LBLogger.Write(5, 'TLBWebSocketClient.InternalExecute', lmt_Debug, 'Sending automatic ping - no data received for %d ms', [FPingInterval]);
+                // LBLogger.Write(5, 'TLBWebSocketClient.Execute', lmt_Debug, 'Sending automatic ping - no data received for %d ms', [FPingInterval]);
                 if Self.SendPingMessage() then
                 begin
                   FPingTimer.Reset(FPingInterval);
-                  LBLogger.Write(5, 'TLBWebSocketClient.InternalExecute', lmt_Debug, 'Automatic ping sent successfully');
+                  // LBLogger.Write(5, 'TLBWebSocketClient.Execute', lmt_Debug, 'Automatic ping sent successfully');
                 end
                 else
-                  LBLogger.Write(1, 'TLBWebSocketClient.InternalExecute', lmt_Warning, 'Failed to send automatic ping');
+                  LBLogger.Write(1, 'TLBWebSocketClient.Execute', lmt_Warning, 'Failed to send automatic ping');
               end;
               FInternalState := wscs_SendData;
             end
             else begin
               FInternalState := wscs_RestartConnection;
-              LBLogger.Write(1, 'TLBWebSocketClient.InternalExecute', lmt_Warning, 'Error reading data! Restarting connection');
+              LBLogger.Write(1, 'TLBWebSocketClient.Execute', lmt_Warning, 'Error reading data! Restarting connection');
             end;
+          end;
+
+          { Pong urgente: il server ha inviato un Ping e DataReceived ha
+            accodato il Pong con aPriority=True. Transitiamo immediatamente
+            a wscs_SendData senza aspettare il prossimo timeout di CanRead,
+            così il Pong viene spedito in pochi millisecondi invece di
+            aspettare fino a cHeaderTimeout (500 ms) o più. }
+          if FPongPending then
+          begin
+            FPongPending   := False;
+            FInternalState := wscs_SendData;
           end;
         end;
 
@@ -880,20 +1165,20 @@ begin
         begin
           if Self.SendData(_SocketError) then
           begin
-            FHeartbeatTimer.Reset(cConnectionDataTimeout);
+            FHeartbeatTimer.Reset(FConnectionDataTimeout);
             FInternalState := wscs_ReadIncomingData; // Ora tutti i messaggi sono stati inviati
           end
           else begin
             if _SocketError then
             begin
               FInternalState := wscs_RestartConnection;
-              LBLogger.Write(1, 'TLBWebSocketClient.InternalExecute', lmt_Warning, 'Error sending data! Restarting connection!');
+              LBLogger.Write(1, 'TLBWebSocketClient.Execute', lmt_Warning, 'Error sending data! Restarting connection!');
             end
             else begin
               if FHeartbeatTimer.Expired() then
               begin
                 FInternalState := wscs_RestartConnection;
-                LBLogger.Write(1, 'TLBWebSocketClient.InternalExecute', lmt_Warning, 'Timeout! Restarting connection');
+                LBLogger.Write(1, 'TLBWebSocketClient.Execute', lmt_Warning, 'Timeout! Restarting connection');
               end
               else
                 FInternalState := wscs_ReadIncomingData;
@@ -905,24 +1190,24 @@ begin
         begin
           if FRestartConnection then
           begin
-            LBLogger.Write(5, 'TLBWebSocketClient.InternalExecute', lmt_Debug, 'Restarting connection ...');
+            LBLogger.Write(5, 'TLBWebSocketClient.Execute', lmt_Debug, 'Restarting connection ...');
             FRestartConnection := False;
           end;
           Self.CloseConnection();
           FInternalState := wscs_VerifyConnectionData;
-          Self.PauseFor(cWaitBeforeReconnect);
+          Self.PauseFor(FWaitBeforeReconnect);
         end;
 
       wscs_Suspend:
         begin
           if FDisconnect then
           begin
-            LBLogger.Write(5, 'TLBWebSocketClient.InternalExecute', lmt_Debug, 'Connection suspended!');
+            LBLogger.Write(5, 'TLBWebSocketClient.Execute', lmt_Debug, 'Connection suspended!');
             FDisconnect := False;
           end;
 
           Self.CloseConnection();
-          Self.PauseFor(cWaitBeforeReconnect);
+          Self.PauseFor(FWaitBeforeReconnect);
         end;
     end;
   end;
@@ -950,11 +1235,12 @@ end;
 function TLBWebSocketClient.SendPingMessage(aPayload: AnsiString = ''): Boolean;
 begin
   Result := Self.AddWebSocketMessageToSend(aPayload, wsFrame_Ping, False);
-
+(*
   if Result then
     LBLogger.Write(5, 'TLBWebSocketClient.SendPingMessage', lmt_Debug, 'Ping message queued successfully')
   else
     LBLogger.Write(1, 'TLBWebSocketClient.SendPingMessage', lmt_Warning, 'Failed to queue Ping message');
+*)
 end;
 
 
@@ -989,7 +1275,7 @@ begin
   end;
 end;
 
-constructor TLBWebSocketClient.Create();
+constructor TLBWebSocketClient.Create(aBufferSize: Integer; aWaitBeforeReconnect: Integer; aReceiveDataTimeout: Integer);
 begin
   inherited Create();
 
@@ -1002,16 +1288,29 @@ begin
 
   FHeartbeatTimer := TTimeoutTimer.Create(cHTTPAnswerTimeout);
 
-  FPingInterval := cDefaultPingInterval;
+  FPingInterval   := cDefaultPingInterval;
   FEnableAutoPing := True;
-  FPingTimer := TTimeoutTimer.Create(FPingInterval);
-
+  FPingTimer      := TTimeoutTimer.Create(FPingInterval);
+  FPongPending    := False;
 
   FRestartConnection := False;
   FDisconnect := False;
 
+  FFragmentationActive := False;
+  FFragmentedDataType := wsFrame_Text; // valore neutro, valido solo quando FFragmentationActive = True
+
   FCSOutputDataList  := TTimedOutCriticalSection.Create();
   FOutputDataList    := TObjectList.Create(True);
+
+  FWaitBeforeReconnect := aWaitBeforeReconnect;
+  FConnectionDataTimeout := aReceiveDataTimeout;
+
+
+  // Buffer di ricezione: creato una sola volta e riutilizzato per tutta la vita
+  // dell'oggetto, così da non pagare il costo di allocazione ad ogni riconnessione
+  FIncomingBuffer := TLBCircularBuffer.Create(aBufferSize);
+
+  InitOpenSSL3;
 end;
 
 destructor TLBWebSocketClient.Destroy;
@@ -1038,6 +1337,7 @@ begin
     FreeAndNil(FPingTimer);
 
     FreeAndNil(FRemoteConnectionData);
+    FreeAndNil(FIncomingBuffer);
 
   except
     on E: Exception do

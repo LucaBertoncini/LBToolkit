@@ -8,9 +8,11 @@ This guide is designed as an **AI Context Document** for AI coding assistants (s
 
 | Feature | Primary Unit | Core Class / Functions |
 |---------|--------------|------------------------|
+| **Weak References** | `uMultiReference` | `TMultiReferenceObject` |
 | **Lifecycle Threading** | `uLBBaseThread` | `TLBBaseThread` |
 | **Timeout Critical Section**| `uTimedoutCriticalSection` | `TTimedOutCriticalSection` |
-| **Ring Buffer** | `uLBCircularBuffer` | `TLBCircularBuffer` |
+| **Ring Buffer** | `uLBCircularBuffer` | `TLBCircularBuffer`, `TLBCircularBufferThreaded` |
+| **Multi-Listener Events** | `uEventsManager` | `TEventsManager` |
 | **HTTP / REST Server** | `uLBmicroWebServer` | `TLBmicroWebServer`, `THTTPRequestManager` |
 | **XML Route & Auth Registry** | `uWebRouteRegistry` | `TWebRouteRegistry`, `TRouteHandlerBase`, `TWebRouteModule` |
 | **WebSocket Server** | `uWebSocketManagement` | `TLBWebSocketSession` |
@@ -35,14 +37,85 @@ All generated code MUST follow [`docs/STYLE_GUIDE.md`](STYLE_GUIDE.md):
 
 ## 💻 3. Idiomatic Code Patterns & Boilerplate
 
-### A. Global Logging & Chain of Responsibility Sub-Loggers (`ULBLogger`)
+### A. Weak References & Safe Thread Management (`uMultiReference`, `uLBBaseThread`)
+
+```pascal
+uses
+  Classes, SysUtils, uLBBaseThread;
+
+type
+  TMyThreadOwner = class(TObject)
+  strict private
+    FWorkerThread: TLBBaseThread;
+  public
+    procedure StartWorker;
+    destructor Destroy; override;
+  end;
+
+procedure TMyThreadOwner.StartWorker;
+begin
+  FWorkerThread := TLBBaseThread.Create;
+  // Register reference so FWorkerThread is automatically set to nil when destroyed
+  FWorkerThread.AddReference(@FWorkerThread);
+  FWorkerThread.Start;
+end;
+
+destructor TMyThreadOwner.Destroy;
+begin
+  // FreeAndNil is sufficient to safely terminate and release worker thread
+  if FWorkerThread <> nil then
+    FreeAndNil(FWorkerThread);
+  inherited Destroy;
+end;
+```
+
+---
+
+### B. Synchronous Event Dispatcher (`TEventsManager`)
+
+```pascal
+uses
+  Classes, SysUtils, uEventsManager;
+
+type
+  TDataPublisher = class(TObject)
+  strict private
+    FEvents: TEventsManager;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure PublishData;
+    property Events: TEventsManager read FEvents;
+  end;
+
+constructor TDataPublisher.Create;
+begin
+  inherited Create;
+  FEvents := TEventsManager.Create(Self);
+  FEvents.AddEvent('OnDataReady');
+end;
+
+destructor TDataPublisher.Destroy;
+begin
+  FreeAndNil(FEvents);
+  inherited Destroy;
+end;
+
+procedure TDataPublisher.PublishData;
+begin
+  FEvents.RaiseEvent('OnDataReady', Self);
+end;
+```
+
+---
+
+### C. Global Logging & Chain of Responsibility Sub-Loggers (`ULBLogger`)
 
 ```pascal
 uses
   ULBLogger, SysUtils;
 
 type
-  // Custom sub-logger interceptor (e.g. Email / Telegram / UI Memo)
   TCustomNotificationLogger = class(TLBBaseLogger)
   public
     function virtualWrite(aLogLevel: Byte; const aSender: String; aMsgType: TLBLoggerMessageType; var aMsgText: String): Boolean; override;
@@ -66,42 +139,37 @@ procedure ApplicationBootstrap;
 var
   _Notifier: TCustomNotificationLogger;
 begin
-  // Initialize global LBLogger singleton instance
   InitLogger(3, 'app.log');
 
-  // Attach sub-logger without changing any log calls across the application
   _Notifier := TCustomNotificationLogger.Create;
   LBLogger.addAlternativeLogger(_Notifier);
 
-  // Usage anywhere in application:
   LBLogger.Write(1, 'Database', lmt_Info, 'System booted up successfully.');
   LBLogger.Write(1, 'PaymentGate', lmt_Critical, 'Payment provider unreachable!');
 end;
 
 procedure ApplicationTeardown;
 begin
-  ReleaseLogger(); // Safely closes log thread and flushes messages
+  ReleaseLogger();
 end;
 ```
 
 ---
 
-### B. XML Route Configuration & REST Handlers (`uWebRouteRegistry`)
+### D. XML Route Configuration & REST Handlers (`uWebRouteRegistry`)
 
 #### XML Route Definition (`Routes.xml`)
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <RouteRegistry>
   <FunctionalArea Code="Inventory" Name="Stock Management">
-    <!-- Public search endpoint -->
     <Endpoint Function="search" Method="POST" URI="/api/v1/inventory/search" Kind="Standard" RequiresAuth="true" />
-    <!-- Protected write endpoint requiring 'EDIT_STOCK' OpType permission -->
     <Endpoint Function="update" Method="POST" URI="/api/v1/inventory/update" Kind="Standard" RequiresAuth="true" OpType="EDIT_STOCK" />
   </FunctionalArea>
 </RouteRegistry>
 ```
 
-#### Pascal Worker Class Implementation
+#### Pascal Worker Implementation
 ```pascal
 unit uInventoryRouteHandler;
 
@@ -124,8 +192,7 @@ implementation
 
 constructor TInventoryRouteHandler.Create;
 begin
-  inherited Create('Inventory'); // AreaCode matching XML <FunctionalArea Code="Inventory">
-
+  inherited Create('Inventory');
   RegisterStandardWorker('search', @SearchWorker);
   RegisterStandardWorker('update', @UpdateWorker);
 end;
@@ -155,85 +222,12 @@ end.
 
 ---
 
-### C. Creating a Daemon Worker Thread (`TLBBaseThread`)
-
-```pascal
-unit uMyWorkerThread;
-
-{$mode objfpc}{$H+}
-
-interface
-
-uses
-  Classes, SysUtils, uLBBaseThread;
-
-type
-  TMyWorkerThread = class(TLBBaseThread)
-  protected
-    procedure InternalExecute; override;
-  public
-    constructor Create;
-  end;
-
-implementation
-
-constructor TMyWorkerThread.Create;
-begin
-  inherited Create(True); // Create suspended
-  FreeOnTerminate := True;
-end;
-
-procedure TMyWorkerThread.InternalExecute;
-begin
-  while not Terminated do
-  begin
-    // Perform periodic work
-
-    // Use interruptible sleep instead of standard Sleep()
-    SleepWithCheck(100);
-  end;
-end;
-
-end.
-```
-
----
-
-### D. Deadlock-Resistant Lock (`TTimedOutCriticalSection`)
-
-```pascal
-uses
-  uTimedoutCriticalSection;
-
-var
-  _CS: TTimedOutCriticalSection;
-begin
-  _CS := TTimedOutCriticalSection.Create;
-  try
-    if _CS.Enter(2000) then // Try to acquire lock for max 2000 ms
-    begin
-      try
-        // Critical section logic here
-      finally
-        _CS.Leave;
-      end;
-    end;
-  finally
-    _CS.Free;
-  end;
-end;
-```
-
----
-
 ## ⚠️ 4. Key Architectural Rules for AI Code Generation
 
 1. **Strict Naming Rules**: Always use `aParameter`, `_LocalVariable`, `FField`, `TType`, `PPointer`.
 2. **Global Logger Lifecycle**: Use `InitLogger(...)` and `ReleaseLogger()` for global logging management (`LBLogger`).
 3. **Sub-Logger Chain of Responsibility**: Sub-loggers derived from `TLBBaseLogger` can inspect, filter, or consume messages (`aMsgText := ''`) before disk writing.
 4. **Error Handling Pattern**: Return boolean / status code + log errors via `LBLogger.Write`. Do not throw raw exceptions across operational boundaries.
-5. **Thread Lifecycle**: `TLBBaseThread` instances have `FreeOnTerminate := True` set by default.
-6. **Interruptible Delays**: Always use `SleepWithCheck(ms)` provided by `uLBTimers` or `uLBBaseThread`.
-7. **OpenSSL Multithreading**: Call `InitOpenSSL3()` during app bootstrap when using OpenSSL in multithreaded servers.
-8. **No Direct Multipart/Form-Data**: File uploads use raw binary streaming with `X-File-Name` header.
-9. **Path Sanitization**: Use `TLBmWsDocumentsFolder` or `SanitizeFileName` from `uLBFileUtils` to protect against path traversal vulnerabilities.
+5. **Thread Lifecycle**: `TLBBaseThread` instances have `FreeOnTerminate := True` set by default. Destroy with `FreeAndNil(aThread)`. Derived `Destroy` must call `inherited Destroy` FIRST.
+6. **Interruptible Delays**: Always use `PauseFor(ms)` or `SleepWithCheck(ms)` in threads instead of `Sleep()`.
+7. **No Unused Prototype Classes**: Do not use or reference `TFPHTTPRequestProcessor`.

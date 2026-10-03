@@ -30,16 +30,38 @@ LBToolkit is structured as an ecosystem of independent, low-coupling Object Pasc
 
 ---
 
-## 2. Global Logging Engine & Chain of Responsibility Sub-Loggers (`ULBLogger.pas`)
+## 2. Core Primitives (`src/utils/`)
+
+### 🔹 Weak Reference Safety (`TMultiReferenceObject`)
+`TMultiReferenceObject` solves dangling pointers across thread and object boundaries. Objects register references to variable addresses (`AddReference(@FWorker)`). Upon destruction, `ClearReferences()` automatically sets all registered owner pointers to `nil`.
+
+### 🔹 Deterministic Thread Lifecycle (`TLBBaseThread`)
+- **Single Rule**: Destroying a thread is as simple as `FreeAndNil(aThread)`.
+- **`FreeOnTerminate := True`**: Default state on creation.
+- **`Terminate`**: Signals internal `FExitFromPauseEvent` to interrupt responsive pauses (`PauseFor`).
+- **`Destroy`**: Sets `FreeOnTerminate := False`, calls `Terminate` and `WaitFor`, and runs `ClearReferences()`.
+- **Descendant Contract**: Derived `Destroy` overrides **must call `inherited Destroy` FIRST** before releasing local class resources.
+
+### 🔹 Deadlock-Safe Locks (`TTimedOutCriticalSection`)
+- `Acquire(aFunctionName, aTimeoutMs)` enforces timeouts (default 3000 ms).
+- Logs `aFunctionName` and the last thread owner (`FLastOwner`) on timeout to pinpoint deadlocks.
+
+### 🔹 Event Management (`TEventsManager`)
+- **Synchronous Notification**: Handlers run in the calling thread context.
+- **Mutual Auto-Deregistration**: Managers register on each other's `EM_Destroy` event, dropping orphaned listeners automatically when either side dies.
+
+---
+
+## 3. Global Logging Engine & Chain of Responsibility Sub-Loggers (`ULBLogger.pas`)
 
 `LBLogger` provides a global logging infrastructure and reactive event/alert system:
 - **Global Lifecycle**: `InitLogger(...)` initializes a thread-safe singleton instance `LBLogger`, and `ReleaseLogger()` gracefully stops worker threads and releases resources.
 - **Chain of Responsibility**: When `LBLogger.Write()` is invoked, the message traverses a list of sub-loggers (`FAlternativeLoggers`).
-- **Dynamic Interception**: Sub-loggers implement `virtualWrite(LogLevel, Sender, MsgType, var MsgText)`. If a sub-logger modifies `MsgText := ''`, the chain stops (`Exit`), allowing sub-loggers to consume or redirect messages (e.g. Email, Telegram, MQTT, Desktop UI Memo) without modifying application code.
+- **Dynamic Interception**: Sub-loggers implement `virtualWrite(aLogLevel, aSender, aMsgType, var aMsgText)`. If a sub-logger modifies `aMsgText := ''`, the chain stops (`Exit`), allowing sub-loggers to consume or redirect messages (e.g. Email, Telegram, MQTT, Desktop UI Memo) without modifying application code.
 
 ---
 
-## 3. Declarative XML Route Registry & Permission System (`uWebRouteRegistry.pas`)
+## 4. Declarative XML Route Registry & Permission System (`uWebRouteRegistry.pas`)
 
 The core REST routing engine in `LBmicroWebServer` uses a 3-tier conceptual model for each endpoint:
 
@@ -56,16 +78,6 @@ The core REST routing engine in `LBmicroWebServer` uses a 3-tier conceptual mode
 
 ---
 
-## 4. Concurrency & Threading Model
-
-### 🔹 Thread Management (`TLBBaseThread`)
-- All thread instances inherit from `TLBBaseThread` (which extends standard `TThread`).
-- Threads execute their main loop inside `InternalExecute`.
-- Interruptible sleep `SleepWithCheck(ms)` allows worker threads to pause without blocking `Terminate` signals.
-- External reference tracking ensures object references are set to `nil` automatically upon thread termination (`RegisterReference`).
-
----
-
 ## 5. Networking & Sockets
 
 - **Synapse Socket Stack**: Network operations leverage Ararat Synapse (`blcksock`, `TTCPBlockSocket`).
@@ -76,7 +88,7 @@ The core REST routing engine in `LBmicroWebServer` uses a 3-tier conceptual mode
 
 ## 6. I/O & Memory Strategy
 
-- **Zero-Allocation Ring Buffers (`TLBCircularBuffer`)**: Used for HTTP and WebSocket stream parsing. Raw byte blocks are read into the circular buffer and parsed in-place.
+- **Zero-Allocation Ring Buffers (`TLBCircularBuffer` / `TLBCircularBufferThreaded`)**: Used for HTTP and WebSocket stream parsing. Raw byte blocks are read into the circular buffer and parsed in-place.
 - **Streaming Uploads**: Raw uploads bypass memory allocations by piping incoming socket streams directly to temporary files on disk.
 
 ---

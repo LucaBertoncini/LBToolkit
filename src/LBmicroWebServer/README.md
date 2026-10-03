@@ -7,7 +7,6 @@
 ## ⚡ Key Features
 
 - **Multithreaded Connection Handling**: Spawns worker threads (`THTTPRequestManager`) for each client connection with automatic lifecycle deallocation (`FreeOnTerminate = True`).
-- **Pipeline Architecture**: Interceptable request processing chain (`TFPHTTPRequestProcessor`).
 - **Declarative XML Route & Authorization Matrix (`uWebRouteRegistry.pas`)**: Define functional areas, endpoints, HTTP verbs, authentication flags (`RequiresAuth="true|false"`), and operation types (`OpType`) in readable XML configuration files.
 - **Worker Execution Families (`ekStandard`, `ekFileDownload`, `ekAuth`, `ekUpload`, `ekProxy`)**: Cleanly dispatches JSON requests, file downloads, authentication tokens, raw streaming uploads, or signed transparent proxy requests.
 - **Streaming File Uploads**: Raw binary upload endpoint supporting large files. Body data streams directly from socket to disk, preventing memory overflow. Original filenames are preserved as metadata while files are saved with unique UUIDs.
@@ -73,12 +72,12 @@ type
 
 function TWarehouseHandler.SearchItemsWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
 var
-  Res: TJSONObject;
+  _Res: TJSONObject;
 begin
-  Res := TJSONObject.Create;
-  Res.Add('status', 'success');
+  _Res := TJSONObject.Create;
+  _Res.Add('status', 'success');
   aStatusCode := 200;
-  Result := Res;
+  Result := _Res;
 end;
 
 function TWarehouseHandler.UpdateStockWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
@@ -87,15 +86,15 @@ begin
 end;
 
 // Registration during initialization
-procedure RegisterWarehouseRoutes(RouteModule: TWebRouteModule);
+procedure RegisterWarehouseRoutes(aRouteModule: TWebRouteModule);
 var
-  Handler: TWarehouseHandler;
+  _Handler: TWarehouseHandler;
 begin
-  Handler := TWarehouseHandler.Create('Inventory');
-  Handler.RegisterStandardWorker('searchItems', @Handler.SearchItemsWorker);
-  Handler.RegisterStandardWorker('updateStock', @Handler.UpdateStockWorker);
+  _Handler := TWarehouseHandler.Create('Inventory');
+  _Handler.RegisterStandardWorker('searchItems', @_Handler.SearchItemsWorker);
+  _Handler.RegisterStandardWorker('updateStock', @_Handler.UpdateStockWorker);
 
-  RouteModule.RegisterHandler(Handler);
+  aRouteModule.RegisterHandler(_Handler);
 end;
 ```
 
@@ -144,4 +143,3 @@ end;
 | `uWebSocketManagement.pas` | WebSocket framing, ping/pong, session management |
 | `uLBmWsFileManager.pas` | Static file serving & Range HTTP header support |
 | `uLBmWsDocumentsFolder.pas` | Document root sandboxing and path verification |
-| `uFPHTTPRequestProcessor.pas` | Request processor chain base classes |

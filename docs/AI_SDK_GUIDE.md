@@ -1,6 +1,6 @@
 # 🤖 LBToolkit AI SDK & Prompting Context Guide
 
-This guide is designed as an **AI Context Document** for AI coding assistants (such as Claude, ChatGPT, GitHub Copilot, Cursor). When building applications using **LBToolkit**, include or reference this file to provide the AI with accurate unit imports, class interfaces, and idiomatically correct FreePascal code patterns.
+This guide is designed as an **AI Context Document** for AI coding assistants (such as Claude, ChatGPT, GitHub Copilot, Cursor). When building applications using **LBToolkit**, include or reference this file alongside [`docs/STYLE_GUIDE.md`](STYLE_GUIDE.md) to ensure accurate unit imports, class interfaces, and idiomatically compliant FreePascal code patterns.
 
 ---
 
@@ -23,7 +23,17 @@ This guide is designed as an **AI Context Document** for AI coding assistants (s
 
 ---
 
-## 💻 2. Idiomatic Code Patterns & Boilerplate
+## 💻 2. Naming Conventions & Code Style
+
+All generated code MUST follow [`docs/STYLE_GUIDE.md`](STYLE_GUIDE.md):
+- **Parameters**: Prefixed with `a` / `A` (e.g., `aLogLevel`, `aSender`, `aMsgText`).
+- **Local Variables**: Prefixed with `_` (e.g., `_Res`, `_Msg`, `_Handler`).
+- **Private Fields**: Prefixed with `F` and declared `strict private` or `strict protected`.
+- **Types**: Prefixed with `T` or `I` (for interfaces), typed pointers with `P` / `p`.
+
+---
+
+## 💻 3. Idiomatic Code Patterns & Boilerplate
 
 ### A. Global Logging & Chain of Responsibility Sub-Loggers (`ULBLogger`)
 
@@ -35,33 +45,33 @@ type
   // Custom sub-logger interceptor (e.g. Email / Telegram / UI Memo)
   TCustomNotificationLogger = class(TLBBaseLogger)
   public
-    function virtualWrite(LogLevel: Byte; const Sender: String; MsgType: TLBLoggerMessageType; var MsgText: String): Boolean; override;
+    function virtualWrite(aLogLevel: Byte; const aSender: String; aMsgType: TLBLoggerMessageType; var aMsgText: String): Boolean; override;
   end;
 
-function TCustomNotificationLogger.virtualWrite(LogLevel: Byte; const Sender: String; MsgType: TLBLoggerMessageType; var MsgText: String): Boolean;
+function TCustomNotificationLogger.virtualWrite(aLogLevel: Byte; const aSender: String; aMsgType: TLBLoggerMessageType; var aMsgText: String): Boolean;
 begin
   Result := True;
 
   // Intercept critical messages
-  if MsgType = lmt_Critical then
+  if aMsgType = lmt_Critical then
   begin
     // Dispatch alert (Telegram, Email, MQTT, UI Memo, etc.)
-    // SendEmailAlert(Sender, MsgText);
+    // SendEmailAlert(aSender, aMsgText);
 
-    // Setting MsgText := '' halts the sublogger chain and skips writing to disk
+    // Setting aMsgText := '' halts the sublogger chain and skips writing to disk
   end;
 end;
 
 procedure ApplicationBootstrap;
 var
-  Notifier: TCustomNotificationLogger;
+  _Notifier: TCustomNotificationLogger;
 begin
   // Initialize global LBLogger singleton instance
   InitLogger(3, 'app.log');
 
   // Attach sub-logger without changing any log calls across the application
-  Notifier := TCustomNotificationLogger.Create;
-  LBLogger.addAlternativeLogger(Notifier);
+  _Notifier := TCustomNotificationLogger.Create;
+  LBLogger.addAlternativeLogger(_Notifier);
 
   // Usage anywhere in application:
   LBLogger.Write(1, 'Database', lmt_Info, 'System booted up successfully.');
@@ -122,22 +132,22 @@ end;
 
 function TInventoryRouteHandler.SearchWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
 var
-  Res: TJSONObject;
+  _Res: TJSONObject;
 begin
-  Res := TJSONObject.Create;
-  Res.Add('result', 'success');
+  _Res := TJSONObject.Create;
+  _Res.Add('result', 'success');
   aStatusCode := 200;
-  Result := Res;
+  Result := _Res;
 end;
 
 function TInventoryRouteHandler.UpdateWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
 var
-  Res: TJSONObject;
+  _Res: TJSONObject;
 begin
-  Res := TJSONObject.Create;
-  Res.Add('updated', True);
+  _Res := TJSONObject.Create;
+  _Res.Add('updated', True);
   aStatusCode := 200;
-  Result := Res;
+  Result := _Res;
 end;
 
 end.
@@ -196,33 +206,34 @@ uses
   uTimedoutCriticalSection;
 
 var
-  CS: TTimedOutCriticalSection;
+  _CS: TTimedOutCriticalSection;
 begin
-  CS := TTimedOutCriticalSection.Create;
+  _CS := TTimedOutCriticalSection.Create;
   try
-    if CS.Enter(2000) then // Try to acquire lock for max 2000 ms
+    if _CS.Enter(2000) then // Try to acquire lock for max 2000 ms
     begin
       try
         // Critical section logic here
       finally
-        CS.Leave;
+        _CS.Leave;
       end;
     end;
   finally
-    CS.Free;
+    _CS.Free;
   end;
 end;
 ```
 
 ---
 
-## ⚠️ 3. Key Architectural Rules for AI Code Generation
+## ⚠️ 4. Key Architectural Rules for AI Code Generation
 
-1. **Global Logger Lifecycle**: Use `InitLogger(...)` and `ReleaseLogger()` for global logging management (`LBLogger`).
-2. **Sub-Logger Chain of Responsibility**: Sub-loggers derived from `TLBBaseLogger` can inspect, filter, or consume messages (`MsgText := ''`) before disk writing.
-3. **REST Worker Signatures**: Pascal REST workers must match the signature defined for their family (`TStandardWorker`, `TFileDownloadWorker`, `TAuthWorker`, `TUploadWorker`).
-4. **Thread Lifecycle**: `TLBBaseThread` instances have `FreeOnTerminate := True` set by default.
-5. **Interruptible Delays**: Always use `SleepWithCheck(ms)` provided by `uLBTimers` or `uLBBaseThread`.
-6. **OpenSSL Multithreading**: Call `InitOpenSSL3()` during app bootstrap when using OpenSSL in multithreaded servers.
-7. **No Direct Multipart/Form-Data**: File uploads use raw binary streaming with `X-File-Name` header.
-8. **Path Sanitization**: Use `TLBmWsDocumentsFolder` or `SanitizeFileName` from `uLBFileUtils` to protect against path traversal vulnerabilities.
+1. **Strict Naming Rules**: Always use `aParameter`, `_LocalVariable`, `FField`, `TType`, `PPointer`.
+2. **Global Logger Lifecycle**: Use `InitLogger(...)` and `ReleaseLogger()` for global logging management (`LBLogger`).
+3. **Sub-Logger Chain of Responsibility**: Sub-loggers derived from `TLBBaseLogger` can inspect, filter, or consume messages (`aMsgText := ''`) before disk writing.
+4. **Error Handling Pattern**: Return boolean / status code + log errors via `LBLogger.Write`. Do not throw raw exceptions across operational boundaries.
+5. **Thread Lifecycle**: `TLBBaseThread` instances have `FreeOnTerminate := True` set by default.
+6. **Interruptible Delays**: Always use `SleepWithCheck(ms)` provided by `uLBTimers` or `uLBBaseThread`.
+7. **OpenSSL Multithreading**: Call `InitOpenSSL3()` during app bootstrap when using OpenSSL in multithreaded servers.
+8. **No Direct Multipart/Form-Data**: File uploads use raw binary streaming with `X-File-Name` header.
+9. **Path Sanitization**: Use `TLBmWsDocumentsFolder` or `SanitizeFileName` from `uLBFileUtils` to protect against path traversal vulnerabilities.

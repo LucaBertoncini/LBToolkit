@@ -15,7 +15,7 @@ This guide is designed as an **AI Context Document** for AI coding assistants (s
 | **XML Route & Auth Registry** | `uWebRouteRegistry` | `TWebRouteRegistry`, `TRouteHandlerBase`, `TWebRouteModule` |
 | **WebSocket Server** | `uWebSocketManagement` | `TLBWebSocketSession` |
 | **WebSocket Client** | `uLBWebSocketClient` | `TLBWebSocketClient` |
-| **Logging Engine** | `ULBLogger` | `TLBLogger`, `TLBBaseLogger` |
+| **Global Logging Engine** | `ULBLogger` | `InitLogger`, `ReleaseLogger`, `LBLogger`, `TLBBaseLogger` |
 | **Python / JS Gateway** | `uLBWebPrismApplication` | `TLBWebPrismApplication` |
 | **IPC Shared Memory** | `uIPCUtils` | `AllocateSharedMemory`, `TLBNamedSemaphore` |
 | **SQLite Wrapper** | `SQLiteWrapper` | `TSQLiteDatabase` |
@@ -25,7 +25,58 @@ This guide is designed as an **AI Context Document** for AI coding assistants (s
 
 ## 💻 2. Idiomatic Code Patterns & Boilerplate
 
-### A. XML Route Configuration & REST Handlers (`uWebRouteRegistry`)
+### A. Global Logging & Chain of Responsibility Sub-Loggers (`ULBLogger`)
+
+```pascal
+uses
+  ULBLogger, SysUtils;
+
+type
+  // Custom sub-logger interceptor (e.g. Email / Telegram / UI Memo)
+  TCustomNotificationLogger = class(TLBBaseLogger)
+  public
+    function virtualWrite(LogLevel: Byte; const Sender: String; MsgType: TLBLoggerMessageType; var MsgText: String): Boolean; override;
+  end;
+
+function TCustomNotificationLogger.virtualWrite(LogLevel: Byte; const Sender: String; MsgType: TLBLoggerMessageType; var MsgText: String): Boolean;
+begin
+  Result := True;
+
+  // Intercept critical messages
+  if MsgType = lmt_Critical then
+  begin
+    // Dispatch alert (Telegram, Email, MQTT, UI Memo, etc.)
+    // SendEmailAlert(Sender, MsgText);
+
+    // Setting MsgText := '' halts the sublogger chain and skips writing to disk
+  end;
+end;
+
+procedure ApplicationBootstrap;
+var
+  Notifier: TCustomNotificationLogger;
+begin
+  // Initialize global LBLogger singleton instance
+  InitLogger(3, 'app.log');
+
+  // Attach sub-logger without changing any log calls across the application
+  Notifier := TCustomNotificationLogger.Create;
+  LBLogger.addAlternativeLogger(Notifier);
+
+  // Usage anywhere in application:
+  LBLogger.Write(1, 'Database', lmt_Info, 'System booted up successfully.');
+  LBLogger.Write(1, 'PaymentGate', lmt_Critical, 'Payment provider unreachable!');
+end;
+
+procedure ApplicationTeardown;
+begin
+  ReleaseLogger(); // Safely closes log thread and flushes messages
+end;
+```
+
+---
+
+### B. XML Route Configuration & REST Handlers (`uWebRouteRegistry`)
 
 #### XML Route Definition (`Routes.xml`)
 ```xml
@@ -94,7 +145,7 @@ end.
 
 ---
 
-### B. Creating a Daemon Worker Thread (`TLBBaseThread`)
+### C. Creating a Daemon Worker Thread (`TLBBaseThread`)
 
 ```pascal
 unit uMyWorkerThread;
@@ -138,7 +189,7 @@ end.
 
 ---
 
-### C. Deadlock-Resistant Lock (`TTimedOutCriticalSection`)
+### D. Deadlock-Resistant Lock (`TTimedOutCriticalSection`)
 
 ```pascal
 uses
@@ -165,37 +216,13 @@ end;
 
 ---
 
-### D. Setting up `LBmicroWebServer` (HTTP & Raw File Upload)
-
-```pascal
-uses
-  Classes, SysUtils, uLBmicroWebServer, uHTTPConsts;
-
-procedure StartServer;
-var
-  Server: TLBmicroWebServer;
-begin
-  Server := TLBmicroWebServer.Create(nil);
-  try
-    Server.Port := 8080;
-    Server.DocumentsFolder := './www';
-    Server.UploadEndpoint := '/api/upload'; // Endpoint for raw binary streaming uploads
-    Server.Active := True;
-
-    WriteLn('HTTP Server started on port 8080');
-  finally
-    // Server lifecycle management
-  end;
-end;
-```
-
----
-
 ## ⚠️ 3. Key Architectural Rules for AI Code Generation
 
-1. **REST Worker Signatures**: Pascal REST workers must match the signature defined for their family (`TStandardWorker`, `TFileDownloadWorker`, `TAuthWorker`, `TUploadWorker`).
-2. **Thread Lifecycle**: `TLBBaseThread` instances have `FreeOnTerminate := True` set by default.
-3. **Interruptible Delays**: Always use `SleepWithCheck(ms)` provided by `uLBTimers` or `uLBBaseThread`.
-4. **OpenSSL Multithreading**: Call `InitOpenSSL3()` during app bootstrap when using OpenSSL in multithreaded servers.
-5. **No Direct Multipart/Form-Data**: File uploads use raw binary streaming with `X-File-Name` header.
-6. **Path Sanitization**: Use `TLBmWsDocumentsFolder` or `SanitizeFileName` from `uLBFileUtils` to protect against path traversal vulnerabilities.
+1. **Global Logger Lifecycle**: Use `InitLogger(...)` and `ReleaseLogger()` for global logging management (`LBLogger`).
+2. **Sub-Logger Chain of Responsibility**: Sub-loggers derived from `TLBBaseLogger` can inspect, filter, or consume messages (`MsgText := ''`) before disk writing.
+3. **REST Worker Signatures**: Pascal REST workers must match the signature defined for their family (`TStandardWorker`, `TFileDownloadWorker`, `TAuthWorker`, `TUploadWorker`).
+4. **Thread Lifecycle**: `TLBBaseThread` instances have `FreeOnTerminate := True` set by default.
+5. **Interruptible Delays**: Always use `SleepWithCheck(ms)` provided by `uLBTimers` or `uLBBaseThread`.
+6. **OpenSSL Multithreading**: Call `InitOpenSSL3()` during app bootstrap when using OpenSSL in multithreaded servers.
+7. **No Direct Multipart/Form-Data**: File uploads use raw binary streaming with `X-File-Name` header.
+8. **Path Sanitization**: Use `TLBmWsDocumentsFolder` or `SanitizeFileName` from `uLBFileUtils` to protect against path traversal vulnerabilities.

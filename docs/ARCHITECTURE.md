@@ -30,7 +30,16 @@ LBToolkit is structured as an ecosystem of independent, low-coupling Object Pasc
 
 ---
 
-## 2. Declarative XML Route Registry & Permission System (`uWebRouteRegistry.pas`)
+## 2. Global Logging Engine & Chain of Responsibility Sub-Loggers (`ULBLogger.pas`)
+
+`LBLogger` provides a global logging infrastructure and reactive event/alert system:
+- **Global Lifecycle**: `InitLogger(...)` initializes a thread-safe singleton instance `LBLogger`, and `ReleaseLogger()` gracefully stops worker threads and releases resources.
+- **Chain of Responsibility**: When `LBLogger.Write()` is invoked, the message traverses a list of sub-loggers (`FAlternativeLoggers`).
+- **Dynamic Interception**: Sub-loggers implement `virtualWrite(LogLevel, Sender, MsgType, var MsgText)`. If a sub-logger modifies `MsgText := ''`, the chain stops (`Exit`), allowing sub-loggers to consume or redirect messages (e.g. Email, Telegram, MQTT, Desktop UI Memo) without modifying application code.
+
+---
+
+## 3. Declarative XML Route Registry & Permission System (`uWebRouteRegistry.pas`)
 
 The core REST routing engine in `LBmicroWebServer` uses a 3-tier conceptual model for each endpoint:
 
@@ -47,7 +56,7 @@ The core REST routing engine in `LBmicroWebServer` uses a 3-tier conceptual mode
 
 ---
 
-## 3. Concurrency & Threading Model
+## 4. Concurrency & Threading Model
 
 ### 🔹 Thread Management (`TLBBaseThread`)
 - All thread instances inherit from `TLBBaseThread` (which extends standard `TThread`).
@@ -57,7 +66,7 @@ The core REST routing engine in `LBmicroWebServer` uses a 3-tier conceptual mode
 
 ---
 
-## 4. Networking & Sockets
+## 5. Networking & Sockets
 
 - **Synapse Socket Stack**: Network operations leverage Ararat Synapse (`blcksock`, `TTCPBlockSocket`).
 - **OpenSSL 3 Support**: `uLBSSLConfig.pas` initializes multi-threaded locks and callbacks required by OpenSSL 3.0+.
@@ -65,14 +74,14 @@ The core REST routing engine in `LBmicroWebServer` uses a 3-tier conceptual mode
 
 ---
 
-## 5. I/O & Memory Strategy
+## 6. I/O & Memory Strategy
 
 - **Zero-Allocation Ring Buffers (`TLBCircularBuffer`)**: Used for HTTP and WebSocket stream parsing. Raw byte blocks are read into the circular buffer and parsed in-place.
 - **Streaming Uploads**: Raw uploads bypass memory allocations by piping incoming socket streams directly to temporary files on disk.
 
 ---
 
-## 6. C-API Shared Library Interface (`src/shared/LBToolkit/`)
+## 7. C-API Shared Library Interface (`src/shared/LBToolkit/`)
 
 LBToolkit can be compiled into a C-compatible dynamic library (`.so` / `.dll`), allowing foreign languages (C, C++, Python, Rust, Go, C#) to instantiate and control its components:
 - `Toolkit_CAPI_microWebServer.pas`: Exported C functions to start/stop the web server, add routes, and handle requests.

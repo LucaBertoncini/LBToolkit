@@ -1,80 +1,98 @@
-# LBToolkit
+# 🧰 LBToolkit
 
-A modular, reactive and thread-safe architecture toolkit for systems programming and automation.
+> **A modular, thread-safe, and high-performance Object Pascal framework for systems programming, networking, IPC, and scripting integration.**
 
-It is a swiss-army toolkit for FreePascal developers: thread-safe classes, event systems, file utilities and a reactive logging engine UI integration. Lightweight, extensible, and non-intrusive.
-
----
-
-## Features
-
-- **Thread-safe synchronization** via `TTimedOutCriticalSection` (critical section with timeout support)
-- **Event dispatching system** with flexible callback signatures
-- **Structured logging engine** with optional UI integration
-- **File utilities** for recursive operations and size estimation
-- **Timers and delays** with interruptable sleep and precision control
-- **WebSocket client** with RFC 6455 support and automatic ping/pong
-- **Minimal HTTP server** with path-based routing, a customizable pipeline of request handlers (to easily extend it into an HTTP gateway or middleware engine) and built-in support for WebSocket connections
-- **Shared memory manager** for IPC with external processes
-- **Virtual keyboard component** for UI automation and input simulation (`LBVirtualKeyBoard`)
-- **Python bridge**: an HTTP server extension that dispatches JSON POST requests to URI-mapped Python scripts, organized in folders and executed via a managed pool of Python processes (`LBWebPyBridge`)
+[![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)](LICENSE)
+[![Language: FreePascal](https://img.shields.io/badge/language-FreePascal_3.2+-yellow.svg)](https://www.freepascal.org/)
+[![Tested Platforms](https://img.shields.io/badge/platform-Linux_%7C_Windows-lightgrey.svg)](#tested-platforms)
 
 ---
 
-## Tested Platforms
+## 🌟 Overview
 
-- Linux (x86_64, ARM)
-- Windows (64-bit)
+**LBToolkit** is a complete "swiss-army toolkit" designed for FreePascal / Lazarus software engineers building high-concurrency background services, web servers, IPC gateways, and industrial automation tools.
 
-Other platforms may be compatible via FreePascal, but are not currently tested.
-
----
-
-## Design Principles
-
-- **Modularity**: each unit is independent and reusable
-- **Thread safety**: concurrency is handled explicitly and predictably
-- **Minimal dependencies**: no external libraries required beyond FreePascal, Ararat Synapse and OpenSSL
-- **Extensibility**: components are designed to be subclassed or replaced
+Whether you need a lightweight HTTP/WebSocket server, a reactive logging engine, inter-process communication with Python or Node.js, or thread-safe synchronization primitives, **LBToolkit** provides lightweight, decoupled, zero-bloat building blocks.
 
 ---
 
-## Directory Overview
+## 📦 Framework Modules
 
-| Path                       | Description                                                                 |
-|----------------------------|-----------------------------------------------------------------------------|
-| `src/utils/`               | Core reusable units: threading, events, timers, file operations             |
-| `src/LBLogger/`            | Reactive logging engine with optional UI integration                        |
-| `src/LBmicroWebServer/`    | Lightweight HTTP server with routing and WebSocket server support           |
-| `src/LBWebSocketClient/`   | WebSocket client implementation with automatic ping/pong                    |
-| `src/LBVirtualKeyBoard/`   | Virtual keyboard component for simulating key input                         |
-| `src/LBWebPyBridge/`       | Python bridge for routing HTTP POST requests to URI-mapped Python scripts   |
-
----
-
-## Practical Examples
-
-These examples demonstrate how to use key components of the library through Lazarus projects and their main source units.
-
-| Lazarus Project | Main Unit | Description |
-|-----------------|-----------|-------------|
-| [`Test_LBLogger.lpr`](src/LBLogger/LazTest/Test_LBLogger.lpr) | [`ufrmmain.pas`](src/LBLogger/LazTest/ufrmmain.pas) | Demonstrates how to use `TLBBaseLogger` with sub-loggers |
-| [`VKb_Demo.lpr`](src/LBVirtualKeyboard/Demo/VKb_Demo.lpr) | [`ufrmmain.pas`](src/LBVirtualKeyboard/Demo/ufrmmain.pas) | Demo of the `LBVirtualKeyboard` component |
-| [`LBWebPyBridgeTest.lpr`](src/LBWebPyBridge/UnitTest/LBWebPyBridgeTest.lpr) | [`uLBWebPyBridgeTests.pas`](src/LBWebPyBridge/UnitTest/uLBWebPyBridgeTests.pas) | Unit test showing basic functionality of the Python bridge |
-| [`TestWebSocketClient.lpr`](src/LBWebSocketClient/UnitTest/TestWebSocketClient.lpr) | [`uTestWebSocketClient.pas`](src/LBWebSocketClient/UnitTest/uTestWebSocketClient.pas) | Unit test for the `LBWebSocketClient` component |
-| [`LBmicroWebServerTests.lpr`](src/LBmicroWebServer/UnitTest/WebServer/LBmicroWebServerTests.lpr) | [`uhttprequestmanagertests.pas`](src/LBmicroWebServer/UnitTest/WebServer/uhttprequestmanagertests.pas) | Unit test for the `LBmicroWebServer` HTTP/WebSocket server |
-| [`LBbaseThreadDemo.lpr`](src/utils/demos/LBBaseThread/LBbaseThreadDemo.lpr) | [`ufrmmain.pas`](src/utils/demos/LBBaseThread/ufrmmain.pas) | Example showing how `uLBBaseThread` simplifies thread usage |
-| [`EventsManagerExample.lps`](src/utils/demos/EventsManager/EventsManagerExample.lps) | [`ufrmmain.pas`](src/utils/demos/EventsManager/ufrmmain.pas) | Example usage of the `TEventsManager` component |
-
-These examples are designed to be minimal, focused, and directly runnable.
+| Module | Location | Description |
+|--------|----------|-------------|
+| **Core Utils** | [`src/utils/`](src/utils/) | Threading (`TLBBaseThread`), timeout-safe critical sections, ring buffers (`TLBCircularBuffer`), IPC shared memory, SQLite wrapper, OpenSSL 3 support. |
+| **Micro Web Server** | [`src/LBmicroWebServer/`](src/LBmicroWebServer/) | Embedded HTTP/1.1 & WebSocket (RFC 6455) server with streaming file uploads, REST route registry, and range downloads. |
+| **WebSocket Client** | [`src/LBWebSocketClient/`](src/LBWebSocketClient/) | Non-blocking WebSocket client with auto ping/pong and reconnect support. |
+| **LBWebPrism** | [`src/LBWebPrism/`](src/LBWebPrism/) | Microservice gateway bridging HTTP POST requests to managed pools of Python and Node.js script workers. |
+| **LBLogger** | [`src/LBLogger/`](src/LBLogger/) | Asynchronous, hierarchical logging framework with dynamic sub-logger delegation and UI bindings. |
+| **LBVirtualKeyboard** | [`src/LBVirtualKeyboard/`](src/LBVirtualKeyboard/) | Touchscreen virtual keyboard engine with XML layouts, themes, and native Win32/X11 input injection. |
+| **C-API Shared Lib** | [`src/shared/LBToolkit/`](src/shared/LBToolkit/) | C-compatible shared library wrapper (`.so`/`.dll`) exposing LBToolkit to Python, C++, Go, and Rust. |
 
 ---
 
-## License
+## 🚀 Quick Starts & Examples
 
-This project is licensed under the Mozilla Public License 2.0 — see [LICENSE](LICENSE) for details.
+### 1️⃣ Starting an HTTP & WebSocket Server (`LBmicroWebServer`)
+
+```pascal
+uses
+  uLBmicroWebServer;
+
+var
+  Server: TLBmicroWebServer;
+begin
+  Server := TLBmicroWebServer.Create(nil);
+  try
+    Server.Port := 8080;
+    Server.DocumentsFolder := './www';
+    Server.UploadEndpoint := '/api/upload'; // Raw binary streaming upload
+    Server.Active := True;
+
+    WriteLn('Server listening on http://localhost:8080');
+    ReadLn;
+  finally
+    Server.Free;
+  end;
+end;
+```
+
+### 2️⃣ Asynchronous Thread-Safe Logging (`LBLogger`)
+
+```pascal
+uses
+  ULBLogger;
+
+var
+  Logger: TLBLogger;
+begin
+  Logger := TLBLogger.Create('app.log');
+  try
+    Logger.MaxLogLevel := 3;
+    Logger.logWrite(1, 'Database', lmt_Info, 'Connected to SQLite database.');
+  finally
+    Logger.Free;
+  end;
+end;
+```
 
 ---
 
-![License: MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-blue.svg)
-![Language: Pascal](https://img.shields.io/badge/language-Pascal-yellow.svg)
+## 🤖 AI SDK & Developer Documentation
+
+If you use AI coding tools (Claude, ChatGPT, GitHub Copilot, Cursor) to write software with LBToolkit, or if you are looking to contribute to the codebase, check out our comprehensive guides:
+
+- 📖 **[System Architecture Guide](docs/ARCHITECTURE.md)**: Deep dive into the threading model, memory strategy, IPC, and socket layer.
+- 🤖 **[AI SDK & Prompting Context Guide](docs/AI_SDK_GUIDE.md)**: Structured reference for AI assistants with ready-to-use boilerplate, class interfaces, and common development patterns.
+
+---
+
+## 🖥️ Tested Platforms
+
+- **Linux** (x86_64, ARM)
+- **Windows** (64-bit)
+
+---
+
+## 📄 License
+
+This project is licensed under the **Mozilla Public License 2.0** — see [LICENSE](LICENSE) for details.

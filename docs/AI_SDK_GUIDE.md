@@ -15,6 +15,7 @@ This guide is designed as an **AI Context Document** for AI coding assistants (s
 | **Multi-Listener Events** | `uEventsManager` | `TEventsManager` |
 | **HTTP / REST Server** | `uLBmicroWebServer` | `TLBmicroWebServer`, `THTTPRequestManager` |
 | **XML Route & Auth Registry** | `uWebRouteRegistry` | `TWebRouteRegistry`, `TRouteHandlerBase`, `TWebRouteModule` |
+| **Token Session Manager** | `uTokenManager` | `TTokenManager` |
 | **WebSocket Server** | `uWebSocketManagement` | `TLBWebSocketSession` |
 | **WebSocket Client** | `uLBWebSocketClient` | `TLBWebSocketClient` |
 | **Global Logging Engine** | `ULBLogger` | `InitLogger`, `ReleaseLogger`, `LBLogger`, `TLBBaseLogger` |
@@ -102,7 +103,7 @@ var
   _AlertLogger: TAlertLogger;
 begin
   // InitLogger(aMaxLogLevel, aLogFileName, aUseIntf, aUseTmpFolder)
-  // Set aUseTmpFolder := False to use exact file path
+  // Set aUseTmpFolder := False to write to the exact directory specified
   if not InitLogger(3, 'app.log', False, False) then
     Halt(1);
 

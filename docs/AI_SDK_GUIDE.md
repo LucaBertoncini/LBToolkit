@@ -71,78 +71,43 @@ end;
 
 ---
 
-### B. Synchronous Event Dispatcher (`TEventsManager`)
-
-```pascal
-uses
-  Classes, SysUtils, uEventsManager;
-
-type
-  TDataPublisher = class(TObject)
-  strict private
-    FEvents: TEventsManager;
-  public
-    constructor Create;
-    destructor Destroy; override;
-    procedure PublishData;
-    property Events: TEventsManager read FEvents;
-  end;
-
-constructor TDataPublisher.Create;
-begin
-  inherited Create;
-  FEvents := TEventsManager.Create(Self);
-  FEvents.AddEvent('OnDataReady');
-end;
-
-destructor TDataPublisher.Destroy;
-begin
-  FreeAndNil(FEvents);
-  inherited Destroy;
-end;
-
-procedure TDataPublisher.PublishData;
-begin
-  FEvents.RaiseEvent('OnDataReady', Self);
-end;
-```
-
----
-
-### C. Global Logging & Chain of Responsibility Sub-Loggers (`ULBLogger`)
+### B. Global Logging & Sub-Logger Chain of Responsibility (`ULBLogger`)
 
 ```pascal
 uses
   ULBLogger, SysUtils;
 
 type
-  TCustomNotificationLogger = class(TLBBaseLogger)
+  TAlertLogger = class(TLBBaseLogger)
   public
     function virtualWrite(aLogLevel: Byte; const aSender: String; aMsgType: TLBLoggerMessageType; var aMsgText: String): Boolean; override;
   end;
 
-function TCustomNotificationLogger.virtualWrite(aLogLevel: Byte; const aSender: String; aMsgType: TLBLoggerMessageType; var aMsgText: String): Boolean;
+function TAlertLogger.virtualWrite(aLogLevel: Byte; const aSender: String; aMsgType: TLBLoggerMessageType; var aMsgText: String): Boolean;
 begin
-  Result := True;
-
-  // Intercept critical messages
-  if aMsgType = lmt_Critical then
+  Result := False;
+  if aMsgType in [lmt_Critical, lmt_Error] then
   begin
-    // Dispatch alert (Telegram, Email, MQTT, UI Memo, etc.)
-    // SendEmailAlert(aSender, aMsgText);
+    // Send external notification (Telegram, Email, etc.)
+    // SendAlert(aSender + ': ' + aMsgText);
 
-    // Setting aMsgText := '' halts the sublogger chain and skips writing to disk
+    // Setting aMsgText := '' consumes the message and halts the sublogger chain
+    aMsgText := '';
+    Result := True;
   end;
 end;
 
 procedure ApplicationBootstrap;
 var
-  _Notifier: TCustomNotificationLogger;
+  _AlertLogger: TAlertLogger;
 begin
-  InitLogger(3, 'app.log');
+  // InitLogger(aMaxLogLevel, aLogFileName, aUseIntf, aUseTmpFolder)
+  // Set aUseTmpFolder := False to use exact file path
+  if not InitLogger(3, 'app.log', False, False) then
+    Halt(1);
 
-  _Notifier := TCustomNotificationLogger.Create;
-  LBLogger.addAlternativeLogger(_Notifier);
+  // Sublogger constructor automatically hooks into main logger chain
+  _AlertLogger := TAlertLogger.Create('Alerts');
 
   LBLogger.Write(1, 'Database', lmt_Info, 'System booted up successfully.');
   LBLogger.Write(1, 'PaymentGate', lmt_Critical, 'Payment provider unreachable!');
@@ -156,7 +121,7 @@ end;
 
 ---
 
-### D. XML Route Configuration & REST Handlers (`uWebRouteRegistry`)
+### C. XML Route Configuration & REST Handlers (`uWebRouteRegistry`)
 
 #### XML Route Definition (`Routes.xml`)
 ```xml
@@ -225,8 +190,8 @@ end.
 ## ⚠️ 4. Key Architectural Rules for AI Code Generation
 
 1. **Strict Naming Rules**: Always use `aParameter`, `_LocalVariable`, `FField`, `TType`, `PPointer`.
-2. **Global Logger Lifecycle**: Use `InitLogger(...)` and `ReleaseLogger()` for global logging management (`LBLogger`).
-3. **Sub-Logger Chain of Responsibility**: Sub-loggers derived from `TLBBaseLogger` can inspect, filter, or consume messages (`aMsgText := ''`) before disk writing.
+2. **Global Logger Lifecycle**: Use `InitLogger(aLogLevel, aFileName, aUseIntf, aUseTmpFolder)` and `ReleaseLogger()`.
+3. **Sub-Logger Chain**: Sub-logger constructor `TLBBaseLogger.Create('Name')` automatically registers with `LBLogger`. Setting `aMsgText := ''` in `virtualWrite` consumes the message and halts disk writing.
 4. **Error Handling Pattern**: Return boolean / status code + log errors via `LBLogger.Write`. Do not throw raw exceptions across operational boundaries.
 5. **Thread Lifecycle**: `TLBBaseThread` instances have `FreeOnTerminate := True` set by default. Destroy with `FreeAndNil(aThread)`. Derived `Destroy` must call `inherited Destroy` FIRST.
 6. **Interruptible Delays**: Always use `PauseFor(ms)` or `SleepWithCheck(ms)` in threads instead of `Sleep()`.

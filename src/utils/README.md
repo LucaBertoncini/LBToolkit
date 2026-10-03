@@ -1,77 +1,112 @@
-# LBToolkit — Utils Module
+# LBToolkit — Core Utilities (`src/utils/`)
 
-This folder contains reusable system-level units that support multiple projects within LBToolkit.
+Module `utils` provides essential low-level, thread-safe, and high-performance building blocks for Pascal systems programming, networking, concurrency, and IPC.
 
-## 📦 Included Units
+---
 
-### 🔹 uEventsManager.pas
-An event broadcasting system supporting multiple listeners.
+## 📚 Overview of Key Units
 
+### 🧵 `uLBBaseThread.pas` — Lifecycle-Aware Thread Base Class
+`TLBBaseThread` is a robust subclass of `TThread` designed for background daemon threads, worker pools, and asynchronous tasks.
+- **Controlled Lifecycle**: Safe `Stop()` method with customizable wait timeout.
+- **Reference Tracking**: `RegisterReference()` and `UnregisterReference()` to automatically nullify external object references when the thread terminates.
+- **Timeout Management**: Integrated wait logic avoiding infinite deadlocks during teardown.
 
-### 🔹 TLBApplicationBootstrap
-
-`TLBApplicationBootstrap` is a foundational class designed to orchestrate the initialization of Pascal applications.  
-It provides a structured approach for loading configuration settings from `.ini` or `.xml` files, setting up the logging system, and activating the integrated web server component (`TLBmicroWebServer`).
-This class acts as an extensible entry point for any project, allowing developers to derive custom application managers with specialized logic and behaviors.
-
-#### ✨ Key Features
-- 🛠 Configuration loading from INI or XML format  
-- 📄 Automatic logger setup with support for file path resolution and size limits  
-- 🌐 Optional web server activation with document root configuration  
-- 📦 Clean separation of bootstrap logic from application-specific features  
-- 🔁 Designed for inheritance and modular expansion  
-
-
-### 🔹 uLBBaseThread.pas
-A lifecycle-aware thread class with safe termination, critical section handling, and multi-reference cleanup.
-
-- Ensures thread closure with `Terminate` + `WaitFor`
-- Manages external references via `RegisterReference`
-- Suitable for daemon-like background workers
-
-> **Note for inheritance:**  
-> Classes deriving from `TLBBaseThread` should call `inherited Destroy` **before** releasing their local resources to ensure safe thread finalization.
-
-
-### 🔹 uLBCalendar.pas
-Module for converting between UTC and local time with full support for historical Daylight Saving Time (DST) rules. It includes:
-
-- Accurate bidirectional conversions: `UTC ↔ LocalTime`
-- Year-specific DST activation based on official Italian transitions (1940 onward)
-- ISO 8601 formatting for timestamps
-- Linux and Windows compatibility
-- Extensible architecture for supporting multiple regions
-
-
-### 🔹 uLBTimers.pas
-Timing tools including interruptable sleep and high-precision delays.
-
-### 🔹 uLBFileUtils.pas
-Utilities for file operations, folder size calculation and recursive discovery.
-
-### 🔹 uSharedMemoryManagement.pas
-A shared memory manager for fast IPC communication with external processes (e.g., Python, other native apps).
-
-**Basic SysV usage:**
+**Usage Example:**
 ```pascal
-var
-  Shared: pSharedMemory;
+type
+  TMyWorker = class(TLBBaseThread)
+  protected
+    procedure InternalExecute; override;
+  end;
+
+procedure TMyWorker.InternalExecute;
 begin
-  Shared := AllocateSharedMemory(1234, 4096);
-
-  if Assigned(Shared) then
+  while not Terminated do
   begin
-    // Use Shared^.mem to exchange data with external process
-    // ...
-
-    closeSharedMemory(Shared);
-    Dispose(Shared);
+    // Perform task...
+    SleepWithCheck(100); // Interruptible sleep
   end;
 end;
 ```
 
 ---
 
-## 🛠 Integration
+### 🔒 `uTimedoutCriticalSection.pas` — Deadlock-Resistant Sincronization
+`TTimedOutCriticalSection` wraps system critical sections with timeout-based acquisition (`Enter(TimeoutMs)`).
+- Prevents thread deadlocks when acquiring locks.
+- Returns `Boolean` indicating whether the lock was acquired before timing out.
 
-These units are used by other LBToolkit modules such as `LBLogger` and external projects.
+**Usage Example:**
+```pascal
+var
+  CS: TTimedOutCriticalSection;
+begin
+  CS := TTimedOutCriticalSection.Create;
+  try
+    if CS.Enter(1000) then // Try to acquire lock within 1 second
+    begin
+      try
+        // Critical section logic
+      finally
+        CS.Leave;
+      end;
+    end
+    else
+      // Handle timeout / contention
+  finally
+    CS.Free;
+  end;
+end;
+```
+
+---
+
+### 📡 `uEventsManager.pas` — Thread-Safe Decoupled Event Dispatcher
+`TEventsManager` implements a publish-subscribe pattern allowing multiple listeners to register for named events with flexible parameters.
+- Thread-safe listener registration and dispatching.
+- Supports generic callback procedures and method pointers.
+
+---
+
+### ⭕ `uLBCircularBuffer.pas` — High-Performance Ring Buffer
+`TLBCircularBuffer` is a memory-efficient, fixed-size ring buffer designed for streaming socket I/O without repeated memory reallocations.
+- `Write()`, `Read()`, `Peek()`.
+- Direct stream dumping via `WriteToStream()`.
+- Thread-safe variants and lock-free fast-paths for single-producer/single-consumer setups.
+
+---
+
+### 🛡️ `uLBSSLConfig.pas` — OpenSSL 3 Thread-Safe Initialization
+Handles OpenSSL initialization and global thread callbacks.
+- Ensures OpenSSL 3 crypto functions are thread-safe when called from multiple web server worker threads.
+
+---
+
+### 💻 `uIPCUtils.pas` — Inter-Process Communication
+Provides shared memory (`AllocateSharedMemory`, `AttachSharedMemory`) and named semaphores across Windows and Linux (SysV / POSIX IPC).
+- Shared memory buffer structure `TSharedMemory`.
+- Cross-platform named semaphore class `TLBNamedSemaphore`.
+
+---
+
+### 🗄️ `SQLiteWrapper.pas` — Lightweight SQLite Object Wrapper
+Provides an easy-to-use, zero-overhead Pascal interface for SQLite database interactions.
+
+---
+
+### 📂 `uLBFileUtils.pas` — Extended File System Utilities
+- Recursive directory scanning.
+- Directory size estimation.
+- Cross-platform path normalization and file sanitization against path traversal attacks.
+
+---
+
+### ⏱️ `uLBTimers.pas` — Precision Timers & Interruptible Delays
+- `SleepWithCheck()` allows threads to pause while remaining instantly responsive to `Terminated` signals.
+- High-precision timestamping utilities.
+
+---
+
+### 🚀 `uLBApplicationBoostrap.pas` — Application Initializer
+Standard application lifecycle manager for reading INI/XML configurations, setting up logging, and launching integrated web server instances.

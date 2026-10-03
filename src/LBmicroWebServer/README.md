@@ -8,10 +8,96 @@
 
 - **Multithreaded Connection Handling**: Spawns worker threads (`THTTPRequestManager`) for each client connection with automatic lifecycle deallocation (`FreeOnTerminate = True`).
 - **Pipeline Architecture**: Interceptable request processing chain (`TFPHTTPRequestProcessor`).
+- **Declarative XML Route & Authorization Matrix (`uWebRouteRegistry.pas`)**: Define functional areas, endpoints, HTTP verbs, authentication flags (`RequiresAuth="true|false"`), and operation types (`OpType`) in readable XML configuration files.
+- **Worker Execution Families (`ekStandard`, `ekFileDownload`, `ekAuth`, `ekUpload`, `ekProxy`)**: Cleanly dispatches JSON requests, file downloads, authentication tokens, raw streaming uploads, or signed transparent proxy requests.
 - **Streaming File Uploads**: Raw binary upload endpoint supporting large files. Body data streams directly from socket to disk, preventing memory overflow. Original filenames are preserved as metadata while files are saved with unique UUIDs.
-- **REST Route Registry**: XML-based or programmatic route declaration (`uWebRouteRegistry.pas`) with functional area and permission mapping.
 - **WebSocket Server (RFC 6455)**: Bidirectional streaming with framing, masking/unmasking, automatic ping/pong, and message queues (`uWebSocketManagement.pas`).
 - **Security**: Sandboxed document root (`TLBmWsDocumentsFolder`), path-traversal prevention, sanitized file names, OpenSSL 3 thread safety, and SIGPIPE protection on Unix systems.
+
+---
+
+## 📜 XML Route Registry & Authorization Matrix
+
+Routes and permissions are defined in a clean XML file parsed by `TRouteRegistry`.
+
+### 📄 Example XML Route Configuration (`Routes.xml`)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<RouteRegistry>
+  <Applications>
+    <Application Code="AppWarehouse" Name="Warehouse Management" />
+    <Application Code="AppAdmin" Name="System Administration" />
+  </Applications>
+
+  <!-- Functional Area for Authentication (Public / No Auth required) -->
+  <FunctionalArea Code="Auth" Name="Authentication Module">
+    <Endpoint Function="login" Method="POST" URI="/api/v1/auth/login" Kind="Auth" RequiresAuth="false" />
+    <Endpoint Function="logout" Method="POST" URI="/api/v1/auth/logout" Kind="Auth" RequiresAuth="true" />
+  </FunctionalArea>
+
+  <!-- Protected Warehouse Functional Area -->
+  <FunctionalArea Code="Inventory" Name="Stock Inventory" App="AppWarehouse">
+    <!-- Public search endpoint for authenticated users -->
+    <Endpoint Function="searchItems" Method="POST" URI="/api/v1/inventory/search" Kind="Standard" RequiresAuth="true" />
+
+    <!-- Endpoint requiring specific OpType permission 'EDIT_STOCK' -->
+    <Endpoint Function="updateStock" Method="POST" URI="/api/v1/inventory/update" Kind="Standard" RequiresAuth="true" OpType="EDIT_STOCK" />
+
+    <!-- File Download Worker endpoint -->
+    <Endpoint Function="downloadReport" Method="GET" URI="/api/v1/inventory/report" Kind="FileDownload" RequiresAuth="true" OpType="VIEW_REPORTS" />
+
+    <!-- Raw File Upload Worker endpoint -->
+    <Endpoint Function="uploadDocument" Method="POST" URI="/api/v1/inventory/upload" Kind="Upload" RequiresAuth="true" OpType="EDIT_STOCK" />
+
+    <!-- Transparent Signed Proxy endpoint forwarding to a remote service -->
+    <Endpoint Function="externalRates" Method="POST" URI="/api/v1/inventory/rates" Kind="Proxy" Target="rates_service" RequiresAuth="true" />
+  </FunctionalArea>
+</RouteRegistry>
+```
+
+---
+
+## 🛠️ Registering Worker Handlers in Pascal
+
+```pascal
+uses
+  uWebRouteRegistry, fpjson;
+
+type
+  TWarehouseHandler = class(TRouteHandlerBase)
+  public
+    function SearchItemsWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
+    function UpdateStockWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
+  end;
+
+function TWarehouseHandler.SearchItemsWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
+var
+  Res: TJSONObject;
+begin
+  Res := TJSONObject.Create;
+  Res.Add('status', 'success');
+  aStatusCode := 200;
+  Result := Res;
+end;
+
+function TWarehouseHandler.UpdateStockWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
+begin
+  // Handle stock update
+end;
+
+// Registration during initialization
+procedure RegisterWarehouseRoutes(RouteModule: TWebRouteModule);
+var
+  Handler: TWarehouseHandler;
+begin
+  Handler := TWarehouseHandler.Create('Inventory');
+  Handler.RegisterStandardWorker('searchItems', @Handler.SearchItemsWorker);
+  Handler.RegisterStandardWorker('updateStock', @Handler.UpdateStockWorker);
+
+  RouteModule.RegisterHandler(Handler);
+end;
+```
 
 ---
 
@@ -32,51 +118,18 @@
                   |                                 |
                   v                                 v
         [HTTP Request Parser]             [WebSocket Handshake]
-        (Header-first parsing)            (RFC 6455 Handshake)
                   |                                 |
         +---------+---------+                       v
         |                   |             [TLBWebSocketSession]
-        v                   v             (Frame I/O, Ping/Pong)
-  [Static File]    [Forwarded Request]
- (Range downloads) (REST Route Registry /
-                    Processors Chain)
-```
-
----
-
-## 📄 Raw File Upload Handling
-
-`LBmicroWebServer` handles high-throughput raw binary file uploads:
-1. Client sends HTTP POST/PUT to `UploadEndpoint` with header `X-File-Name: document.pdf`.
-2. Header parser reads `Content-Length` and switches strategy to stream directly to disk.
-3. The uploaded file is saved under `DocumentsFolder` with a generated unique filename.
-4. An `OnUploadCompleted` event triggers for downstream validation.
-5. Details are made available in `THTTPRequestParser.UploadedFiles`.
-
----
-
-## 🚀 Quick Start Example
-
-```pascal
-var
-  Server: TLBmicroWebServer;
-begin
-  Server := TLBmicroWebServer.Create(nil);
-  try
-    Server.Port := 8080;
-    Server.DocumentsFolder := '/var/www/html';
-    Server.UploadEndpoint := '/api/upload';
-
-    // Hook custom request handler
-    Server.OnGETRequest := @HandleGetRequest;
-
-    Server.Active := True;
-    WriteLn('Server running on port 8080...');
-    ReadLn;
-  finally
-    Server.Free;
-  end;
-end;
+        v                   v
+  [Static File]     [TWebRouteModule / TRouteRegistry]
+ (Range downloads)  (Validates Auth & OpType permission matrix)
+                            |
+           +----------------+----------------+----------------+
+           |                |                |                |
+           v                v                v                v
+     [ekStandard]    [ekFileDownload]   [ekUpload]        [ekProxy]
+     (JSON In/Out)    (Disk Streaming) (Disk Stream)   (Signed Remote Forward)
 ```
 
 ---
@@ -87,7 +140,7 @@ end;
 |------|---------|
 | `uLBmicroWebServer.pas` | Core server engine, listener, thread manager |
 | `uHTTPRequestParser.pas` | Header & body parsing with `TLBCircularBuffer` |
-| `uWebRouteRegistry.pas` | REST endpoint definition & permission matrix |
+| `uWebRouteRegistry.pas` | XML-driven REST route registry, permission matrix (`OpType`), and worker dispatchers |
 | `uWebSocketManagement.pas` | WebSocket framing, ping/pong, session management |
 | `uLBmWsFileManager.pas` | Static file serving & Range HTTP header support |
 | `uLBmWsDocumentsFolder.pas` | Document root sandboxing and path verification |

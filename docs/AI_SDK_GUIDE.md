@@ -12,7 +12,7 @@ This guide is designed as an **AI Context Document** for AI coding assistants (s
 | **Timeout Critical Section**| `uTimedoutCriticalSection` | `TTimedOutCriticalSection` |
 | **Ring Buffer** | `uLBCircularBuffer` | `TLBCircularBuffer` |
 | **HTTP / REST Server** | `uLBmicroWebServer` | `TLBmicroWebServer`, `THTTPRequestManager` |
-| **Route Registry** | `uWebRouteRegistry` | `TWebRouteRegistry` |
+| **XML Route & Auth Registry** | `uWebRouteRegistry` | `TWebRouteRegistry`, `TRouteHandlerBase`, `TWebRouteModule` |
 | **WebSocket Server** | `uWebSocketManagement` | `TLBWebSocketSession` |
 | **WebSocket Client** | `uLBWebSocketClient` | `TLBWebSocketClient` |
 | **Logging Engine** | `ULBLogger` | `TLBLogger`, `TLBBaseLogger` |
@@ -25,7 +25,76 @@ This guide is designed as an **AI Context Document** for AI coding assistants (s
 
 ## 💻 2. Idiomatic Code Patterns & Boilerplate
 
-### A. Creating a Daemon Worker Thread (`TLBBaseThread`)
+### A. XML Route Configuration & REST Handlers (`uWebRouteRegistry`)
+
+#### XML Route Definition (`Routes.xml`)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<RouteRegistry>
+  <FunctionalArea Code="Inventory" Name="Stock Management">
+    <!-- Public search endpoint -->
+    <Endpoint Function="search" Method="POST" URI="/api/v1/inventory/search" Kind="Standard" RequiresAuth="true" />
+    <!-- Protected write endpoint requiring 'EDIT_STOCK' OpType permission -->
+    <Endpoint Function="update" Method="POST" URI="/api/v1/inventory/update" Kind="Standard" RequiresAuth="true" OpType="EDIT_STOCK" />
+  </FunctionalArea>
+</RouteRegistry>
+```
+
+#### Pascal Worker Class Implementation
+```pascal
+unit uInventoryRouteHandler;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, uWebRouteRegistry, fpjson;
+
+type
+  TInventoryRouteHandler = class(TRouteHandlerBase)
+  public
+    constructor Create;
+    function SearchWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
+    function UpdateWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
+  end;
+
+implementation
+
+constructor TInventoryRouteHandler.Create;
+begin
+  inherited Create('Inventory'); // AreaCode matching XML <FunctionalArea Code="Inventory">
+
+  RegisterStandardWorker('search', @SearchWorker);
+  RegisterStandardWorker('update', @UpdateWorker);
+end;
+
+function TInventoryRouteHandler.SearchWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
+var
+  Res: TJSONObject;
+begin
+  Res := TJSONObject.Create;
+  Res.Add('result', 'success');
+  aStatusCode := 200;
+  Result := Res;
+end;
+
+function TInventoryRouteHandler.UpdateWorker(aUserId: Integer; aUserConfig: TJSONObject; aParams: TJSONObject; out aStatusCode: Integer): TJSONData;
+var
+  Res: TJSONObject;
+begin
+  Res := TJSONObject.Create;
+  Res.Add('updated', True);
+  aStatusCode := 200;
+  Result := Res;
+end;
+
+end.
+```
+
+---
+
+### B. Creating a Daemon Worker Thread (`TLBBaseThread`)
 
 ```pascal
 unit uMyWorkerThread;
@@ -69,7 +138,7 @@ end.
 
 ---
 
-### B. Deadlock-Resistant Lock (`TTimedOutCriticalSection`)
+### C. Deadlock-Resistant Lock (`TTimedOutCriticalSection`)
 
 ```pascal
 uses
@@ -87,10 +156,6 @@ begin
       finally
         CS.Leave;
       end;
-    end
-    else
-    begin
-      // Handle lock timeout gracefully
     end;
   finally
     CS.Free;
@@ -100,21 +165,11 @@ end;
 
 ---
 
-### C. Setting up `LBmicroWebServer` (HTTP & Raw File Upload)
+### D. Setting up `LBmicroWebServer` (HTTP & Raw File Upload)
 
 ```pascal
 uses
   Classes, SysUtils, uLBmicroWebServer, uHTTPConsts;
-
-procedure OnGET(Sender: TObject; const AURI: String; Params: TStringList; ResponseStream: TMemoryStream; var ContentType: String; var Handled: Boolean);
-begin
-  if AURI = '/api/status' then
-  begin
-    ContentType := 'application/json';
-    WriteStringToStream(ResponseStream, '{"status":"ok"}');
-    Handled := True;
-  end;
-end;
 
 procedure StartServer;
 var
@@ -125,81 +180,11 @@ begin
     Server.Port := 8080;
     Server.DocumentsFolder := './www';
     Server.UploadEndpoint := '/api/upload'; // Endpoint for raw binary streaming uploads
-    Server.OnGETRequest := @OnGET;
-
     Server.Active := True;
+
     WriteLn('HTTP Server started on port 8080');
   finally
-    // Keep running...
-  end;
-end;
-```
-
----
-
-### D. WebSocket Client Connection (`TLBWebSocketClient`)
-
-```pascal
-uses
-  uLBWebSocketClient, uHTTPConsts;
-
-type
-  TWSHandler = class
-    procedure OnTextMessage(Sender: TObject; isLastFrame: Boolean; aDataType: TWebSocketFrameType; aBuffer: pByte; aBufferLen: Int64);
-  end;
-
-procedure TWSHandler.OnTextMessage(Sender: TObject; isLastFrame: Boolean; aDataType: TWebSocketFrameType; aBuffer: pByte; aBufferLen: Int64);
-var
-  Msg: String;
-begin
-  SetString(Msg, PChar(aBuffer), aBufferLen);
-  WriteLn('Received WS Message: ', Msg);
-end;
-
-procedure ConnectWS;
-var
-  WSClient: TLBWebSocketClient;
-  Handler: TWSHandler;
-begin
-  Handler := TWSHandler.Create;
-  WSClient := TLBWebSocketClient.Create;
-
-  WSClient.RemoteConnectionData.Host := 'echo.websocket.events';
-  WSClient.RemoteConnectionData.Port := 443;
-  WSClient.RemoteConnectionData.UseSSL := True;
-  WSClient.URI := '/';
-  WSClient.OnWebSocketTextMessage := @Handler.OnTextMessage;
-
-  WSClient.Start;
-  WSClient.AddWebSocketMessageToSend('Hello from LBToolkit!');
-end;
-```
-
----
-
-### E. Ring Buffer Data Stream Handling (`TLBCircularBuffer`)
-
-```pascal
-uses
-  uLBCircularBuffer, Classes;
-
-var
-  RingBuffer: TLBCircularBuffer;
-  DataStream: TMemoryStream;
-begin
-  RingBuffer := TLBCircularBuffer.Create(65536); // 64KB Ring Buffer
-  try
-    RingBuffer.Write('GET / HTTP/1.1'#13#10, 16);
-
-    // Dump circular buffer content directly to a stream without double allocation
-    DataStream := TMemoryStream.Create;
-    try
-      RingBuffer.WriteToStream(DataStream, RingBuffer.AvailableData);
-    finally
-      DataStream.Free;
-    end;
-  finally
-    RingBuffer.Free;
+    // Server lifecycle management
   end;
 end;
 ```
@@ -208,8 +193,9 @@ end;
 
 ## ⚠️ 3. Key Architectural Rules for AI Code Generation
 
-1. **Thread Lifecycle**: `TLBBaseThread` instances have `FreeOnTerminate := True` set by default. Do not manually free thread instances unless you explicitly override this behavior.
-2. **Interruptible Delays**: Never use `SysUtils.Sleep(ms)` inside worker loops. Always use `SleepWithCheck(ms)` provided by `uLBTimers` or `uLBBaseThread` so threads terminate cleanly.
-3. **OpenSSL Multithreading**: When using HTTPS or Secure WebSockets in multithreaded environments, ensure `InitOpenSSL3()` is invoked during app bootstrap.
-4. **No Direct Multipart/Form-Data**: File uploads use raw binary streaming (`UploadEndpoint` with `X-File-Name` header) to maintain low memory usage and high streaming performance.
-5. **Path Sanitization**: Always use `TLBmWsDocumentsFolder` or `SanitizeFileName` from `uLBFileUtils` when dealing with user-provided path inputs to prevent directory traversal vulnerabilities.
+1. **REST Worker Signatures**: Pascal REST workers must match the signature defined for their family (`TStandardWorker`, `TFileDownloadWorker`, `TAuthWorker`, `TUploadWorker`).
+2. **Thread Lifecycle**: `TLBBaseThread` instances have `FreeOnTerminate := True` set by default.
+3. **Interruptible Delays**: Always use `SleepWithCheck(ms)` provided by `uLBTimers` or `uLBBaseThread`.
+4. **OpenSSL Multithreading**: Call `InitOpenSSL3()` during app bootstrap when using OpenSSL in multithreaded servers.
+5. **No Direct Multipart/Form-Data**: File uploads use raw binary streaming with `X-File-Name` header.
+6. **Path Sanitization**: Use `TLBmWsDocumentsFolder` or `SanitizeFileName` from `uLBFileUtils` to protect against path traversal vulnerabilities.

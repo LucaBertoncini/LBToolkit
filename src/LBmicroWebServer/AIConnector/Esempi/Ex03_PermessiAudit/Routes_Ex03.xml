@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Esempio 3. Tre funzioni dell'area "officina":
+    ListaOrdini   OpType Lettura   descritta
+    ChiudiOrdine  OpType Modifica  NON descritta (esposta perche' ExposeUndescribed e' vero)
+    Stato         nessun OpType    NON esposta (RequireOpTypeForTools e' vero)
+-->
+<WebRoutes>
+  <FunctionalArea Code="ai" Description="Agente AI (MCP)">
+    <Endpoint Function="Mcp" URI="/mcp" Method="POST" Kind="AIConnector" OpType="Uso"
+              Description="Canale MCP per agenti AI"/>
+  </FunctionalArea>
+  <FunctionalArea Code="officina" Description="Officina">
+    <Endpoint Function="ListaOrdini" URI="/api/officina/ordini" Method="POST" OpType="Lettura"
+              Description="Elenca gli ordini di lavoro, facoltativamente per stato."/>
+    <Endpoint Function="ChiudiOrdine" URI="/api/officina/chiudi" Method="POST" OpType="Modifica"
+              Description="Chiude un ordine di lavoro. Restituisce l'utente che lo ha chiuso."/>
+    <Endpoint Function="Stato" URI="/api/officina/stato" Method="POST"
+              Description="Stato del servizio: aperto a ogni utente autenticato, senza permesso specifico."/>
+  </FunctionalArea>
+</WebRoutes>

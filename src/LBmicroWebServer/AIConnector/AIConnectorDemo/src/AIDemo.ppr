@@ -1,0 +1,76 @@
+program AIDemo;
+{
+  Esempio di accesso per agenti AI (OAuth + MCP) a un'applicazione LBmicroWebServer.
+
+  Uso:
+      AIDemo [file.ini]          (senza argomento: ../config/AIDemo.ini rispetto all'eseguibile)
+
+  Stampa "READY ..." quando il server e' pronto e resta in attesa; Ctrl+C o SIGTERM lo fermano in modo ordinato.
+  Il registro e' in logs/aidemo.log accanto all'eseguibile (livello e posizione: sezione [LBLogger] del file INI).
+}
+{$mode objfpc}{$H+}
+
+uses
+  {$IFDEF UNIX}cthreads,{$ENDIF}
+  Classes, SysUtils, BaseUnix, uLBSignalManager,
+  uAIDemoApplication;
+
+var
+  gStop      : Boolean = False;
+  gSigInt    : TSignalManager = nil;
+  gSigTerm   : TSignalManager = nil;
+
+// Gestore di SIGINT e SIGTERM: stessa firma di IgnoreBrokenPIPE nel bootstrap. Si limita ad alzare un flag.
+procedure StopHandler(signal: longint; info: psiginfo; context: psigcontext); cdecl;
+begin
+  gStop := True;
+end;
+
+var
+  gApp    : TAIDemoApplication;
+  gConfig : String;
+  gError  : String;
+begin
+  if ParamCount >= 1 then
+    gConfig := ExpandFileName(ParamStr(1))
+  else
+    gConfig := ExpandFileName(ExtractFilePath(ParamStr(0)) + '../config/AIDemo.ini');
+
+  if not FileExists(gConfig) then
+  begin
+    WriteLn('File di configurazione non trovato: ', gConfig);
+    Halt(1);
+  end;
+
+  gSigInt := TSignalManager.Create;
+  if not gSigInt.SetSignalAction(SIGINT, @StopHandler) then
+    WriteLn('Attenzione: SIGINT non agganciato (Ctrl+C terminera'' il processo senza chiusura ordinata)');
+  gSigTerm := TerminateSignalManager(@StopHandler);
+
+  gApp := TAIDemoApplication.Create;
+  try
+    gError := '';
+    if not gApp.LoadConfiguration(gConfig, gError) then
+    begin
+      WriteLn('Errore di configurazione: ', gError);
+      ExitCode := 1;
+    end
+    else if not gApp.Ready then
+    begin
+      WriteLn('Il server non e'' stato avviato: controlla Port in [LBmicroWebServer] e il registro (logs/aidemo.log)');
+      ExitCode := 2;
+    end
+    else begin
+      WriteLn('READY ', gApp.StatusLine());
+      Flush(Output);
+      while not gStop do
+        Sleep(200);
+      WriteLn('Arresto in corso ...');
+    end;
+  finally
+    gApp.Free;
+  end;
+
+  FreeAndNil(gSigTerm);
+  FreeAndNil(gSigInt);
+end.

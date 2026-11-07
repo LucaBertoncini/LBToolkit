@@ -131,9 +131,13 @@ unit uWebRouteRegistry;
 // gia' dichiarato altrove:
 //   - l'attributo Target dell'endpoint nomina simbolicamente il bersaglio
 //     remoto (es. Target="wms_bridge");
-//   - quel nome simbolico risolve in indirizzo, chiave condivisa e timeout
-//     leggendo il catalogo dei bersagli (uLBRemoteTargets.pas), popolato
-//     dal file di configurazione dell'applicazione.
+//   - quel nome simbolico risolve in indirizzo e timeout leggendo il
+//     blocco <RemoteTargets> dello stesso file XML (si veda
+//     TRouteRegistry.LoadRemoteTargets), e in chiave condivisa dal file
+//     di configurazione dell'applicazione (si veda la nota "LA CHIAVE
+//     SEGRETA NON COMPARE MAI NELL'XML" piu' sotto). Entrambi i pezzi
+//     vivono nel medesimo TLBRemoteTargets (uLBSignedProxy.pas),
+//     esposto da TRouteRegistry.RemoteTargets / TWebRouteModule.RemoteTargets.
 // Non esiste quindi alcun metodo da registrare, e di conseguenza nessuna
 // classe di dominio: un'area funzionale composta da soli endpoint proxy
 // non richiede alcun codice Pascal. Le sue voci entrano nella tabella di
@@ -304,7 +308,7 @@ interface
 uses
   Classes, SysUtils, Laz2_DOM, fpjson, jsonparser, fgl,
   uLBmicroWebServer, uHTTPRequestParser,
-  uLBRemoteTargets, uLBSignedHttpClient, uLBRequestSignature;
+  uLBSignedProxy, uLBRequestSignature;
 
 const
   cXML_ROOT_NODENAME     = DOMString('WebRoutes');
@@ -316,6 +320,19 @@ const
   // PIATTAFORMA" in testa alla unit.
   cXML_APPS_NODENAME     = DOMString('Applications');
   cXML_APP_NODENAME      = DOMString('Application');
+
+  // Blocco che dichiara il catalogo dei bersagli remoti per gli endpoint
+  // Kind="Proxy", e il singolo elemento al suo interno. SOLO indirizzo e
+  // timeout vivono qui: la chiave condivisa non compare mai nell'XML -
+  // si veda la nota "LA CHIAVE SEGRETA NON COMPARE MAI NELL'XML" piu'
+  // sopra - e va impostata a parte con TLBRemoteTargets.SetSharedKey o
+  // TLBRemoteTargets.LoadSharedKeysFromJSONFile, da un file di
+  // configurazione dell'applicazione escluso dal controllo di versione.
+  cXML_TARGETS_NODENAME  = DOMString('RemoteTargets');
+  cXML_TARGET_NODENAME   = DOMString('RemoteTarget');
+  cXML_ATTR_BASEURL      = DOMString('BaseURL');
+  cXML_ATTR_TIMEOUTMS    = DOMString('TimeoutMS');
+  cDefaultTargetTimeoutMS = Integer(15000);
 
   cXML_ATTR_CODE         = DOMString('Code');
   cXML_ATTR_DESCRIPTION  = DOMString('Description');
@@ -339,6 +356,7 @@ const
   cEndpointKind_Auth         = String('Auth');
   cEndpointKind_Upload       = String('Upload');
   cEndpointKind_Proxy        = String('Proxy');
+  cEndpointKind_AIConnector  = String('AIConnector');
 
   cDefaultHTTPMethod     = String('POST');
   cBooleanFalseStr       = String('false');
@@ -362,7 +380,7 @@ type
   // richiesta viene firmata e inoltrata al server remoto nominato
   // dall'attributo Target - si veda la nota "LA FAMIGLIA Kind=Proxy" in
   // testa alla unit.
-  TEndpointKind = (ekStandard, ekFileDownload, ekAuth, ekUpload, ekProxy);
+  TEndpointKind = (ekStandard, ekFileDownload, ekAuth, ekUpload, ekProxy, ekAIConnector);
 
   {------------------------------------------------------------------------
     Le firme di metodo, una per famiglia - si veda la nota "CINQUE
@@ -395,6 +413,11 @@ type
     aRequestManager: THTTPRequestManager; HTTPParser: THTTPRequestParser;
     aResponseHeaders: TStringList; var aResponseData: TMemoryStream;
     out aStatusCode: Integer): Boolean of object;
+
+  // Kind="AIConnector" is the single entry point of the MCP connector (TLBAIConnector). The tools
+  // are the Standard endpoints: TLBAIConnector calls their TStandardWorker after authenticating the
+  // user and checking Area.OpType. The alias is kept for readability of the connector code.
+  TAIConnectorWorker = TStandardWorker;
 
   TAuthenticateRequestEvent = function(RequestHeaders, ResponseHeaders: TStringList;
     out anUserId: Integer; out anUserConfig: TJSONObject): Boolean of object;
@@ -430,6 +453,10 @@ type
     // accessibili a un utente.
     AreaApp         : String;
     FunctionName    : String;
+    // Human-readable description of the endpoint (attribute Description). Free text, usable for
+    // several purposes. For a Standard endpoint exposed to an AI it is the description of the tool;
+    // for the Kind="AIConnector" endpoint it describes the MCP channel itself.
+    Description     : String;
     URI             : String;
     HTTPMethod      : String;
     OpType          : String;
@@ -528,6 +555,22 @@ type
   TDispatchMap = specialize TFPGMap<String, TDispatchEntry>;
 
   {------------------------------------------------------------------------
+    TAIEndpointEntry
+
+    A Standard endpoint bound to its handler: a candidate AI tool. It stays
+    in the dispatch table too (declared once, used by the web app and the AI).
+  ------------------------------------------------------------------------}
+  TAIEndpointEntry = class(TObject)
+  public
+    Descriptor  : TEndpointDescriptor;   // borrowed: owned by TRouteRegistry
+    Handler     : TRouteHandlerBase;     // borrowed: owned by the host application
+    TheMethod   : TMethod;
+    KindMatches : Boolean;               // False if the worker could not be resolved
+  end;
+
+  TAIEndpointList = specialize TFPGObjectList<TAIEndpointEntry>;
+
+  {------------------------------------------------------------------------
     TRouteRegistry
 
     Possiede l'elenco delle applicazioni dichiarate, quello degli endpoint
@@ -538,11 +581,28 @@ type
     FApplications      : TApplicationDescriptorList;
     FDeclaredEndpoints : TEndpointDescriptorList;
     FDispatchTable     : TDispatchMap;
+    FAIEndpoints       : TAIEndpointList;
+    // Catalogo dei bersagli remoti per gli endpoint Kind="Proxy",
+    // POSSEDUTO da questa classe (non piu' un riferimento in prestito
+    // dall'applicazione ospitante): nasce vuoto in Create e viene
+    // popolato da LoadRemoteTargets durante LoadFromXMLFile. La chiave
+    // condivisa di ciascun bersaglio resta sempre assente finche'
+    // l'applicazione ospitante non la imposta esplicitamente (si veda
+    // TLBRemoteTargets.SetSharedKey/LoadSharedKeysFromJSONFile in
+    // uLBSignedProxy.pas).
+    FRemoteTargets     : TLBRemoteTargets;
 
     class function buildKey(const aHTTPMethod, aURI: String): String;
 
     // Legge il blocco <Applications>. Invocata da LoadFromXMLFile.
     procedure LoadApplications(aRootNode: TDOMNode);
+
+    // Legge il blocco <RemoteTargets> (Name/BaseURL/TimeoutMS per ciascun
+    // <RemoteTarget>) e popola FRemoteTargets. Invocata da LoadFromXMLFile,
+    // subito dopo LoadApplications. Un bersaglio gia' noto (stesso Name)
+    // viene aggiornato, non duplicato: la sua eventuale chiave condivisa,
+    // se gia' impostata, non viene mai toccata da qui.
+    procedure LoadRemoteTargets(aRootNode: TDOMNode);
 
     // Restituisce la descrizione di un'applicazione dichiarata, o nil.
     // Il riferimento e' IN PRESTITO: resta di proprieta' di questa classe.
@@ -570,6 +630,15 @@ type
       out aTarget: String): Boolean;
 
     procedure ValidateAllEndpointsRegistered;
+
+    // The endpoint declared with Kind="AIConnector" (the MCP entry point), or nil.
+    function AIConnectorEndpoint: TEndpointDescriptor;
+    // Logs every inconsistency of the MCP entry point (more than one, URI not absolute, clash with a
+    // route). True if the declaration is usable.
+    function ValidateAIConnector: Boolean;
+    // Candidate AI tools: the authenticated Standard endpoints bound to a handler by RegisterHandler.
+    function AIEndpointCount: Integer;
+    function GetAIEndpoint(anIndex: Integer): TAIEndpointEntry;
 
     // Verifica la coerenza delle dichiarazioni di applicazione: ogni App
     // referenziata da un'area deve corrispondere a un <Application>
@@ -601,6 +670,13 @@ type
     // Nuova istanza, di cui il chiamante prende in carico la proprieta'.
     function GetApplicationsForPermissions(aGrantedPermissions: TJSONArray;
       aIsAdmin: Boolean): TJSONArray;
+
+    // Catalogo dei bersagli remoti, popolato dal blocco <RemoteTargets>
+    // dell'XML delle rotte. Il riferimento resta di proprieta' di questa
+    // classe: l'applicazione ospitante lo usa per impostare le chiavi
+    // condivise (SetSharedKey/LoadSharedKeysFromJSONFile) e per costruire
+    // il proprio TLBSignedHttpClient, ma non deve liberarlo.
+    property RemoteTargets: TLBRemoteTargets read FRemoteTargets;
   end;
 
   {------------------------------------------------------------------------
@@ -617,12 +693,20 @@ type
     FOnAuthenticateRequest        : TAuthenticateRequestEvent;
     FOnRetrieveGrantedPermissions : TRetrieveGrantedPermissionsEvent;
 
-    // Riferimenti IN PRESTITO, di proprieta' dell'applicazione ospitante:
-    // questo modulo non li crea e non li libera. Restano entrambi nil se
-    // nessun endpoint Kind="Proxy" e' in uso, e in quel caso il ramo
-    // corrispondente di DoProcessRequest non viene mai raggiunto.
-    FRemoteTargets                : TLBRemoteTargets;
+    // Il catalogo dei bersagli remoti NON e' piu' un campo di questo
+    // modulo: vive in FRoutes.RemoteTargets (popolato dal blocco
+    // <RemoteTargets> dell'XML - si veda TRouteRegistry.LoadRemoteTargets)
+    // ed e' esposto qui sotto dalla property RemoteTargets, di sola
+    // lettura. FSignedClient resta invece un riferimento IN PRESTITO, di
+    // proprieta' dell'applicazione ospitante: questo modulo non lo crea e
+    // non lo libera. Resta nil se nessun endpoint Kind="Proxy" e' in uso,
+    // e in quel caso il ramo corrispondente di DoProcessRequest non viene
+    // mai raggiunto.
     FSignedClient                 : TLBSignedHttpClient;
+
+    // Getter della property RemoteTargets: il catalogo vive in
+    // FRoutes.RemoteTargets, popolato dal blocco <RemoteTargets> dell'XML.
+    function GetRemoteTargets: TLBRemoteTargets;
 
     function ReadRequestBodyAsString(HTTPParser: THTTPRequestParser): String;
     function WriteJSONResponse(aJSONResponse: TJSONData; ResponseHeaders: TStringList;
@@ -663,15 +747,21 @@ type
     function RegisterHandler(aHandler: TRouteHandlerBase): Boolean;
     procedure RegisterAllGlobalHandlers;
 
-    // Collega gli endpoint Kind="Proxy" e riceve le due dipendenze
-    // necessarie per inoltrarli. Da invocare DOPO LoadRoutesFromXML e
-    // PRIMA di ValidateRoutes. Entrambi i parametri restano di
-    // proprieta' dell'applicazione ospitante, che deve liberarli.
-    // Restituisce quanti endpoint proxy sono stati collegati.
-    function RegisterProxyEndpoints(aTargets: TLBRemoteTargets;
-      aSignedClient: TLBSignedHttpClient): Integer;
+    // Collega gli endpoint Kind="Proxy" e riceve il client firmato da
+    // usare per inoltrarli; il catalogo dei bersagli NON si passa piu'
+    // qui, perche' e' gia' stato popolato dall'XML (si veda RemoteTargets
+    // sotto). Da invocare DOPO LoadRoutesFromXML e PRIMA di ValidateRoutes.
+    // aSignedClient resta di proprieta' dell'applicazione ospitante, che
+    // deve liberarlo. Restituisce quanti endpoint proxy sono stati
+    // collegati.
+    function RegisterProxyEndpoints(aSignedClient: TLBSignedHttpClient): Integer;
 
     procedure ValidateRoutes;
+
+    // Public entry to the (virtual, protected) permission strategy: used by components that apply
+    // the same authorization outside the HTTP dispatch (TLBAIConnector). An empty OpType means
+    // "no specific permission needed", exactly as in DoProcessRequest.
+    function UserHasPermission(aUserConfig: TJSONObject; const anAreaCode, anOpType: String): Boolean;
 
     function BuildUserPermissions(aUserId: Integer; aUserConfig: TJSONObject): Boolean;
     function GetDeclaredPermissions: TJSONArray;
@@ -684,6 +774,14 @@ type
       aIsAdmin: Boolean): TJSONArray;
 
     property Routes: TRouteRegistry read FRoutes;
+
+    // Catalogo dei bersagli remoti, popolato dal blocco <RemoteTargets>
+    // dell'XML delle rotte (equivalente a FRoutes.RemoteTargets).
+    // L'applicazione ospitante lo usa, DOPO LoadRoutesFromXML, per
+    // impostare le chiavi condivise (TLBRemoteTargets.SetSharedKey o
+    // LoadSharedKeysFromJSONFile) e per costruire il proprio
+    // TLBSignedHttpClient da passare a RegisterProxyEndpoints.
+    property RemoteTargets: TLBRemoteTargets read GetRemoteTargets;
 
     property OnAuthenticateRequest: TAuthenticateRequestEvent
       read FOnAuthenticateRequest write FOnAuthenticateRequest;
@@ -974,6 +1072,8 @@ begin
   FDeclaredEndpoints := TEndpointDescriptorList.Create(True);
   FDispatchTable := TDispatchMap.Create;
   FDispatchTable.Sorted := True;
+  FAIEndpoints := TAIEndpointList.Create(True);
+  FRemoteTargets := TLBRemoteTargets.Create;
 end;
 
 destructor TRouteRegistry.Destroy;
@@ -988,8 +1088,10 @@ begin
       FreeAndNil(FDispatchTable);
     end;
 
+    FreeAndNil(FAIEndpoints);   // before the descriptors it borrows
     FreeAndNil(FDeclaredEndpoints);
     FreeAndNil(FApplications);
+    FreeAndNil(FRemoteTargets);
   except
     on E: Exception do
       LBLogger.Write(1, 'TRouteRegistry.Destroy', lmt_Error, E.Message);
@@ -1101,6 +1203,63 @@ begin
   end;
 end;
 
+procedure TRouteRegistry.LoadRemoteTargets(aRootNode: TDOMNode);
+{
+  Simmetrica a LoadApplications, ma per il blocco <RemoteTargets>. A
+  differenza delle applicazioni, qui NON si fa Clear prima di popolare:
+  un bersaglio gia' noto (stesso Name) viene aggiornato sul posto da
+  TLBRemoteTargets.Add, che preserva la SharedKey eventualmente gia'
+  impostata dall'applicazione ospitante - un ricaricamento a caldo
+  dell'XML non deve mai costringere a reinserire le chiavi.
+}
+var
+  _Node, _TargetNode : TDOMNode;
+  _TargetElement      : TDOMElement;
+  _Name, _BaseURL     : String;
+  _TimeoutMS          : Integer;
+begin
+  if aRootNode = nil then Exit;
+
+  _Node := aRootNode.FirstChild;
+  while _Node <> nil do
+  begin
+    if (_Node.NodeType = ELEMENT_NODE) and (_Node.NodeName = cXML_TARGETS_NODENAME) then
+    begin
+      _TargetNode := _Node.FirstChild;
+
+      while _TargetNode <> nil do
+      begin
+        if (_TargetNode.NodeType = ELEMENT_NODE) and (_TargetNode.NodeName = cXML_TARGET_NODENAME) then
+        begin
+          _TargetElement := TDOMElement(_TargetNode);
+
+          _Name := Trim(_TargetElement.GetAttribute(cXML_ATTR_NAME));
+          _BaseURL := Trim(_TargetElement.GetAttribute(cXML_ATTR_BASEURL));
+          if not TryStrToInt(Trim(_TargetElement.GetAttribute(cXML_ATTR_TIMEOUTMS)), _TimeoutMS) then
+            _TimeoutMS := cDefaultTargetTimeoutMS;
+
+          if (_Name <> '') and (_BaseURL <> '') then
+          begin
+            FRemoteTargets.Add(_Name, _BaseURL, _TimeoutMS);
+
+            LBLogger.Write(5, 'TRouteRegistry.LoadRemoteTargets', lmt_Debug,
+              'Bersaglio remoto dichiarato: <%s> (%s), timeout %d ms - chiave condivisa non ancora impostata',
+              [_Name, _BaseURL, _TimeoutMS]);
+          end
+          else
+            LBLogger.Write(1, 'TRouteRegistry.LoadRemoteTargets', lmt_Warning,
+              '<%s> privo di %s o %s: ignorato',
+              [String(cXML_TARGET_NODENAME), String(cXML_ATTR_NAME), String(cXML_ATTR_BASEURL)]);
+        end;
+
+        _TargetNode := _TargetNode.NextSibling;
+      end;
+    end;
+
+    _Node := _Node.NextSibling;
+  end;
+end;
+
 function TRouteRegistry.LoadFromXMLFile(const aFilename: String): Boolean;
 var
   _Doc: TXMLDocument = nil;
@@ -1110,6 +1269,7 @@ var
   _AreaCode, _AreaDescription, _AreaApp, _KindStr: String;
 begin
   Result := False;
+  FAIEndpoints.Clear;   // entries borrow the descriptors: clear them first
   FDeclaredEndpoints.Clear;
   FApplications.Clear;
 
@@ -1135,6 +1295,12 @@ begin
         // Il blocco delle applicazioni viene letto per primo, cosi' che
         // l'elenco sia gia' completo quando le aree vi fanno riferimento.
         Self.LoadApplications(_RootNode);
+
+        // Il catalogo dei bersagli remoti viene letto subito dopo, cosi'
+        // da essere gia' completo quando RegisterProxyEndpoints (invocato
+        // piu' avanti da chi usa questa classe) collega gli endpoint
+        // Kind="Proxy" alla tabella di dispatch.
+        Self.LoadRemoteTargets(_RootNode);
 
         _AreaNode := _RootNode.FirstChild;
 
@@ -1164,6 +1330,7 @@ begin
                   _Descriptor.AreaDescription := _AreaDescription;
                   _Descriptor.AreaApp := _AreaApp;
                   _Descriptor.FunctionName := Trim(_EndpointElement.GetAttribute(cXML_ATTR_FUNCTION));
+                  _Descriptor.Description := Trim(_EndpointElement.GetAttribute(cXML_ATTR_DESCRIPTION));
                   _Descriptor.URI := Trim(_EndpointElement.GetAttribute(cXML_ATTR_URI));
                   _Descriptor.HTTPMethod := UpperCase(Trim(_EndpointElement.GetAttribute(cXML_ATTR_METHOD)));
                   if _Descriptor.HTTPMethod = '' then
@@ -1184,6 +1351,11 @@ begin
                     _Descriptor.Kind := ekAuth
                   else if SameText(_KindStr, cEndpointKind_Upload) then
                     _Descriptor.Kind := ekUpload
+                  else if SameText(_KindStr, cEndpointKind_AIConnector) then
+                  begin
+                    // The MCP entry point: it has a URI and an OpType (who may use the AI channel) but no handler.
+                    _Descriptor.Kind := ekAIConnector;
+                  end
                   else if SameText(_KindStr, cEndpointKind_Proxy) then
                   begin
                     _Descriptor.Kind := ekProxy;
@@ -1204,7 +1376,8 @@ begin
                         [_AreaCode, _Descriptor.FunctionName, _KindStr, cEndpointKind_Standard]);
                   end;
 
-                  if (_Descriptor.FunctionName <> '') and (_Descriptor.URI <> '') then
+                  if (_Descriptor.FunctionName <> '') and
+                     (_Descriptor.URI <> '') then
                     FDeclaredEndpoints.Add(_Descriptor)
                   else begin
                     LBLogger.Write(1, 'TRouteRegistry.LoadFromXMLFile', lmt_Warning,
@@ -1248,10 +1421,12 @@ end;
 
 function TRouteRegistry.RegisterHandler(const aAreaCode: String; aHandler: TRouteHandlerBase): Boolean;
 var
-  i, _Idx: Integer;
+  i, _j, _Idx: Integer;
   _Descriptor: TEndpointDescriptor;
   _Key: String;
   _Entry: TDispatchEntry;
+  _AIEntry: TAIEndpointEntry;
+  _RegisteredKind: TEndpointKind;
 begin
   Result := False;
 
@@ -1274,6 +1449,10 @@ begin
       if _Descriptor.Kind = ekProxy then
         Continue;
 
+      // Kind="AIConnector": the MCP entry point has no handler (like Proxy); see AIConnectorEndpoint.
+      if _Descriptor.Kind = ekAIConnector then
+        Continue;
+
       _Key := Self.buildKey(_Descriptor.HTTPMethod, _Descriptor.URI);
 
       _Entry := TDispatchEntry.Create(aHandler, _Descriptor.AreaCode, _Descriptor.FunctionName,
@@ -1290,6 +1469,21 @@ begin
         FDispatchTable.Add(_Key, _Entry);
 
       Result := True;
+
+      // Every authenticated Standard endpoint is a CANDIDATE AI tool: TLBAIConnector keeps it only if
+      // the handler implements IAIConnectorFunctions. No second declaration is needed.
+      if (_Descriptor.Kind = ekStandard) and _Descriptor.RequiresAuth then
+      begin
+        _AIEntry := TAIEndpointEntry.Create;
+        _AIEntry.Descriptor := _Descriptor;
+        _AIEntry.Handler := aHandler;
+        _AIEntry.TheMethod := aHandler.GetWorkerMethod(_Descriptor.FunctionName, _RegisteredKind);
+        _AIEntry.KindMatches := (_AIEntry.TheMethod.Code <> nil) and (_RegisteredKind = ekStandard);
+        for _j := FAIEndpoints.Count - 1 downto 0 do
+          if FAIEndpoints[_j].Descriptor = _Descriptor then
+            FAIEndpoints.Delete(_j);
+        FAIEndpoints.Add(_AIEntry);
+      end;
 
       LBLogger.Write(5, 'TRouteRegistry.RegisterHandler', lmt_Debug,
         'Rotta <%s> collegata all''area <%s>, funzione <%s>, OpType <%s>',
@@ -1445,17 +1639,79 @@ begin
       [FApplications.Count]);
 end;
 
+function TRouteRegistry.AIConnectorEndpoint: TEndpointDescriptor;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to FDeclaredEndpoints.Count - 1 do
+    if FDeclaredEndpoints[i].Kind = ekAIConnector then
+      Exit(FDeclaredEndpoints[i]);
+end;
+
+function TRouteRegistry.ValidateAIConnector: Boolean;
+var
+  i, _Count : Integer;
+  _Gate     : TEndpointDescriptor;
+begin
+  Result := True;
+  _Gate := Self.AIConnectorEndpoint;
+  if _Gate = nil then Exit;   // none declared: the connector will warn
+
+  _Count := 0;
+  for i := 0 to FDeclaredEndpoints.Count - 1 do
+    if FDeclaredEndpoints[i].Kind = ekAIConnector then
+      Inc(_Count);
+  if _Count > 1 then
+  begin
+    LBLogger.Write(1, 'TRouteRegistry.ValidateAIConnector', lmt_Error,
+      '%d endpoints with Kind="AIConnector": only one MCP entry point is allowed, <%s.%s> is used', [_Count, _Gate.AreaCode, _Gate.FunctionName]);
+    Result := False;
+  end;
+
+  if (_Gate.URI = '') or (_Gate.URI[1] <> '/') then
+  begin
+    LBLogger.Write(1, 'TRouteRegistry.ValidateAIConnector', lmt_Error,
+      'The URI of the AIConnector endpoint <%s> must start with "/"', [_Gate.URI]);
+    Result := False;
+  end;
+
+  for i := 0 to FDeclaredEndpoints.Count - 1 do
+    if (FDeclaredEndpoints[i] <> _Gate) and (FDeclaredEndpoints[i].URI = _Gate.URI) then
+    begin
+      LBLogger.Write(1, 'TRouteRegistry.ValidateAIConnector', lmt_Error,
+        'The MCP path <%s> is also the URI of %s.%s: the connector would shadow it', [_Gate.URI,
+        FDeclaredEndpoints[i].AreaCode, FDeclaredEndpoints[i].FunctionName]);
+      Result := False;
+    end;
+end;
+
+function TRouteRegistry.AIEndpointCount: Integer;
+begin
+  Result := FAIEndpoints.Count;
+end;
+
+function TRouteRegistry.GetAIEndpoint(anIndex: Integer): TAIEndpointEntry;
+begin
+  Result := FAIEndpoints[anIndex];
+end;
+
 procedure TRouteRegistry.ValidateAllEndpointsRegistered;
 var
-  i, _MissingCount, _Idx: Integer;
+  i, j, _MissingCount, _Idx: Integer;
   _Descriptor: TEndpointDescriptor;
   _Key: String;
+  _Found: Boolean;
 begin
   _MissingCount := 0;
 
   for i := 0 to FDeclaredEndpoints.Count - 1 do
   begin
     _Descriptor := FDeclaredEndpoints[i];
+
+    if _Descriptor.Kind = ekAIConnector then
+      Continue;   // entry point of TLBAIConnector: no handler, not in the dispatch table
+
     _Key := Self.buildKey(_Descriptor.HTTPMethod, _Descriptor.URI);
 
     if not FDispatchTable.Find(_Key, _Idx) then
@@ -1778,20 +2034,29 @@ constructor TWebRouteModule.Create;
 begin
   inherited Create;
   FRoutes := TRouteRegistry.Create;
-  FRemoteTargets := nil;
   FSignedClient := nil;
 end;
 
 destructor TWebRouteModule.Destroy;
 begin
-  // FRemoteTargets e FSignedClient sono riferimenti in prestito, di
-  // proprieta' dell'applicazione ospitante: non vanno liberati qui.
+  // FSignedClient e' un riferimento in prestito, di proprieta'
+  // dell'applicazione ospitante: non va liberato qui. Il catalogo dei
+  // bersagli remoti (FRoutes.RemoteTargets) e' invece posseduto da
+  // FRoutes, e viene gia' liberato dal suo distruttore.
   FreeAndNil(FRoutes);
   inherited Destroy;
 end;
 
+function TWebRouteModule.GetRemoteTargets: TLBRemoteTargets;
+begin
+  Result := FRoutes.RemoteTargets;
+end;
+
 function TWebRouteModule.LoadRoutesFromXML(const aFilename: String): Boolean;
 begin
+  // Popola, fra l'altro, FRoutes.RemoteTargets dal blocco <RemoteTargets>
+  // dell'XML: dopo questa chiamata l'applicazione ospitante puo' gia'
+  // impostare le chiavi condivise tramite la property RemoteTargets.
   Result := FRoutes.LoadFromXMLFile(aFilename);
 end;
 
@@ -1819,23 +2084,26 @@ begin
   end;
 end;
 
-function TWebRouteModule.RegisterProxyEndpoints(aTargets: TLBRemoteTargets;
-  aSignedClient: TLBSignedHttpClient): Integer;
+function TWebRouteModule.RegisterProxyEndpoints(aSignedClient: TLBSignedHttpClient): Integer;
 begin
-  FRemoteTargets := aTargets;
-  FSignedClient  := aSignedClient;
+  FSignedClient := aSignedClient;
 
   Result := FRoutes.RegisterProxyEndpoints();
 
-  if (Result > 0) and ((FRemoteTargets = nil) or (FSignedClient = nil)) then
+  if (Result > 0) and (FSignedClient = nil) then
     LBLogger.Write(1, 'TWebRouteModule.RegisterProxyEndpoints', lmt_Error,
-      '%d endpoint Kind="%s" collegati, ma il catalogo dei bersagli o il client firmato non sono impostati: quelle rotte risponderanno sempre con un errore!',
+      '%d endpoint Kind="%s" collegati, ma il client firmato non e'' impostato: quelle rotte risponderanno sempre con un errore!',
       [Result, cEndpointKind_Proxy]);
 end;
 
 procedure TWebRouteModule.ValidateRoutes;
 begin
   FRoutes.ValidateAllEndpointsRegistered;
+end;
+
+function TWebRouteModule.UserHasPermission(aUserConfig: TJSONObject; const anAreaCode, anOpType: String): Boolean;
+begin
+  Result := (anOpType = '') or Self.hasPermission(aUserConfig, anAreaCode, anOpType);
 end;
 
 function TWebRouteModule.BuildUserPermissions(aUserId: Integer; aUserConfig: TJSONObject): Boolean;
@@ -2046,7 +2314,7 @@ begin
   Result := True;
   ResponseCode := HTTP_STATUS_INTERNAL_ERROR;
 
-  if (FSignedClient = nil) or (FRemoteTargets = nil) then
+  if FSignedClient = nil then
   begin
     LBLogger.Write(1, 'TWebRouteModule.DispatchProxyRequest', lmt_Error,
       'Rotta proxy verso <%s> invocata, ma il client firmato non e'' impostato!', [aTargetName]);
@@ -2054,8 +2322,23 @@ begin
     Exit;
   end;
 
+  // Il bersaglio e' dichiarato nell'XML (indirizzo/timeout), ma la sua
+  // chiave condivisa viene impostata a parte dall'applicazione ospitante
+  // - si veda la nota "LA CHIAVE SEGRETA NON COMPARE MAI NELL'XML". Se
+  // manca ancora, e' un errore di configurazione dell'applicazione, non
+  // dell'XML delle rotte: va segnalato qui, non lasciato fallire piu'
+  // avanti con un errore di firma poco comprensibile.
+  if not FRoutes.RemoteTargets.IsReady(aTargetName) then
+  begin
+    LBLogger.Write(1, 'TWebRouteModule.DispatchProxyRequest', lmt_Error,
+      'Bersaglio remoto <%s> non pronto: indirizzo o chiave condivisa mancanti nella configurazione dell''applicazione!',
+      [aTargetName]);
+    Self.WriteErrorResponse('Sorgente remota non configurata', ResponseHeaders, ResponseData);
+    Exit;
+  end;
+
   // Identita' applicativa propagata al server remoto. Viaggia DENTRO la
-  // stringa firmata (si veda uLBRequestSignature.pas): non e' quindi
+  // stringa firmata (si veda uLBSignedProxy.pas): non e' quindi
   // falsificabile da chi intercetta la richiesta, a differenza di quanto
   // accadrebbe con una semplice intestazione non firmata.
   ClearSignatureContext(_Context);
@@ -2230,6 +2513,13 @@ begin
             ResponseCode := _WorkerStatusCode
           else
             ResponseCode := HTTP_STATUS_OK;
+        end;
+
+      ekAIConnector:
+        begin
+          // Unreachable: AIConnector endpoints never enter the dispatch table. Defensive answer.
+          ResponseCode := HTTP_STATUS_NOT_FOUND;
+          Self.WriteErrorResponse('Not found', ResponseHeaders, ResponseData);
         end;
 
       ekProxy:

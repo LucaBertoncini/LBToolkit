@@ -38,6 +38,9 @@ type
       cNodeName_Folder    = DOMString('Folder');
       cNodeName_UploadEndpoint = DOMString('UploadEndpoint');
       cNodeName_DefaultFile = DOMString('DefaultFile');
+
+      // Sottocartella di DocumentFolder dove il server scrive i file in arrivo (vedi HandleRawFileUpload)
+      cUploadTempFolder   = String('tmpUpload');
   end;
 
 implementation
@@ -156,10 +159,13 @@ begin
       _Decoded := DecodeURL(_RawURI);
       _LocalPath := ExpandFileName(FDocumentFolder + _Decoded);
 
-      if Pos(FDocumentFolder, _LocalPath) = 1 then
-        Result := _LocalPath
+      if Pos(FDocumentFolder, _LocalPath) <> 1 then
+        LBLogger.Write(1, 'TLBmWsDocumentsFolder.RetrieveFilename', lmt_Warning, 'Path traversal found: <%s>', [_LocalPath])
+      else if Pos(LowerCase(FDocumentFolder + cUploadTempFolder + PathDelim), LowerCase(_LocalPath)) = 1 then
+        // I file in corso di upload non sono pubblicati
+        LBLogger.Write(1, 'TLBmWsDocumentsFolder.RetrieveFilename', lmt_Warning, 'Access to the upload temporary folder denied: <%s>', [_LocalPath])
       else
-        LBLogger.Write(1, 'TLBmWsDocumentsFolder.RetrieveFilename', lmt_Warning, 'Path traversal found: <%s>', [_LocalPath]);
+        Result := _LocalPath;
     end;
   end
   else

@@ -14,34 +14,49 @@
       <Unit>
         <Filename Value="../../uLBmWsDocumentsFolder.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="-1"/>
-        <TopLine Value="-1"/>
-        <CursorPos X="-1" Y="-1"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="4"/>
         <UsageCount Value="20"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uLBmWsDocumentsFolderTests.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="-1"/>
-        <WindowIndex Value="-1"/>
-        <TopLine Value="-1"/>
-        <CursorPos X="-1" Y="-1"/>
+        <EditorIndex Value="1"/>
+        <CursorPos X="40" Y="98"/>
         <UsageCount Value="20"/>
+        <Loaded Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="../../../LBLogger/ULBLogger.pas"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="43"/>
         <CursorPos Y="7"/>
         <UsageCount Value="10"/>
         <Loaded Value="True"/>
       </Unit>
     </Units>
-    <JumpHistory>
+    <JumpHistory HistoryIndex="4">
       <Position>
         <Filename Value="LBmWsDocumentsFolderTests.lpr"/>
-        <Caret Line="11" Column="69"/>
+        <Caret Line="11"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBmWsDocumentsFolderTests.pas"/>
+        <Caret Line="58" Column="45" TopLine="34"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBmWsDocumentsFolderTests.pas"/>
+        <Caret Line="20" Column="28"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBmWsDocumentsFolderTests.pas"/>
+        <Caret Line="44" Column="51" TopLine="28"/>
+      </Position>
+      <Position>
+        <Filename Value="uLBmWsDocumentsFolderTests.pas"/>
+        <Caret Line="98" Column="40"/>
       </Position>
     </JumpHistory>
     <RunParams>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Esempio 1. Gli endpoint si dichiarano UNA volta sola, per il sito e per l'AI.
+
+  - Area "ai", Kind="AIConnector": e' la PORTA dell'agente. L'URI e' il percorso MCP (qui /mcp, ma puo' essere
+    qualunque percorso che non sia /oauth/... o /.well-known/... e che non sia gia' una rotta).
+    OpType "Uso" e' il permesso che un ruolo deve avere perche' i suoi utenti possano usare un agente.
+    NON e' una funzione dell'applicazione e non ha un gestore.
+  - Area "demo": funzioni normali. Diventano strumenti per l'AI solo se la loro classe le descrive
+    (DescribeAIFunction). Il nome dello strumento e' <area>_<Function>: demo_Ping, ...
+    L'attributo Description e' il testo che l'AI legge per scegliere lo strumento: va scritto bene.
+-->
+<WebRoutes>
+  <FunctionalArea Code="ai" Description="Agente AI (MCP)">
+    <Endpoint Function="Mcp" URI="/mcp" Method="POST" Kind="AIConnector" OpType="Uso"
+              Description="Canale MCP per agenti AI: l'agente opera con i permessi dell'utente che lo ha autorizzato"/>
+  </FunctionalArea>
+  <FunctionalArea Code="demo" Description="Funzioni di esempio">
+    <Endpoint Function="Ping" URI="/api/demo/ping" Method="POST" OpType="Lettura"
+              Description="Restituisce l'identificativo e il ruolo dell'utente per conto del quale lavora l'agente."/>
+    <Endpoint Function="Saluta" URI="/api/demo/saluta" Method="POST" OpType="Lettura"
+              Description="Saluta una persona: restituisce il messaggio Ciao seguito dal nome. Serve il parametro nome."/>
+    <Endpoint Function="Somma" URI="/api/demo/somma" Method="POST" OpType="Lettura"
+              Description="Somma due numeri interi a e b e restituisce il risultato."/>
+  </FunctionalArea>
+</WebRoutes>

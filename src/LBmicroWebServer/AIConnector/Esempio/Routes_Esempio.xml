@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Esempio minimo per l'AI Connector.
+  Gli endpoint si dichiarano UNA volta sola, come per una normale applicazione web: URI e OpType.
+  - Kind="AIConnector": e' l'indirizzo dell'AI (protocollo MCP). Ogni utente entra con le proprie
+    credenziali e l'AI fa solo cio' che il suo ruolo consente. Un OpType e' facoltativo: se lo metti,
+    solo i ruoli con quel permesso possono usare l'AI.
+  - Gli altri endpoint diventano strumenti per l'AI solo se la classe che li realizza implementa
+    IAIConnectorFunctions e li descrive (DescribeAIFunction). L'AI vede cio' che il ruolo consente.
+  Il nome dello strumento visto dall'AI e' <Code dell'area>_<Function>, ad esempio "api_countOdL".
+  La Description e' il testo che l'AI legge per capire a cosa serve lo strumento.
+-->
+<WebRoutes>
+  <FunctionalArea Code="ai" Description="Connettore AI">
+    <Endpoint Function="Mcp" URI="/mcp" Kind="AIConnector"
+              Description="Ingresso del connettore AI (MCP)."/>
+  </FunctionalArea>
+  <FunctionalArea Code="api" Description="Dati aziendali di esempio">
+    <Endpoint Function="countOdL"   URI="/api/countOdL"   OpType="Lettura"
+              Description="Restituisce il numero degli ordini di lavoro (OdL)."/>
+    <Endpoint Function="countUsers" URI="/api/countUsers" OpType="Lettura"
+              Description="Restituisce il numero degli utenti registrati."/>
+    <Endpoint Function="listAssets" URI="/api/listAssets" OpType="Lettura"
+              Description="Elenca gli asset aziendali. Per ogni asset restituisce codice, nome e stato."/>
+    <Endpoint Function="findAsset"  URI="/api/findAsset"  OpType="Lettura"
+              Description="Cerca un asset aziendale dal suo codice (ad esempio A-001) e ne restituisce codice, nome e stato."/>
+  </FunctionalArea>
+</WebRoutes>

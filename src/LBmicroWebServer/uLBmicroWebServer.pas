@@ -86,12 +86,11 @@ type
       destructor Destroy(); override;
       function setFileToSend(const aFileRelativePath: String; const aRange: String; out ResCode: Integer): Boolean;
       function setFileToSendByAbsolutePath(const aFilename: String; const aRange: String; out ResCode: Integer): Boolean;
+      // Address of the peer as seen by the socket (the reverse proxy, when there is one).
+      function GetRemoteIP(): String;
       property Parser: THTTPRequestParser read FParser;
       property WebSocketManager: TLBWebSocketSession read FWebSocketManager;
       property OnExecuteTerminated: TNotifyEvent write FOnExecuteTerminated;
-//      const
-//        cUploadRequestOnly = String('UpLoad');
-//        cUploadRequest = String('/' + cUploadRequestOnly);
   end;
 
 {
@@ -393,6 +392,7 @@ begin
       FProcessors.Add(aProcessor);
     aProcessor.Owner := Self;
     Self.UpdateChain();
+    Result := True;   // prima restava sempre False, anche a inserimento riuscito
   end;
 end;
 
@@ -427,6 +427,13 @@ begin
   end;
 end;
 
+function THTTPRequestManager.GetRemoteIP(): String;
+begin
+  Result := '';
+  if FSocket <> nil then
+    Result := FSocket.GetRemoteSinIP;
+end;
+
 function THTTPRequestManager.SendAnswer(aResultCode: Integer): Boolean;
 begin
   try
@@ -447,6 +454,7 @@ function THTTPRequestManager.SendHeaders(aResultCode: Integer): Boolean;
 var
   h : Integer;
   _code_desc: AnsiString;
+  _block: AnsiString;
 begin
   Result := False;
   if (not Self.Terminated) then
@@ -455,7 +463,7 @@ begin
       if (FOutputHeaders.Count > 0) and (FOutputHeaders[FOutputHeaders.Count - 1] = '') then
         FOutputHeaders.Delete(FOutputHeaders.Count - 1);
       _code_desc := gv_AnswerDescription[IntTostr(aResultCode)];
-      FSocket.SendString(FParser.HTTPVersion + ' ' + IntTostr(aResultCode) + _code_desc + CRLF);
+      _block := FParser.HTTPVersion + ' ' + IntTostr(aResultCode) + _code_desc + CRLF;
       // LBLogger.Write(5, 'THTTPRequestManager.SendHeaders', lmt_Debug, FParser.HTTPVersion + ' ' + IntTostr(aResultCode) + _code_desc);
       if FOutputHeaders.IndexOfName(HTTP_HEADER_DATE) = -1 then
         FOutputHeaders.Add(HTTP_HEADER_DATE + ': ' + Rfc822DateTime(Now));
@@ -487,15 +495,14 @@ begin
       end;
       FOutputHeaders.Add('');
       Result := True;
+      // One send for the whole header block (a send per line produced one TCP segment per header)
       for h := 0 to FOutputHeaders.Count - 1 do
+        _block := _block + FOutputHeaders[h] + CRLF;
+      FSocket.SendString(_block);
+      if FSocket.LastError <> 0 then
       begin
-        FSocket.SendString(FOutputHeaders[h] + CRLF);
-        if FSocket.LastError <> 0 then
-        begin
-          LBLogger.Write(1, 'THTTPRequestManager.SendHeaders', lmt_Warning, 'Error sending headers to <%s:%d>: %d  -  %s', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort, FSocket.LastError, FSocket.LastErrorDesc]);
-          Result := False;
-          Break;
-        end;
+        LBLogger.Write(1, 'THTTPRequestManager.SendHeaders', lmt_Warning, 'Error sending headers to <%s:%d>: %d  -  %s', [FSocket.GetRemoteSinIP, FSocket.GetRemoteSinPort, FSocket.LastError, FSocket.LastErrorDesc]);
+        Result := False;
       end;
     except
       on E: Exception do
@@ -707,6 +714,13 @@ var
   _DestFolder : String;
   _Timeout : TTimeoutTimer = nil;
   _WriteFromSocket : Int64 = 0;
+  _Started : QWord;
+  _Readable : Boolean;
+const
+  // Tempo massimo senza ricevere nemmeno un byte prima di dichiarare fallito l'upload.
+  cUploadIdleTimeout = Integer(60000);
+  // Durata di ogni attesa sul socket: breve, cosi' si distingue "nessun dato" da "connessione chiusa".
+  cUploadPollInterval = Integer(1000);
 begin
   Result := HTTP_STATUS_BAD_REQUEST;
   aUploadedFilePath := '';
@@ -736,7 +750,8 @@ begin
 //      LBLogger.Write(5, 'THTTPRequestManager.HandleRawFileUpload', lmt_Debug,
 //                        'Upload starting: file=<%s>, expected=%d bytes, buffer_size=%d bytes',
 //                        [ExtractFileName(aUploadedFilePath), _TotalBytes, FRecvBuffer.AvailableForRead]);
-      _Timeout := TTimeoutTimer.Create(30000);
+      _Started := GetTickCount64;
+      _Timeout := TTimeoutTimer.Create(cUploadIdleTimeout);
       // Read remaining data from socket
       while (_RemainingBytes > 0) and (not Self.Terminated) and (not _Timeout.Expired()) do
       begin
@@ -761,8 +776,9 @@ begin
         end;
         if _RemainingBytes = 0 then
           Break;
+        _Readable := False;
         if FSocket.WaitingData = 0 then
-          FSocket.CanRead(10000);
+          _Readable := FSocket.CanRead(cUploadPollInterval);
         if FSocket.WaitingData > 0 then
         begin
           _bytesRead := FRecvBuffer.WriteFromSocket(FSocket);
@@ -776,11 +792,20 @@ begin
             Break;
           end;
         end
-        else begin
-          LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning, 'No data available in socket buffer. Remaining bytes: %d. Connection closed?', [_RemainingBytes]);
+        else if _Readable then
+        begin
+          // Il socket risulta leggibile ma non ci sono byte: il client ha chiuso la connessione
+          LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning,
+                            'Connection closed by the client. Remaining bytes: %d. Last error: <%s>. Elapsed: %d s',
+                            [_RemainingBytes, FSocket.LastErrorDesc, (GetTickCount64 - _Started) div 1000]);
           Break;
         end;
+        // else: nessun dato in questo intervallo; si riprova finche' _Timeout non scade
       end;
+      if (_RemainingBytes > 0) and _Timeout.Expired() then
+        LBLogger.Write(1, 'THTTPRequestManager.HandleRawFileUpload', lmt_Warning,
+                          'No data received for %d s. Remaining bytes: %d. Elapsed: %d s',
+                          [cUploadIdleTimeout div 1000, _RemainingBytes, (GetTickCount64 - _Started) div 1000]);
       if _RemainingBytes = 0 then
       begin
         Result := HTTP_STATUS_OK;
@@ -1091,12 +1116,18 @@ begin
 end;
 
 constructor THTTPRequestManager.Create(ASocket: TSocket; AOwner: TLBmicroWebServer);
+var
+  _NoDelay : Integer;
 begin
   FDestroying := False;
   inherited Create();
   FWebServerOwner := AOwner;
   FSocket := TTCPBlockSocket.Create;
   FSocket.Socket := ASocket;
+  // Responses are written in a few small chunks (headers, body): without TCP_NODELAY Nagle's algorithm
+  // waits for the ACK of the first chunk, which a delayed-ACK client sends after ~40 ms.
+  _NoDelay := 1;
+  synsock.SetSockOpt(ASocket, IPPROTO_TCP, 1 {TCP_NODELAY}, @_NoDelay, SizeOf(_NoDelay));
   FRecvBuffer := TLBCircularBuffer.Create(80 * 1024); // 16KB buffer
   FParser := THTTPRequestParser.Create(FRecvBuffer);
   FAllowCrossOrigin := False;
@@ -1536,21 +1567,29 @@ end;
 
 initialization
   gv_AnswerDescription := TFPStringHashTable.Create;
-  gv_AnswerDescription.Add('200', ' OK');
-  gv_AnswerDescription.Add('201', ' Created');
-  gv_AnswerDescription.Add('204', ' No Content');
-  gv_AnswerDescription.Add('206', ' Partial Content');
-  gv_AnswerDescription.Add('400', ' Bad Request');
-  gv_AnswerDescription.Add('401', ' Unauthorized');
-  gv_AnswerDescription.Add('403', ' Forbidden');
-  gv_AnswerDescription.Add('404', ' Not Found');
-  gv_AnswerDescription.Add('405', ' Method Not Allowed');
-  gv_AnswerDescription.Add('408', ' Request Timeout');
-  gv_AnswerDescription.Add('416', ' Range Not Satisfiable');
-  gv_AnswerDescription.Add('500', ' Internal Server Error');
-  gv_AnswerDescription.Add('501', ' Not Implemented');
-  gv_AnswerDescription.Add('503', ' Service Unavailable');
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_OK), HTTP_REASON_OK);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_CREATED), HTTP_REASON_CREATED);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_ACCEPTED), HTTP_REASON_ACCEPTED);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_NO_CONTENT), HTTP_REASON_NO_CONTENT);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_PARTIAL_CONTENT), HTTP_REASON_PARTIAL_CONTENT);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_FOUND), HTTP_REASON_FOUND);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_BAD_REQUEST), HTTP_REASON_BAD_REQUEST);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_UNAUTHORIZED), HTTP_REASON_UNAUTHORIZED);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_FORBIDDEN), HTTP_REASON_FORBIDDEN);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_NOT_FOUND), HTTP_REASON_NOT_FOUND);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_METHOD_NOT_ALLOWED), HTTP_REASON_METHOD_NOT_ALLOWED);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_REQUEST_TIMEOUT), HTTP_REASON_REQUEST_TIMEOUT);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_CONFLICT), HTTP_REASON_CONFLICT);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_RANGE_NOT_SATISFIABLE), HTTP_REASON_RANGE_NOT_SATISFIABLE);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_UNPROCESSABLE), HTTP_REASON_UNPROCESSABLE);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_TOO_MANY_REQUESTS), HTTP_REASON_TOO_MANY_REQUESTS);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_INTERNAL_ERROR), HTTP_REASON_INTERNAL_ERROR);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_NOT_IMPLEMENTED), HTTP_REASON_NOT_IMPLEMENTED);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_BAD_GATEWAY), HTTP_REASON_BAD_GATEWAY);
+  gv_AnswerDescription.Add(IntToStr(HTTP_STATUS_SERVICE_UNAVAILABLE), HTTP_REASON_SERVICE_UNAVAILABLE);
+
 finalization
   if gv_AnswerDescription <> nil then
     FreeAndNil(gv_AnswerDescription);
+
 end.

@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1490" height="2076" viewBox="0 0 1490 2076" font-family="DejaVu Sans, Arial, sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#374151"/></marker></defs>
+<rect width="1490" height="2076" fill="#ffffff"/>
+<text x="745" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#111827">Flusso OAuth 2.1 del connettore AI (login con le credenziali dell'utente)</text>
+<rect x="110" y="50" width="340" height="1976" fill="#eef2ff" stroke="#cbd5e1"/>
+<rect x="110" y="50" width="340" height="48" fill="#4338ca"/>
+<text x="280" y="78" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Utente (browser)</text>
+<rect x="450" y="50" width="340" height="1976" fill="#ecfdf5" stroke="#cbd5e1"/>
+<rect x="450" y="50" width="340" height="48" fill="#047857"/>
+<text x="620" y="78" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Claude.ai (client MCP)</text>
+<rect x="790" y="50" width="340" height="1976" fill="#fff7ed" stroke="#cbd5e1"/>
+<rect x="790" y="50" width="340" height="48" fill="#c2410c"/>
+<text x="960" y="70" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Web server</text>
+<text x="960" y="86" text-anchor="middle" font-size="12" font-weight="bold" fill="#fff">TLBOAuthProvider / TLBAIConnector</text>
+<rect x="1130" y="50" width="340" height="1976" fill="#f5f3ff" stroke="#cbd5e1"/>
+<rect x="1130" y="50" width="340" height="48" fill="#6d28d9"/>
+<text x="1300" y="78" text-anchor="middle" font-size="14" font-weight="bold" fill="#fff">Applicazione e TokenManager</text>
+<text x="14" y="102" font-size="15" font-weight="bold" fill="#334155">A</text>
+<text x="14" y="120" font-size="11" fill="#475569">Scoperta</text>
+<line x1="10" y1="432" x2="1480" y2="432" stroke="#94a3b8" stroke-dasharray="6 4"/>
+<text x="14" y="454" font-size="15" font-weight="bold" fill="#334155">B</text>
+<text x="14" y="472" font-size="11" fill="#475569">Registrazione</text>
+<line x1="10" y1="608" x2="1480" y2="608" stroke="#94a3b8" stroke-dasharray="6 4"/>
+<text x="14" y="630" font-size="15" font-weight="bold" fill="#334155">C</text>
+<text x="14" y="648" font-size="11" fill="#475569">Login dell'utente</text>
+<line x1="10" y1="1136" x2="1480" y2="1136" stroke="#94a3b8" stroke-dasharray="6 4"/>
+<text x="14" y="1158" font-size="15" font-weight="bold" fill="#334155">D</text>
+<text x="14" y="1176" font-size="11" fill="#475569">Emissione dei token</text>
+<line x1="10" y1="1488" x2="1480" y2="1488" stroke="#94a3b8" stroke-dasharray="6 4"/>
+<text x="14" y="1510" font-size="15" font-weight="bold" fill="#334155">E</text>
+<text x="14" y="1528" font-size="11" fill="#475569">Uso del connettore</text>
+<line x1="10" y1="1752" x2="1480" y2="1752" stroke="#94a3b8" stroke-dasharray="6 4"/>
+<text x="14" y="1774" font-size="15" font-weight="bold" fill="#334155">F</text>
+<text x="14" y="1792" font-size="11" fill="#475569">Rinnovo</text>
+<path d="M620,154 L620,168 L960,168 L960,182" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M960,242 L960,256 L620,256 L620,270" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M620,330 L620,344 L960,344 L960,358" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M960,418 L960,426 L620,426 L620,446" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M620,506 L620,520 L960,520 L960,534" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M960,594 L960,602 L620,602 L620,622" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M620,682 L620,696 L960,696 L960,710" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M960,770 L960,784 L280,784 L280,798" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M280,858 L280,872 L960,872 L960,886" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M960,946 L960,960 L1300,960 L1300,974" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M1300,1034 L1300,1048 L960,1048 L960,1062" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M960,1122 L960,1130 L620,1130 L620,1150" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M620,1210 L620,1224 L960,1224 L960,1238" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M960,1298 L960,1312 L1300,1312 L1300,1326" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M1300,1386 L1300,1400 L960,1400 L960,1414" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M960,1474 L960,1482 L620,1482 L620,1502" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M620,1562 L620,1576 L1300,1576 L1300,1590" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M1300,1650 L1300,1664 L960,1664 L960,1678" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M960,1738 L960,1746 L620,1746 L620,1766" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M620,1826 L620,1840 L1300,1840 L1300,1854" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<path d="M1300,1914 L1300,1928 L960,1928 L960,1942" fill="none" stroke="#374151" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="470" y="94" width="300" height="60" rx="8" fill="#fff" stroke="#047857" stroke-width="1.8"/>
+<circle cx="470" cy="94" r="11" fill="#047857"/><text x="470" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">1</text>
+<text x="620" y="128" text-anchor="middle" font-size="12" fill="#111827">POST /mcp senza token</text>
+<rect x="810" y="182" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="182" r="11" fill="#c2410c"/><text x="810" y="186" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">2</text>
+<text x="960" y="208" text-anchor="middle" font-size="12" fill="#111827">401 + WWW-Authenticate</text>
+<text x="960" y="224" text-anchor="middle" font-size="12" fill="#111827">(indirizzo dei metadati OAuth)</text>
+<rect x="470" y="270" width="300" height="60" rx="8" fill="#fff" stroke="#047857" stroke-width="1.8"/>
+<circle cx="470" cy="270" r="11" fill="#047857"/><text x="470" y="274" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">3</text>
+<text x="620" y="296" text-anchor="middle" font-size="12" fill="#111827">Legge /.well-known/oauth-protected-resource</text>
+<text x="620" y="312" text-anchor="middle" font-size="12" fill="#111827">e /oauth-authorization-server</text>
+<rect x="810" y="358" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="358" r="11" fill="#c2410c"/><text x="810" y="362" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">4</text>
+<text x="960" y="384" text-anchor="middle" font-size="12" fill="#111827">Indica il server di autorizzazione</text>
+<text x="960" y="400" text-anchor="middle" font-size="12" fill="#111827">e gli endpoint /oauth/*</text>
+<rect x="470" y="446" width="300" height="60" rx="8" fill="#fff" stroke="#047857" stroke-width="1.8"/>
+<circle cx="470" cy="446" r="11" fill="#047857"/><text x="470" y="450" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">5</text>
+<text x="620" y="472" text-anchor="middle" font-size="12" fill="#111827">POST /oauth/register</text>
+<text x="620" y="488" text-anchor="middle" font-size="12" fill="#111827">(registrazione dinamica del client)</text>
+<rect x="810" y="534" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="534" r="11" fill="#c2410c"/><text x="810" y="538" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">6</text>
+<text x="960" y="560" text-anchor="middle" font-size="12" fill="#111827">Restituisce il client_id</text>
+<text x="960" y="576" text-anchor="middle" font-size="12" fill="#111827">(solo redirect ammessi)</text>
+<rect x="470" y="622" width="300" height="60" rx="8" fill="#fff" stroke="#047857" stroke-width="1.8"/>
+<circle cx="470" cy="622" r="11" fill="#047857"/><text x="470" y="626" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">7</text>
+<text x="620" y="648" text-anchor="middle" font-size="12" fill="#111827">Genera PKCE (verifier + challenge S256)</text>
+<text x="620" y="664" text-anchor="middle" font-size="12" fill="#111827">Apre il browser su /oauth/authorize</text>
+<rect x="810" y="710" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="710" r="11" fill="#c2410c"/><text x="810" y="714" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">8</text>
+<text x="960" y="736" text-anchor="middle" font-size="12" fill="#111827">Controlla client e redirect_uri</text>
+<text x="960" y="752" text-anchor="middle" font-size="12" fill="#111827">Mostra la pagina di login</text>
+<rect x="130" y="798" width="300" height="60" rx="8" fill="#fff" stroke="#4338ca" stroke-width="1.8"/>
+<circle cx="130" cy="798" r="11" fill="#4338ca"/><text x="130" y="802" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">9</text>
+<text x="280" y="824" text-anchor="middle" font-size="12" fill="#111827">Inserisce username e password</text>
+<text x="280" y="840" text-anchor="middle" font-size="12" fill="#111827">del proprio account</text>
+<rect x="810" y="886" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="886" r="11" fill="#c2410c"/><text x="810" y="890" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">10</text>
+<text x="960" y="912" text-anchor="middle" font-size="12" fill="#111827">POST /oauth/authorize</text>
+<text x="960" y="928" text-anchor="middle" font-size="12" fill="#111827">Blocco dopo 5 errori (429)</text>
+<rect x="1150" y="974" width="300" height="60" rx="8" fill="#fff" stroke="#6d28d9" stroke-width="1.8"/>
+<circle cx="1150" cy="974" r="11" fill="#6d28d9"/><text x="1150" y="978" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">11</text>
+<text x="1300" y="1000" text-anchor="middle" font-size="12" fill="#111827">OnAuthenticateCredentials</text>
+<text x="1300" y="1016" text-anchor="middle" font-size="12" fill="#111827">verifica le credenziali, legge il ruolo</text>
+<rect x="810" y="1062" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="1062" r="11" fill="#c2410c"/><text x="810" y="1066" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">12</text>
+<text x="960" y="1088" text-anchor="middle" font-size="12" fill="#111827">Crea codice monouso (5 min) legato a</text>
+<text x="960" y="1104" text-anchor="middle" font-size="12" fill="#111827">client, redirect e PKCE; 302 a Claude</text>
+<rect x="470" y="1150" width="300" height="60" rx="8" fill="#fff" stroke="#047857" stroke-width="1.8"/>
+<circle cx="470" cy="1150" r="11" fill="#047857"/><text x="470" y="1154" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">13</text>
+<text x="620" y="1176" text-anchor="middle" font-size="12" fill="#111827">POST /oauth/token</text>
+<text x="620" y="1192" text-anchor="middle" font-size="12" fill="#111827">(code + code_verifier)</text>
+<rect x="810" y="1238" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="1238" r="11" fill="#c2410c"/><text x="810" y="1242" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">14</text>
+<text x="960" y="1272" text-anchor="middle" font-size="12" fill="#111827">Verifica PKCE e consuma il codice</text>
+<rect x="1150" y="1326" width="300" height="60" rx="8" fill="#fff" stroke="#6d28d9" stroke-width="1.8"/>
+<circle cx="1150" cy="1326" r="11" fill="#6d28d9"/><text x="1150" y="1330" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">15</text>
+<text x="1300" y="1352" text-anchor="middle" font-size="12" fill="#111827">TokenManager crea access token (15 minuti)</text>
+<text x="1300" y="1368" text-anchor="middle" font-size="12" fill="#111827">e refresh token (30 giorni)</text>
+<rect x="810" y="1414" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="1414" r="11" fill="#c2410c"/><text x="810" y="1418" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">16</text>
+<text x="960" y="1440" text-anchor="middle" font-size="12" fill="#111827">Risponde con access_token</text>
+<text x="960" y="1456" text-anchor="middle" font-size="12" fill="#111827">e refresh_token</text>
+<rect x="470" y="1502" width="300" height="60" rx="8" fill="#fff" stroke="#047857" stroke-width="1.8"/>
+<circle cx="470" cy="1502" r="11" fill="#047857"/><text x="470" y="1506" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">17</text>
+<text x="620" y="1536" text-anchor="middle" font-size="12" fill="#111827">POST /mcp con Authorization: Bearer</text>
+<rect x="1150" y="1590" width="300" height="60" rx="8" fill="#fff" stroke="#6d28d9" stroke-width="1.8"/>
+<circle cx="1150" cy="1590" r="11" fill="#6d28d9"/><text x="1150" y="1594" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">18</text>
+<text x="1300" y="1616" text-anchor="middle" font-size="12" fill="#111827">isValidBearerRequest: token valido,</text>
+<text x="1300" y="1632" text-anchor="middle" font-size="12" fill="#111827">ambito AI, restituisce utente e ruolo</text>
+<rect x="810" y="1678" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="1678" r="11" fill="#c2410c"/><text x="810" y="1682" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">19</text>
+<text x="960" y="1704" text-anchor="middle" font-size="12" fill="#111827">tools/list e tools/call filtrati dal ruolo</text>
+<text x="960" y="1720" text-anchor="middle" font-size="12" fill="#111827">(Area.OpType), con i diritti dell'utente</text>
+<rect x="470" y="1766" width="300" height="60" rx="8" fill="#fff" stroke="#047857" stroke-width="1.8"/>
+<circle cx="470" cy="1766" r="11" fill="#047857"/><text x="470" y="1770" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">20</text>
+<text x="620" y="1792" text-anchor="middle" font-size="12" fill="#111827">Access token scaduto: POST /oauth/token</text>
+<text x="620" y="1808" text-anchor="middle" font-size="12" fill="#111827">con grant refresh_token</text>
+<rect x="1150" y="1854" width="300" height="60" rx="8" fill="#fff" stroke="#6d28d9" stroke-width="1.8"/>
+<circle cx="1150" cy="1854" r="11" fill="#6d28d9"/><text x="1150" y="1858" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">21</text>
+<text x="1300" y="1880" text-anchor="middle" font-size="12" fill="#111827">OnRefreshUser: l'utente esiste ancora?</text>
+<text x="1300" y="1896" text-anchor="middle" font-size="12" fill="#111827">Rilegge il ruolo</text>
+<rect x="810" y="1942" width="300" height="60" rx="8" fill="#fff" stroke="#c2410c" stroke-width="1.8"/>
+<circle cx="810" cy="1942" r="11" fill="#c2410c"/><text x="810" y="1946" text-anchor="middle" font-size="11" font-weight="bold" fill="#fff">22</text>
+<text x="960" y="1968" text-anchor="middle" font-size="12" fill="#111827">Nuovi token; il vecchio refresh token</text>
+<text x="960" y="1984" text-anchor="middle" font-size="12" fill="#111827">non vale più (rotazione)</text>
+<text x="110" y="2052" font-size="11" fill="#475569">PKCE S256 obbligatorio · codice monouso · refresh token a rotazione · credenziali sempre verificate dall'applicazione · ogni chiamata usa i diritti del ruolo dell'utente</text>
+</svg>

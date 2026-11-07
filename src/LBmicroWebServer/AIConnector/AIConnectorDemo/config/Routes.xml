@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Rotte dell'esempio. Ogni funzione si dichiara UNA volta sola, per il sito e per l'agente AI.
+
+  AREA "ai", Kind="AIConnector": e' la PORTA dell'agente.
+    - URI e' il percorso MCP (qui /mcp: puo' essere un altro, ma non sotto /oauth o /.well-known e non uguale a una
+      rotta esistente). L'indirizzo da dare all'agente e' PublicBaseURL + URI.
+    - OpType "Uso" e' il permesso che un ruolo deve avere perche' i suoi utenti possano usare un agente. Senza,
+      il connettore risponde 403.
+    - Non e' una funzione dell'applicazione: non ha un gestore.
+    - Senza questo endpoint il connettore NON parte (e il registro dice perche').
+
+  AREA "demo": funzioni normali (POST /api/demo/...). Diventano strumenti MCP con il nome area_Funzione
+  (demo_Ping, demo_Somma, ...) se la loro classe le descrive (DescribeAIFunction).
+    - OpType e' il permesso "area.OpType" richiesto all'utente, sul sito e per l'agente.
+    - Description e' il testo che l'agente legge per scegliere lo strumento: va scritto bene.
+    - "Stato" non ha OpType: la vede ogni utente autenticato (RequireOpTypeForTools=1 la esclude).
+-->
+<WebRoutes>
+  <FunctionalArea Code="ai" Description="Agente AI (MCP)">
+    <Endpoint Function="Mcp" URI="/mcp" Method="POST" Kind="AIConnector" OpType="Uso"
+              Description="Canale MCP per agenti AI: l'agente opera con i permessi dell'utente che lo ha autorizzato"/>
+  </FunctionalArea>
+
+  <FunctionalArea Code="demo" Description="Funzioni di esempio">
+    <Endpoint Function="Ping" URI="/api/demo/ping" Method="POST" OpType="Lettura"
+              Description="Restituisce identificativo, ruolo e permessi dell'utente per conto del quale lavora l'agente."/>
+    <Endpoint Function="Somma" URI="/api/demo/somma" Method="POST" OpType="Lettura"
+              Description="Somma due numeri interi a e b e restituisce il risultato."/>
+    <Endpoint Function="Cerca" URI="/api/demo/cerca" Method="POST" OpType="Lettura"
+              Description="Cerca nel catalogo per parole, stato, periodo e identificativi. Restituisce gli argomenti ricevuti."/>
+    <Endpoint Function="Stato" URI="/api/demo/stato" Method="POST"
+              Description="Stato del servizio. Aperta a ogni utente autenticato, senza permesso specifico."/>
+    <Endpoint Function="CreaNota" URI="/api/demo/crea-nota" Method="POST" OpType="Modifica"
+              Description="Crea una nota con un titolo e una priorita (bassa, media, alta)."/>
+    <Endpoint Function="EliminaNota" URI="/api/demo/elimina-nota" Method="POST" OpType="Modifica"
+              Description="Elimina una nota dato il suo identificativo. Operazione distruttiva."/>
+    <Endpoint Function="Report" URI="/api/demo/report" Method="POST" OpType="Amministrazione"
+              Description="Report riservato all'amministratore."/>
+    <Endpoint Function="Interna" URI="/api/demo/interna" Method="POST" OpType="Lettura"
+              Description="Funzione interna: mai esposta all'agente."/>
+    <Endpoint Function="NonDescritta" URI="/api/demo/non-descritta" Method="POST" OpType="Lettura"
+              Description="Funzione senza descrizione dei parametri: esposta solo con ExposeUndescribed=1."/>
+  </FunctionalArea>
+</WebRoutes>

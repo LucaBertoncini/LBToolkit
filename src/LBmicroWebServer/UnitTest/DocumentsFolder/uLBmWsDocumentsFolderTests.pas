@@ -17,7 +17,7 @@ type
     FDoc: TXMLDocument;
     FFolder: TLBmWsDocumentsFolder;
     FBasePath: String;
-    procedure CreateXMLNode(const FolderValue, UploadFlag: String);
+    procedure CreateXMLNode(const FolderValue, UploadEndpoint: String);
   protected
     procedure SetUp; override;
     procedure TearDown; override;
@@ -41,7 +41,7 @@ implementation
 uses
   ULBLogger;
 
-procedure TLBmWsDocumentsFolderTests.CreateXMLNode(const FolderValue, UploadFlag: String);
+procedure TLBmWsDocumentsFolderTests.CreateXMLNode(const FolderValue, UploadEndpoint: String);
 var
   Root, FolderNode, UploadNode: TDOMElement;
 begin
@@ -52,10 +52,10 @@ begin
   FolderNode.AppendChild(FDoc.CreateTextNode(FolderValue));
   Root.AppendChild(FolderNode);
 
-  if UploadFlag <> '' then
+  if UploadEndpoint <> '' then
   begin
-    UploadNode := FDoc.CreateElement(TLBmWsDocumentsFolder.cNodeName_EnableUpload);
-    UploadNode.AppendChild(FDoc.CreateTextNode(UploadFlag));
+    UploadNode := FDoc.CreateElement(TLBmWsDocumentsFolder.cNodeName_UploadEndpoint);
+    UploadNode.TextContent := UploadEndpoint;
     Root.AppendChild(UploadNode);
   end;
 end;
@@ -95,7 +95,7 @@ var
   _Root : TDOMNode;
 
 begin
-  CreateXMLNode(FBasePath, '1');
+  CreateXMLNode(FBasePath, '/uploadFile');
   _Root := FDoc.DocumentElement;
   AssertTrue(FFolder.LoadFromXMLNode(_Root));
   AssertEquals(FBasePath, FFolder.DocumentFolder);

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Esempio 2: stesse regole dell'esempio 1; qui conta come sono descritti i parametri nel codice. -->
+<WebRoutes>
+  <FunctionalArea Code="ai" Description="Agente AI (MCP)">
+    <Endpoint Function="Mcp" URI="/mcp" Method="POST" Kind="AIConnector" OpType="Uso"
+              Description="Canale MCP per agenti AI"/>
+  </FunctionalArea>
+  <FunctionalArea Code="catalogo" Description="Catalogo">
+    <Endpoint Function="Cerca" URI="/api/catalogo/cerca" Method="POST" OpType="Lettura"
+              Description="Cerca elementi nel catalogo per parole, stato, periodo e identificativi. Restituisce gli argomenti ricevuti."/>
+    <Endpoint Function="Crea" URI="/api/catalogo/crea" Method="POST" OpType="Modifica"
+              Description="Crea un nuovo elemento del catalogo con un titolo e una priorita."/>
+    <Endpoint Function="Elimina" URI="/api/catalogo/elimina" Method="POST" OpType="Modifica"
+              Description="Elimina un elemento del catalogo dato il suo identificativo. Operazione distruttiva."/>
+    <Endpoint Function="Interna" URI="/api/catalogo/interna" Method="POST" OpType="Lettura"
+              Description="Funzione interna, mai esposta all'agente."/>
+    <Endpoint Function="NonDescritta" URI="/api/catalogo/nondescritta" Method="POST" OpType="Lettura"
+              Description="Funzione senza descrizione dei parametri: esposta solo con ExposeUndescribed=1."/>
+  </FunctionalArea>
+</WebRoutes>

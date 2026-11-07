@@ -43,6 +43,7 @@ type
       FOnWebAction: TWebActionEvent;
 
       function DoProcessRequest(
+        RequestManager: THTTPRequestManager;   // thread che gestisce la risposta (come in TRequestChainProcessor)
         HTTPParser: THTTPRequestParser;
         ResponseHeaders: TStringList;
         var ResponseData: TMemoryStream;
@@ -166,7 +167,7 @@ begin
 end;
 
 function TFPHTTPRequestProcessor.DoProcessRequest(
-  HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList;
+  RequestManager: THTTPRequestManager; HTTPParser: THTTPRequestParser; ResponseHeaders: TStringList;
   var ResponseData: TMemoryStream; out ResponseCode: Integer): Boolean;
 begin
  FRequest.setupRequest(HTTPParser);

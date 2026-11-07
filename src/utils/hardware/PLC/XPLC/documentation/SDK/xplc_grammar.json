@@ -1,0 +1,441 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "xplc-grammar-v1.1",
+  "title": "XPLC Grammar — JACS Platform",
+  "description": "Documento XPLC — radice del file XML <XPLC Code='...' Id='...'>",
+  "version": "1.1",
+  "$defs": {
+    "SimpleName": {
+      "description": "Identificatore simbolico: lettere, cifre, underscore. Deve iniziare con lettera o underscore.",
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+      "minLength": 1
+    },
+    "VariantValue": {
+      "description": "Valore generico (stringa, intero, float, 'true'/'false'). Interpretato dal motore in base al contenuto.",
+      "type": "string"
+    },
+    "ExpressionString": {
+      "description": "Espressione booleana XPLC. Operatori di confronto: EQ NE GT LT GE LE (oppure simboli = <> > < >= <=). Operatori logici: AND OR NOT. Funzione speciale: TIMEOUT(NomeTimer) restituisce True se il timer e' scaduto. ATTENZIONE: non usare TIMEOUT() in confronti espliciti, es TIMEOUT(T) EQ 1 e' errato. Parentesi supportate. NOTA: le operazioni matematiche e le funzioni aritmetiche (+, -, *, /, Int) NON sono supportate dall'engine.",
+      "type": "string",
+      "examples": [
+        "SbarraChiusa EQ 1",
+        "TIMEOUT(TWait)",
+        "TIMEOUT(T10s) AND Cam05_Human EQ 0",
+        "Cam01_Vehicle EQ 0 AND Cam02_Vehicle EQ 0",
+        "Cam01_Vehicle EQ 1 OR Cam02_Vehicle EQ 1",
+        "NOT TornelloAperto EQ 1",
+        "RetryCount GE 3",
+        "(Cam01_Vehicle EQ 0 AND Cam02_Vehicle EQ 0) AND BlinkEnable EQ 0"
+      ]
+    },
+    "ActionSetOutput": {
+      "description": "Imposta un'uscita fisica o una variabile shared memory.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "SetOutput"
+        },
+        "Output": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "Value": {
+          "$ref": "#/$defs/VariantValue",
+          "description": "Valore da impostare (es: '0', '1', 'true')"
+        }
+      },
+      "required": [
+        "type",
+        "Output",
+        "Value"
+      ],
+      "additionalProperties": false
+    },
+    "ActionStartTimer": {
+      "description": "Avvia un timer. DurationMs opzionale: se assente usa il DefaultMs dichiarato.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "StartTimer"
+        },
+        "Timer": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "DurationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Durata in ms (sovrascrive il default)"
+        }
+      },
+      "required": [
+        "type",
+        "Timer"
+      ],
+      "additionalProperties": false
+    },
+    "ActionStopTimer": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "StopTimer"
+        },
+        "Timer": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Timer"
+      ],
+      "additionalProperties": false
+    },
+    "ActionIncrementCounter": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "IncrementCounter"
+        },
+        "Counter": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Counter"
+      ],
+      "additionalProperties": false
+    },
+    "ActionDecrementCounter": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "DecrementCounter"
+        },
+        "Counter": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Counter"
+      ],
+      "additionalProperties": false
+    },
+    "ActionResetCounter": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "ResetCounter"
+        },
+        "Counter": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Counter"
+      ],
+      "additionalProperties": false
+    },
+    "ActionLog": {
+      "description": "Scrive un messaggio nel log. Supporta interpolazione: %NomeAlias% viene sostituito con il valore corrente.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Log"
+        },
+        "Message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "Message"
+      ],
+      "additionalProperties": false
+    },
+    "ActionApplyPreset": {
+      "description": "Applica un preset di uscite definito in OutputPresets. Equivale a eseguire in sequenza tutti i SetOutput del preset.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "ApplyPreset"
+        },
+        "Preset": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Preset"
+      ],
+      "additionalProperties": false
+    },
+    "Action": {
+      "description": "Una singola azione. Il campo 'type' determina il tipo e gli attributi richiesti.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ActionSetOutput"
+        },
+        {
+          "$ref": "#/$defs/ActionStartTimer"
+        },
+        {
+          "$ref": "#/$defs/ActionStopTimer"
+        },
+        {
+          "$ref": "#/$defs/ActionIncrementCounter"
+        },
+        {
+          "$ref": "#/$defs/ActionDecrementCounter"
+        },
+        {
+          "$ref": "#/$defs/ActionResetCounter"
+        },
+        {
+          "$ref": "#/$defs/ActionLog"
+        },
+        {
+          "$ref": "#/$defs/ActionApplyPreset"
+        }
+      ]
+    },
+    "Condition": {
+      "description": "Condizione booleana della transizione.",
+      "type": "object",
+      "properties": {
+        "Expression": {
+          "$ref": "#/$defs/ExpressionString"
+        }
+      },
+      "required": [
+        "Expression"
+      ],
+      "additionalProperties": false
+    },
+    "Transition": {
+      "description": "Transizione verso uno stato Target. Scatta se TUTTE le Conditions sono vere (AND implicito). Le transizioni nella stessa lista vengono valutate in ordine: la prima valida vince.",
+      "type": "object",
+      "properties": {
+        "Target": {
+          "$ref": "#/$defs/SimpleName",
+          "description": "Nome dello stato di destinazione (deve esistere nella stessa StateMachine)"
+        },
+        "Conditions": {
+          "description": "Lista di condizioni in AND implicito. Raccomandato: una sola Condition con tutta la logica nell'Expression.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "minItems": 1
+        },
+        "Actions": {
+          "description": "Azioni eseguite al momento della transizione, prima di OnExit e OnEnter. Opzionale.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
+        }
+      },
+      "required": [
+        "Target",
+        "Conditions"
+      ],
+      "additionalProperties": false
+    },
+    "State": {
+      "description": "Stato della macchina a stati.",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "$ref": "#/$defs/SimpleName",
+          "description": "Identificatore univoco dello stato"
+        },
+        "OnEnter": {
+          "description": "Azioni eseguite all'ingresso nello stato. Opzionale.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
+        },
+        "OnExit": {
+          "description": "Azioni eseguite all'uscita dallo stato. Opzionale.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
+        },
+        "Transitions": {
+          "description": "Transizioni uscenti, valutate in ordine. La prima con condizioni vere viene eseguita.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Transition"
+          }
+        }
+      },
+      "required": [
+        "Name"
+      ],
+      "additionalProperties": false
+    },
+    "Timer": {
+      "description": "Dichiarazione di un timer. Nell'Expression si accede con TIMEOUT(Name).",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "DefaultMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Durata di default in millisecondi"
+        }
+      },
+      "required": [
+        "Name",
+        "DefaultMs"
+      ],
+      "additionalProperties": false
+    },
+    "Counter": {
+      "description": "Dichiarazione di un contatore intero. Nell'Expression si usa il Name direttamente come variabile numerica.",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "InitialValue": {
+          "type": "integer",
+          "default": 0
+        }
+      },
+      "required": [
+        "Name"
+      ],
+      "additionalProperties": false
+    },
+    "Input": {
+      "description": "Ingresso fisico o virtuale PLC/Camera. Id e' il numero identificativo nel collector.",
+      "type": "object",
+      "properties": {
+        "Id": {
+          "type": "integer"
+        },
+        "Alias": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "Id",
+        "Alias"
+      ],
+      "additionalProperties": false
+    },
+    "Output": {
+      "description": "Uscita fisica PLC.",
+      "type": "object",
+      "properties": {
+        "Id": {
+          "type": "integer",
+          "description": "Id dispositivo PLC fisico"
+        },
+        "Alias": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "Id",
+        "Alias"
+      ],
+      "additionalProperties": false
+    },
+    "Preset": {
+      "description": "Preset di uscite: gruppo di SetOutput applicabili con ApplyPreset. Il motore accetta solo azioni SetOutput come figli diretti.",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "SetOutput": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActionSetOutput"
+          },
+          "description": "Solo SetOutput e' supportato come figlio diretto dal motore."
+        }
+      },
+      "required": [
+        "Name",
+        "SetOutput"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "Code": {
+      "type": "string",
+      "description": "Nome identificativo della macchina (usato per i log)"
+    },
+    "Id": {
+      "type": "integer",
+      "description": "Id numerico opzionale"
+    },
+    "Inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Input"
+      }
+    },
+    "Outputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Output"
+      }
+    },
+    "Timers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Timer"
+      }
+    },
+    "Counters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Counter"
+      }
+    },
+    "OutputPresets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Preset"
+      }
+    },
+    "StateMachine": {
+      "description": "La macchina a stati. Initial indica il nome dello stato iniziale. Contiene la lista degli stati come figli diretti.",
+      "type": "object",
+      "properties": {
+        "Initial": {
+          "$ref": "#/$defs/SimpleName",
+          "description": "Nome dello stato iniziale (obbligatorio)"
+        },
+        "State": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/State"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "Initial",
+        "State"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "StateMachine"
+  ],
+  "additionalProperties": false
+}

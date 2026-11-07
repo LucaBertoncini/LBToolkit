@@ -1,0 +1,627 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "xplc-grammar-v1.2",
+  "title": "XPLC Grammar — JACS Platform (con Template Engine)",
+  "description": "Documento XPLC — radice del file XML per VM dirette (<XPLC Code='...' Id='...'>), template parametrizzati (<XPLCTemplate Code='...'> — file .xplct) e file istanze (<XPLCInstances> — file .xplci). I placeholder nei template hanno la forma $NomeParam e vengono sostituiti sulla stringa XML grezza prima del parsing DOM.",
+  "version": "1.2",
+  "$defs": {
+    "SimpleName": {
+      "description": "Identificatore simbolico: lettere, cifre, underscore. Deve iniziare con lettera o underscore.",
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+      "minLength": 1
+    },
+    "VariantValue": {
+      "description": "Valore generico (stringa, intero, float, 'true'/'false'). Interpretato dal motore in base al contenuto.",
+      "type": "string"
+    },
+    "ExpressionString": {
+      "description": "Espressione booleana XPLC. Operatori di confronto: EQ NE GT LT GE LE (oppure simboli = <> > < >= <=). Operatori logici: AND OR NOT. Funzione speciale: TIMEOUT(NomeTimer) restituisce True se il timer e' scaduto. ATTENZIONE: non usare TIMEOUT() in confronti espliciti, es TIMEOUT(T) EQ 1 e' errato. Parentesi supportate. NOTA: le operazioni matematiche e le funzioni aritmetiche (+, -, *, /, Int) NON sono supportate dall'engine. Nei template, i placeholder $NomeParam nelle Expression vengono sostituiti prima della valutazione.",
+      "type": "string",
+      "examples": [
+        "SbarraChiusa EQ 1",
+        "TIMEOUT(TWait)",
+        "TIMEOUT(T10s) AND Cam05_Human EQ 0",
+        "Cam01_Vehicle EQ 0 AND Cam02_Vehicle EQ 0",
+        "Cam01_Vehicle EQ 1 OR Cam02_Vehicle EQ 1",
+        "NOT TornelloAperto EQ 1",
+        "RetryCount GE 3",
+        "(Cam01_Vehicle EQ 0 AND Cam02_Vehicle EQ 0) AND BlinkEnable EQ 0"
+      ]
+    },
+    "ActionSetOutput": {
+      "description": "Imposta un'uscita fisica o una variabile shared memory.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "SetOutput"
+        },
+        "Output": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "Value": {
+          "$ref": "#/$defs/VariantValue",
+          "description": "Valore da impostare (es: '0', '1', 'true')"
+        }
+      },
+      "required": [
+        "type",
+        "Output",
+        "Value"
+      ],
+      "additionalProperties": false
+    },
+    "ActionStartTimer": {
+      "description": "Avvia un timer. DurationMs opzionale: se assente usa il DefaultMs dichiarato.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "StartTimer"
+        },
+        "Timer": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "DurationMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Durata in ms (sovrascrive il default)"
+        }
+      },
+      "required": [
+        "type",
+        "Timer"
+      ],
+      "additionalProperties": false
+    },
+    "ActionStopTimer": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "StopTimer"
+        },
+        "Timer": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Timer"
+      ],
+      "additionalProperties": false
+    },
+    "ActionIncrementCounter": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "IncrementCounter"
+        },
+        "Counter": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Counter"
+      ],
+      "additionalProperties": false
+    },
+    "ActionDecrementCounter": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "DecrementCounter"
+        },
+        "Counter": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Counter"
+      ],
+      "additionalProperties": false
+    },
+    "ActionResetCounter": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "ResetCounter"
+        },
+        "Counter": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Counter"
+      ],
+      "additionalProperties": false
+    },
+    "ActionLog": {
+      "description": "Scrive un messaggio nel log. Supporta interpolazione a runtime: %NomeAlias% (singolo %) viene sostituito con il valore corrente. Nei template, i placeholder $NomeParam vengono sostituiti prima del parsing.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "Log"
+        },
+        "Message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "Message"
+      ],
+      "additionalProperties": false
+    },
+    "ActionApplyPreset": {
+      "description": "Applica un preset di uscite definito in OutputPresets. Equivale a eseguire in sequenza tutti i SetOutput del preset.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "ApplyPreset"
+        },
+        "Preset": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "type",
+        "Preset"
+      ],
+      "additionalProperties": false
+    },
+    "Action": {
+      "description": "Una singola azione. Il campo 'type' determina il tipo e gli attributi richiesti.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ActionSetOutput"
+        },
+        {
+          "$ref": "#/$defs/ActionStartTimer"
+        },
+        {
+          "$ref": "#/$defs/ActionStopTimer"
+        },
+        {
+          "$ref": "#/$defs/ActionIncrementCounter"
+        },
+        {
+          "$ref": "#/$defs/ActionDecrementCounter"
+        },
+        {
+          "$ref": "#/$defs/ActionResetCounter"
+        },
+        {
+          "$ref": "#/$defs/ActionLog"
+        },
+        {
+          "$ref": "#/$defs/ActionApplyPreset"
+        }
+      ]
+    },
+    "Condition": {
+      "description": "Condizione booleana della transizione.",
+      "type": "object",
+      "properties": {
+        "Expression": {
+          "$ref": "#/$defs/ExpressionString"
+        }
+      },
+      "required": [
+        "Expression"
+      ],
+      "additionalProperties": false
+    },
+    "Transition": {
+      "description": "Transizione verso uno stato Target. Scatta se TUTTE le Conditions sono vere (AND implicito). Le transizioni nella stessa lista vengono valutate in ordine: la prima valida vince.",
+      "type": "object",
+      "properties": {
+        "Target": {
+          "$ref": "#/$defs/SimpleName",
+          "description": "Nome dello stato di destinazione (deve esistere nella stessa StateMachine)"
+        },
+        "Conditions": {
+          "description": "Lista di condizioni in AND implicito. Raccomandato: una sola Condition con tutta la logica nell'Expression.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "minItems": 1
+        },
+        "Actions": {
+          "description": "Azioni eseguite al momento della transizione, prima di OnExit e OnEnter. Opzionale.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
+        }
+      },
+      "required": [
+        "Target",
+        "Conditions"
+      ],
+      "additionalProperties": false
+    },
+    "State": {
+      "description": "Stato della macchina a stati.",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "$ref": "#/$defs/SimpleName",
+          "description": "Identificatore univoco dello stato"
+        },
+        "OnEnter": {
+          "description": "Azioni eseguite all'ingresso nello stato. Opzionale.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
+        },
+        "OnExit": {
+          "description": "Azioni eseguite all'uscita dallo stato. Opzionale.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Action"
+          }
+        },
+        "Transitions": {
+          "description": "Transizioni uscenti, valutate in ordine. La prima con condizioni vere viene eseguita.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Transition"
+          }
+        }
+      },
+      "required": [
+        "Name"
+      ],
+      "additionalProperties": false
+    },
+    "Timer": {
+      "description": "Dichiarazione di un timer. Nell'Expression si accede con TIMEOUT(Name).",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "DefaultMs": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Durata di default in millisecondi"
+        }
+      },
+      "required": [
+        "Name",
+        "DefaultMs"
+      ],
+      "additionalProperties": false
+    },
+    "Counter": {
+      "description": "Dichiarazione di un contatore intero. Nell'Expression si usa il Name direttamente come variabile numerica.",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "InitialValue": {
+          "type": "integer",
+          "default": 0
+        }
+      },
+      "required": [
+        "Name"
+      ],
+      "additionalProperties": false
+    },
+    "Input": {
+      "description": "Ingresso fisico o virtuale PLC/Camera. Id e' il numero identificativo nel collector.",
+      "type": "object",
+      "properties": {
+        "Id": {
+          "type": "integer"
+        },
+        "Alias": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "Id",
+        "Alias"
+      ],
+      "additionalProperties": false
+    },
+    "Output": {
+      "description": "Uscita fisica PLC.",
+      "type": "object",
+      "properties": {
+        "Id": {
+          "type": "integer",
+          "description": "Id dispositivo PLC fisico"
+        },
+        "Alias": {
+          "$ref": "#/$defs/SimpleName"
+        }
+      },
+      "required": [
+        "Id",
+        "Alias"
+      ],
+      "additionalProperties": false
+    },
+    "Preset": {
+      "description": "Preset di uscite: gruppo di SetOutput applicabili con ApplyPreset. Il motore accetta solo azioni SetOutput come figli diretti.",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "$ref": "#/$defs/SimpleName"
+        },
+        "SetOutput": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActionSetOutput"
+          },
+          "description": "Solo SetOutput e' supportato come figlio diretto dal motore."
+        }
+      },
+      "required": [
+        "Name",
+        "SetOutput"
+      ],
+      "additionalProperties": false
+    },
+    "TemplateParam": {
+      "description": "Dichiarazione di un parametro nel template. Type: Integer, String, Float, Boolean. Default opzionale: se assente il parametro e' obbligatorio. I parametri obbligatori non forniti dall'istanza causano un warning a runtime e lasciano il placeholder non sostituito.",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "$ref": "#/$defs/SimpleName",
+          "description": "Nome del parametro (usato come $NomeParm nel corpo del template)"
+        },
+        "Type": {
+          "type": "string",
+          "enum": [
+            "Integer",
+            "String",
+            "Float",
+            "Boolean"
+          ],
+          "description": "Tipo del valore atteso"
+        },
+        "Default": {
+          "type": "string",
+          "description": "Valore di default. Se presente il parametro e' opzionale."
+        }
+      },
+      "required": [
+        "Name",
+        "Type"
+      ],
+      "additionalProperties": false
+    },
+    "InstanceParam": {
+      "description": "Valore di un parametro fornito da un'istanza. Name deve corrispondere a un Param dichiarato nel template.",
+      "type": "object",
+      "properties": {
+        "Name": {
+          "type": "string",
+          "description": "Nome del parametro (deve esistere nel template referenziato)"
+        },
+        "Value": {
+          "type": "string",
+          "description": "Valore stringa. Sostituisce il placeholder $Name nel corpo XML del template."
+        }
+      },
+      "required": [
+        "Name",
+        "Value"
+      ],
+      "additionalProperties": false
+    },
+    "TemplateInclude": {
+      "description": "Inclusione di un template annidato. Genera una VM separata (TResolvedDocument aggiuntivo). Il template padre puo' essere un puro contenitore senza StateMachine propria. Profondita' massima di annidamento: 10 livelli.",
+      "type": "object",
+      "properties": {
+        "Template": {
+          "type": "string",
+          "description": "Nome del file template (senza estensione .xplct)"
+        },
+        "Code": {
+          "type": "string",
+          "description": "Code univoco della VM generata dall'inclusione. Puo' contenere placeholder $NomeParam."
+        },
+        "Params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InstanceParam"
+          },
+          "description": "Valori dei parametri per questo include. I valori possono fare riferimento ai parametri del padre con $NomeParam."
+        }
+      },
+      "required": [
+        "Template",
+        "Code"
+      ],
+      "additionalProperties": false
+    },
+    "XPLCTemplate": {
+      "description": "Radice di un file template XPLC (.xplct). Ha la stessa struttura di un file XPLC normale con l'aggiunta di Parameters e Include. I placeholder $NomeParam vengono sostituiti prima del parsing DOM.",
+      "type": "object",
+      "properties": {
+        "Code": {
+          "type": "string",
+          "description": "Nome descrittivo del template (non diventa il Code della VM; il Code e' quello dell'istanza)"
+        },
+        "Parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TemplateParam"
+          },
+          "description": "Lista dei parametri accettati dal template."
+        },
+        "Include": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TemplateInclude"
+          },
+          "description": "Template annidati: ciascuno genera una VM separata."
+        },
+        "Inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Input"
+          }
+        },
+        "Outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Output"
+          }
+        },
+        "Timers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Timer"
+          }
+        },
+        "Counters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Counter"
+          }
+        },
+        "OutputPresets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Preset"
+          }
+        },
+        "StateMachine": {
+          "description": "Opzionale: se assente il template e' un puro contenitore di Include.",
+          "$ref": "#/properties/StateMachine"
+        }
+      },
+      "required": [
+        "Code",
+        "Parameters"
+      ],
+      "additionalProperties": false
+    },
+    "XPLCInstance": {
+      "description": "Una singola istanza di un template. Genera una TLogicController indipendente nel TXPLCManager. Code deve essere univoco tra tutte le VM caricate.",
+      "type": "object",
+      "properties": {
+        "Code": {
+          "type": "string",
+          "description": "Nome univoco della VM generata. Diventa XPLC Code nel DOM risolto. Deve essere univoco rispetto a tutte le altre VM (template o meno)."
+        },
+        "Template": {
+          "type": "string",
+          "description": "Nome del file template (senza estensione .xplct). Il motore cerca il file in TemplateDir o nella TemplatesPath del config.ini."
+        },
+        "Params": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InstanceParam"
+          },
+          "description": "Valori dei parametri per questa istanza. I parametri obbligatori (senza Default) devono essere tutti forniti."
+        }
+      },
+      "required": [
+        "Code",
+        "Template"
+      ],
+      "additionalProperties": false
+    },
+    "XPLCInstances": {
+      "description": "Radice di un file istanze XPLC (.xplci). Contiene una o piu' istanze di uno o piu' template. Ogni Instance genera una VM indipendente.",
+      "type": "object",
+      "properties": {
+        "TemplateDir": {
+          "type": "string",
+          "description": "Percorso directory dei file .xplct. Se relativo, risolto rispetto alla directory del file .xplci. Se omesso, usa TemplatesPath dal config.ini."
+        },
+        "Instance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/XPLCInstance"
+          },
+          "minItems": 1,
+          "description": "Lista delle istanze. Ordine di caricamento: sequenziale."
+        }
+      },
+      "required": [
+        "Instance"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "Code": {
+      "type": "string",
+      "description": "Nome identificativo della macchina (usato per i log)"
+    },
+    "Id": {
+      "type": "integer",
+      "description": "Id numerico opzionale"
+    },
+    "Inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Input"
+      }
+    },
+    "Outputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Output"
+      }
+    },
+    "Timers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Timer"
+      }
+    },
+    "Counters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Counter"
+      }
+    },
+    "OutputPresets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Preset"
+      }
+    },
+    "StateMachine": {
+      "description": "La macchina a stati. Initial indica il nome dello stato iniziale. Contiene la lista degli stati come figli diretti.",
+      "type": "object",
+      "properties": {
+        "Initial": {
+          "$ref": "#/$defs/SimpleName",
+          "description": "Nome dello stato iniziale (obbligatorio)"
+        },
+        "State": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/State"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "Initial",
+        "State"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "StateMachine"
+  ],
+  "additionalProperties": false,
+  "$comment": "Questo schema descrive tre tipi di file XPLC:\n1. File VM diretti (.xml): struttura radice con StateMachine obbligatoria.\n2. File template (.xplct): struttura XPLCTemplate con Parameters obbligatori e StateMachine opzionale.\n3. File istanze (.xplci): struttura XPLCInstances con lista di Instance.\nLe definizioni XPLCTemplate, XPLCInstances, XPLCInstance, XPLCInclude, TemplateParam, InstanceParam\nsono in $defs e descrivono i file .xplct e .xplci."
+}

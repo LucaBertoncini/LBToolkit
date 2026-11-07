@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <PathDelim Value="\"/>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="Test_Postgresql.ppr"/>
+        <FRMtype Value="0"/>
+        <IsPartOfProject Value="True"/>
+        <EditorIndex Value="3"/>
+        <WindowIndex Value="0"/>
+        <CursorPos X="25" Y="12"/>
+        <UsageCount Value="32"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ufrmMain.pas"/>
+        <FRMtype Value="0"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="frmMain"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <EditorIndex Value="0"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="40"/>
+        <CursorPos X="41" Y="51"/>
+        <UsageCount Value="32"/>
+        <Loaded Value="True"/>
+        <LoadedDesigner Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\uPgNotify.pas"/>
+        <FRMtype Value="0"/>
+        <EditorIndex Value="1"/>
+        <WindowIndex Value="0"/>
+        <CursorPos X="58" Y="174"/>
+        <UsageCount Value="15"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\codetyphon\fpcsrc\rtl\objpas\fgl.pp"/>
+        <FRMtype Value="0"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="315"/>
+        <CursorPos X="14" Y="332"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <FRMtype Value="0"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <WindowIndex Value="0"/>
+        <CursorPos X="97" Y="8"/>
+        <UsageCount Value="15"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\codetyphon\fpcsrc\packages\postgres\src\postgres.pp"/>
+        <FRMtype Value="0"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="205"/>
+        <CursorPos X="63" Y="215"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\codetyphon\fpcsrc\packages\fcl-db\src\sqldb\postgres\pqconnection.pp"/>
+        <FRMtype Value="0"/>
+        <UnitName Value="PQConnection"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="186"/>
+        <CursorPos X="19" Y="207"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\uLBBaseThread.pas"/>
+        <FRMtype Value="0"/>
+        <EditorIndex Value="4"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="13"/>
+        <CursorPos X="49" Y="24"/>
+        <UsageCount Value="15"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\..\uLBDBConnectionManager.pas"/>
+        <FRMtype Value="0"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="1252"/>
+        <CursorPos X="61" Y="1266"/>
+        <UsageCount Value="9"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\codetyphon\fpcsrc\packages\postgres\src\postgres3dyn.pp"/>
+        <FRMtype Value="0"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="235"/>
+        <CursorPos X="49" Y="251"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\codetyphon\fpcsrc\rtl\inc\dynlibs.pas"/>
+        <FRMtype Value="0"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="0"/>
+        <CursorPos X="3" Y="29"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\codetyphon\fpcsrc\rtl\win\sysdlh.inc"/>
+        <FRMtype Value="0"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="0"/>
+        <UsageCount Value="11"/>
+      </Unit>
+      <Unit>
+        <Filename Value="C:\codetyphon\fpcsrc\rtl\win64\system.pp"/>
+        <FRMtype Value="0"/>
+        <UnitName Value="System"/>
+        <EditorIndex Value="-1"/>
+        <WindowIndex Value="0"/>
+        <CursorPos X="3" Y="21"/>
+        <UsageCount Value="11"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="27">
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="10" Column="54"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="81" Column="29" TopLine="63"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="72" Column="49" TopLine="63"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="82" Column="38" TopLine="63"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="98" TopLine="71"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="31" Column="16" TopLine="13"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="102" Column="22" TopLine="66"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPgNotify.pas"/>
+        <Caret Line="92" Column="51" TopLine="80"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPgNotify.pas"/>
+        <Caret Line="128" TopLine="102"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPgNotify.pas"/>
+        <Caret Line="36" Column="23" TopLine="18"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPgNotify.pas"/>
+        <Caret Line="128" Column="43" TopLine="110"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPgNotify.pas"/>
+        <Caret Line="176" Column="58" TopLine="169"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="40" Column="17" TopLine="23"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="126" Column="86" TopLine="115"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="36" Column="22" TopLine="19"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="129" Column="3" TopLine="122"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="24" Column="17" TopLine="6"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="72" Column="33" TopLine="60"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="24" Column="16" TopLine="6"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="73" Column="41" TopLine="64"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="139" Column="22" TopLine="109"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="470" TopLine="444"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="254" TopLine="243"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="111" Column="16" TopLine="88"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPgNotify.pas"/>
+        <Caret Line="174" Column="58"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="111" Column="17" TopLine="99"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="658" Column="44" TopLine="625"/>
+      </Position>
+      <Position>
+        <Filename Value="..\uPQConnectionEx.pas"/>
+        <Caret Line="263" Column="23" TopLine="236"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

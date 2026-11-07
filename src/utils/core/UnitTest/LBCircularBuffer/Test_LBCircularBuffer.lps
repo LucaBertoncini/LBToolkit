@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="Test_LBCircularBuffer.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <TopLine Value="14"/>
+        <CursorPos X="12" Y="6"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uLBCircularBufferTests"/>
+        <EditorIndex Value="4"/>
+        <CursorPos X="3" Y="131"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../uLBFileUtils.pas"/>
+        <EditorIndex Value="2"/>
+        <CursorPos X="37" Y="7"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../uLBCircularBuffer.pas"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="112"/>
+        <CursorPos X="28" Y="3"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-fpcunit/src/consoletestrunner.pas"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="65"/>
+        <CursorPos Y="80"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="22">
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Column="28"/>
+      </Position>
+      <Position>
+        <Filename Value="Test_LBCircularBuffer.lpr"/>
+        <Caret Line="6" Column="53"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBFileUtils.pas"/>
+        <Caret Line="7" Column="37"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBCircularBuffer.pas"/>
+        <Caret Line="6" Column="63"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBCircularBuffer.pas"/>
+        <Caret Line="367" Column="32" TopLine="347"/>
+      </Position>
+      <Position>
+        <Filename Value="Test_LBCircularBuffer.lpr"/>
+        <Caret Line="6" Column="53"/>
+      </Position>
+      <Position>
+        <Filename Value="Test_LBCircularBuffer.lpr"/>
+        <Caret Line="14" Column="20"/>
+      </Position>
+      <Position>
+        <Filename Value="Test_LBCircularBuffer.lpr"/>
+        <Caret Line="29" Column="17" TopLine="2"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="159" Column="7" TopLine="140"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="136" Column="66" TopLine="120"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="53" Column="32" TopLine="34"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="64" Column="32" TopLine="41"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="78" Column="30" TopLine="55"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="135" Column="36" TopLine="112"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="136" Column="58" TopLine="113"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="49" Column="57" TopLine="35"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="50" Column="48" TopLine="35"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="52" Column="57" TopLine="35"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="53" Column="24" TopLine="35"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="64" Column="32" TopLine="41"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="78" Column="30" TopLine="55"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="135" Column="36" TopLine="112"/>
+      </Position>
+      <Position>
+        <Filename Value="ulbcircularbuffertests.pas"/>
+        <Caret Line="136" Column="58" TopLine="113"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

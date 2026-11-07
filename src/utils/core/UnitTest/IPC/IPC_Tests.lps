@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectSession>
+    <Version Value="12"/>
+    <BuildModes Active="Default"/>
+    <Units>
+      <Unit>
+        <Filename Value="IPC_Tests.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <CursorPos X="19" Y="29"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="testlocalipc.pas"/>
+        <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="85"/>
+        <CursorPos X="78" Y="94"/>
+        <UsageCount Value="20"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <EditorIndex Value="3"/>
+        <TopLine Value="492"/>
+        <CursorPos X="57" Y="501"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="../../uLBFileUtils.pas"/>
+        <EditorIndex Value="4"/>
+        <CursorPos X="18" Y="11"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/rtl/objpas/classes/classesh.inc"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="1780"/>
+        <CursorPos X="17" Y="1791"/>
+        <UsageCount Value="10"/>
+      </Unit>
+      <Unit>
+        <Filename Value="/usr/share/fpcsrc/3.2.2/packages/fcl-fpcunit/src/consoletestrunner.pas"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="59"/>
+        <CursorPos Y="80"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit>
+    </Units>
+    <JumpHistory HistoryIndex="25">
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Column="18"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="8" Column="54" TopLine="74"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="117" Column="47" TopLine="109"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uLBFileUtils.pas"/>
+        <Caret Line="11" Column="18"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="529" Column="35" TopLine="515"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="563" Column="5" TopLine="81"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="561" Column="44" TopLine="550"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="563" Column="12" TopLine="550"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="709" Column="31" TopLine="691"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="711" Column="10" TopLine="691"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="9" Column="20"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="564" Column="7" TopLine="550"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="566" Column="22" TopLine="553"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="570" Column="29" TopLine="557"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="712" Column="5" TopLine="698"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="37" Column="5" TopLine="16"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="38" Column="22" TopLine="16"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="41" Column="21" TopLine="19"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="67" Column="26" TopLine="41"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="41" Column="20" TopLine="22"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="131" TopLine="23"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="45" Column="21" TopLine="25"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="68" Column="15" TopLine="58"/>
+      </Position>
+      <Position>
+        <Filename Value="testlocalipc.pas"/>
+        <Caret Line="55" Column="10" TopLine="38"/>
+      </Position>
+      <Position>
+        <Filename Value="IPC_Tests.lpr"/>
+        <Caret Line="14" Column="18"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="90" Column="17" TopLine="86"/>
+      </Position>
+      <Position>
+        <Filename Value="../../uIPCUtils.pas"/>
+        <Caret Line="537" Column="3" TopLine="532"/>
+      </Position>
+    </JumpHistory>
+    <RunParams>
+      <FormatVersion Value="2"/>
+      <Modes ActiveMode=""/>
+    </RunParams>
+  </ProjectSession>
+</CONFIG>

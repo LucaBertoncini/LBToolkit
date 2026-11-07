@@ -1,0 +1,10 @@
+[SpeechToText]
+Provider=Azure
+
+[SpeechToText.Azure]
+; SOLO schema + host della risorsa Azure Speech, senza slash finale.
+Endpoint=https://YOUR_RESOURCE_NAME.cognitiveservices.azure.com
+SubscriptionKey=YOUR_SPEECH_RESOURCE_KEY
+Locale=it-IT
+ApiVersion=2025-10-15
+TimeoutMs=120000

@@ -1,0 +1,417 @@
+unit uLBApplicationBoostrap;
+
+{$mode ObjFPC}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, uLBmicroWebServer, Laz2_DOM, IniFiles{$IFDEF Linux}, BaseUnix, uLBSignalManager{$ENDIF};
+
+type
+
+  { TLBApplicationBoostrap }
+
+  TLBApplicationBoostrap = class(TObject)
+    strict private
+      type
+        TLoggerConfig = record
+          LogFile     : String;
+          LogLevel    : Integer;
+          MaxFileSize : Int64;
+        end;
+        pLoggerConfig = ^TLoggerConfig;
+
+        TWebServerConfig = record
+          Port            : Integer;
+          DocumentsFolder : String;
+          DefaultFile     : String;
+          UploadEndpoint  : String;
+          SecureCookie    : Boolean;
+
+          CertificateFile   : String;
+          CACertificateFile : String;
+          PrivateKeyFile    : String;
+          KeyPassword       : String;
+        end;
+        pWebServerConfig = ^TWebServerConfig;
+
+    strict private
+      FOnDestroyed : TNotifyEvent;
+      {$IFDEF Linux}
+      FSigPipeAction : TSignalManager;
+      {$ENDIF}
+      procedure setUpLogger(aConfiguration: pLoggerConfig);
+      procedure setUpWebServer(aConfiguration: pWebServerConfig);
+
+      const
+        cBootstrapApplicationDescription = String('BootApp');
+
+    strict private
+      FForceSecureCookie : Boolean;
+
+      function get_SecureConnection: Boolean;
+      function get_UseSecureCookie: Boolean;
+
+    strict protected
+      FWebServer : TLBmicroWebServer;
+
+      function LoadConfigurationFromXMLNode(aNode: TDOMNode; out anErrorMsg: String): Boolean; virtual;
+      function LoadConfigurationFromINIFileInternal(aFile: TIniFile; out anErrorMsg: String): Boolean; virtual;
+      function LoadConfigurationFromXMLFile(const aFilename: String; out anErrorMsg: String): Boolean;
+      function LoadConfigurationFromINIFile(const aFilename: String; out anErrorMsg: String): Boolean;
+
+      function getApplicationDescription(): String; virtual;
+
+      {:Used to set Web-Server callbacks before it starts}
+      procedure startingWebServer(); virtual;
+
+    public
+      constructor Create; virtual;
+      destructor Destroy; override;
+
+      function LoadConfiguration(const aFilename: String; out anErrorMsg: String): Boolean;
+
+      property OnDestroyed: TNotifyEvent write FOnDestroyed;
+
+      {:True when the web server has valid SSL data: in that case every connection is HTTPS.}
+      property SecureConnection: Boolean read get_SecureConnection;
+
+      {:Value to assign to TTokenManager.CookieSecure. True when the web server is HTTPS
+        (SecureConnection) or when the configuration forces it with the key "SecureCookie"
+        (needed when TLS is terminated by a reverse proxy: the server then talks plain HTTP).}
+      property UseSecureCookie: Boolean read get_UseSecureCookie;
+
+      const
+        // Sezioni
+        cINI_CFG_SEC_LOGGER           = 'LBLogger';
+        cINI_CFG_SEC_WEBSERVER        = 'LBmicroWebServer';
+
+        // Logger keys
+        cINI_CFG_KEY_LOGFILE          = 'LogFile';
+        cINI_CFG_KEY_LOGLEVEL         = 'LogLevel';
+        cINI_CFG_KEY_LOGFILESIZE      = 'MaxFileSize';
+
+        // WebServer keys
+        cINI_CFG_KEY_PORT             = 'Port';
+        cINI_CFG_KEY_DOCUMENTSFOLDER  = 'DocumentsFolder';
+        cINI_CFG_KEY_DEFAULTDOCUMENT  = 'DefaultFile';
+        cINI_CFG_KEY_UPLOAD_ENDPOINT  = 'UploadEndpoint';
+        cINI_CFG_KEY_SECURE_COOKIE    = 'SecureCookie';
+
+        cXML_CFG_Logger               = cINI_CFG_SEC_LOGGER;
+        cXML_CFG_WEBSERVER            = cINI_CFG_SEC_WEBSERVER;
+
+        cXML_CFG_ATTR_LOGFILE         = cINI_CFG_KEY_LOGFILE;
+        cXML_CFG_ATTR_LOGLEVEL        = cINI_CFG_KEY_LOGLEVEL;
+        cXML_CFG_ATTR_LOGFILESIZE     = cINI_CFG_KEY_LOGFILESIZE;
+
+        cXML_CFG_ATTR_WEBPORT         = cINI_CFG_KEY_PORT;
+        cXML_CFG_ATTR_DOCUMENTROOT    = cINI_CFG_KEY_DOCUMENTSFOLDER;
+        cXML_CFG_ATTR_DEFAULTDOCUMENT = cINI_CFG_KEY_DEFAULTDOCUMENT;
+        cXML_CFG_ATTR_UPLOAD_ENDPOINT = cINI_CFG_KEY_UPLOAD_ENDPOINT;
+        cXML_CFG_ATTR_SECURE_COOKIE   = cINI_CFG_KEY_SECURE_COOKIE;
+
+
+        cExtension_INIFile = '.ini';
+        cExtension_XMLFile = '.xml';
+        cDefaultLogFileSize = 2 * 1024 * 1024;
+
+  end;
+
+implementation
+
+uses
+  ULBLogger, FileUtil, uLBFileUtils, uLBSSLConfig;
+
+{ TLBApplicationBoostrap }
+
+function TLBApplicationBoostrap.LoadConfigurationFromXMLNode(aNode: TDOMNode; out anErrorMsg: String): Boolean;
+var
+  _MainNode : TDOMNode;
+  _Item : TDOMElement;
+  _LogCfg : TLoggerConfig;
+  _WebCfg : TWebServerConfig;
+
+begin
+  Result := False;
+
+  if aNode <> nil then
+  begin
+    if aNode.NodeName = Self.getApplicationDescription() then
+      _MainNode := aNode
+    else
+      _MainNode := aNode.FindNode(Self.getApplicationDescription());
+
+    if _MainNode <> nil then
+    begin
+      _Item := TDOMElement(_MainNode.FindNode(cXML_CFG_Logger));
+      if _Item <> nil then
+      begin
+        _LogCfg.LogFile := _Item.GetAttribute(cXML_CFG_ATTR_LOGFILE);
+        _LogCfg.LogLevel := StrToIntDef(_Item.GetAttribute(cXML_CFG_ATTR_LOGLEVEL), 1);
+        _LogCfg.MaxFileSize := StrToInt64Def(_Item.GetAttribute(cXML_CFG_ATTR_LOGFILESIZE), 0);
+      end
+      else
+        FillChar(_LogCfg, SizeOf(_LogCfg), 0);
+      Self.setUpLogger(@_LogCfg);
+
+      _Item := TDOMElement(_MainNode.FindNode(cXML_CFG_Logger));
+      if _Item <> nil then
+      begin
+        _WebCfg.Port := StrToIntDef(_Item.GetAttribute(cXML_CFG_ATTR_WEBPORT), 0);
+        _WebCfg.DocumentsFolder := Trim(_Item.GetAttribute(cXML_CFG_ATTR_DOCUMENTROOT));
+        _WebCfg.DefaultFile := Trim(_Item.GetAttribute(cXML_CFG_ATTR_DEFAULTDOCUMENT));
+        _WebCfg.UploadEndpoint := Trim(_Item.GetAttribute(cXML_CFG_ATTR_UPLOAD_ENDPOINT));
+        _WebCfg.SecureCookie := StrToBoolDef(Trim(_Item.GetAttribute(cXML_CFG_ATTR_SECURE_COOKIE)), False);
+      end
+      else
+        FillChar(_WebCfg, SizeOf(_WebCfg), 0);
+      Self.setUpWebServer(@_WebCfg);
+    end
+    else
+      anErrorMsg := Format('Node <%s> not found!', [Self.getApplicationDescription()]);
+  end
+  else
+    anErrorMsg := 'Node not set!';
+end;
+
+function TLBApplicationBoostrap.LoadConfigurationFromINIFileInternal(aFile: TIniFile; out anErrorMsg: String): Boolean;
+begin
+  Result := True;
+end;
+
+function TLBApplicationBoostrap.LoadConfigurationFromXMLFile(const aFilename: String; out anErrorMsg: String): Boolean;
+var
+  _Doc : TXMLDocument = nil;
+
+begin
+  Result := False;
+
+  if OpenXMLFile(aFilename, _Doc) then
+    Result := Self.LoadConfigurationFromXMLNode(_Doc.DocumentElement, anErrorMsg)
+  else
+    anErrorMsg := Format('Not enable to open file <%s>', [aFilename]);
+
+  if _Doc <> nil then
+    _Doc.Free;
+end;
+
+function TLBApplicationBoostrap.LoadConfigurationFromINIFile(const aFilename: String; out anErrorMsg: String): Boolean;
+var
+  _IniF: TIniFile;
+  _LogCfg : TLoggerConfig;
+  _WebCfg : TWebServerConfig;
+
+begin
+  Result := False;
+  anErrorMsg := '';
+
+  if FileExists(aFilename) then
+  begin
+    try
+      _WebCfg.Port := 0;
+      _WebCfg.SecureCookie := False;
+
+      _IniF := TIniFile.Create(aFilename);
+
+      // LBLogger
+      if _IniF.SectionExists(cINI_CFG_SEC_LOGGER) then
+      begin
+        _LogCfg.LogFile := _IniF.ReadString(cINI_CFG_SEC_LOGGER, cINI_CFG_KEY_LOGFILE, '');
+        _LogCfg.LogLevel := _IniF.ReadInteger(cINI_CFG_SEC_LOGGER, cINI_CFG_KEY_LOGLEVEL, 1);
+        _LogCfg.MaxFileSize := _IniF.ReadInt64(cINI_CFG_SEC_LOGGER, cINI_CFG_KEY_LOGFILESIZE, cDefaultLogFileSize);
+
+        Self.setUpLogger(@_LogCfg);
+      end;
+
+      // LBmicroWebServer
+      if _IniF.SectionExists(cINI_CFG_SEC_WEBSERVER) then
+      begin
+        _WebCfg.Port := _IniF.ReadInteger(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_PORT, 0);
+        _WebCfg.DocumentsFolder := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_DOCUMENTSFOLDER, '');
+        _WebCfg.UploadEndpoint := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_UPLOAD_ENDPOINT, '');
+        _WebCfg.DefaultFile := _IniF.ReadString(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_DEFAULTDOCUMENT, '');
+        _WebCfg.SecureCookie := _IniF.ReadBool(cINI_CFG_SEC_WEBSERVER, cINI_CFG_KEY_SECURE_COOKIE, False);
+        if _IniF.SectionExists(TSSLConnectionData.cDEFAULT_INI_SECTION) then
+        begin
+          _WebCfg.CertificateFile   := _IniF.ReadString(TSSLConnectionData.cDEFAULT_INI_SECTION, TSSLConnectionData.cSSLCertificateNodeName, '');
+          _WebCfg.CACertificateFile := _IniF.ReadString(TSSLConnectionData.cDEFAULT_INI_SECTION, TSSLConnectionData.cSSLCACertificateNodeName, '');
+          _WebCfg.PrivateKeyFile    := _IniF.ReadString(TSSLConnectionData.cDEFAULT_INI_SECTION, TSSLConnectionData.cSSLPrivateKeyNodeName, '');
+          _WebCfg.KeyPassword       := _IniF.ReadString(TSSLConnectionData.cDEFAULT_INI_SECTION, TSSLConnectionData.cSSLKeyPasswordNodeName, '');
+        end;
+      end;
+
+      Result := Self.LoadConfigurationFromINIFileInternal(_IniF, anErrorMsg);
+
+      if Result and (_WebCfg.Port > 0) then
+        Self.setUpWebServer(@_WebCfg);
+
+    except
+      on E: Exception do
+        anErrorMsg := 'Error reading INI file: ' + E.Message;
+    end;
+
+    _IniF.Free;
+  end
+  else
+    anErrorMsg := 'INI file not found: ' + aFilename;
+end;
+
+procedure TLBApplicationBoostrap.setUpLogger(aConfiguration: pLoggerConfig);
+var
+  _LogFile : String;
+  _LogLevel : Integer;
+
+begin
+  if aConfiguration <> nil then
+  begin
+    if aConfiguration^.LogFile = '' then
+      ReleaseLogger()
+    else begin
+
+      _LogFile := ResolvePath(aConfiguration^.LogFile);
+
+       _LogLevel := aConfiguration^.LogLevel;
+       if _LogLevel <= 0 then
+         _LogLevel := 1;
+
+       if LBLogger = nil then
+         InitLogger(_LogLevel, _LogFile, False, False)
+       else begin
+          LBLogger.setLogFile(PChar(_LogFile));
+          LBLogger.set_MaxLogLevel(_LogLevel);
+       end;
+
+       if aConfiguration^.MaxFileSize > 0 then
+         LBLogger.MaxFileSize := aConfiguration^.MaxFileSize;
+    end;
+  end;
+end;
+
+procedure TLBApplicationBoostrap.setUpWebServer(aConfiguration: pWebServerConfig);
+var
+  _DocRoot : String;
+
+begin
+  if aConfiguration <> nil then
+  begin
+
+    try
+      FForceSecureCookie := aConfiguration^.SecureCookie;
+      FreeAndNil(FWebServer);
+      if aConfiguration^.Port > 0 then
+      begin
+        FWebServer := TLBmicroWebServer.Create;
+        if aConfiguration^.DocumentsFolder <> '' then
+        begin
+          _DocRoot := ResolvePath(aConfiguration^.DocumentsFolder);
+          if _DocRoot <> '' then
+          begin
+            FWebServer.createDocumentFolder();
+            FWebServer.DocumentsFolder.DocumentFolder := _DocRoot;
+            FWebServer.DocumentsFolder.DefaultFile := aConfiguration^.DefaultFile;
+            FWebServer.DocumentsFolder.UploadEndpoint := aConfiguration^.UploadEndpoint;
+          end;
+        end;
+
+        if aConfiguration^.CertificateFile <> '' then
+        begin
+          FWebServer.SSLData.CertificateFile   := aConfiguration^.CertificateFile;
+          FWebServer.SSLData.CACertificateFile := aConfiguration^.CACertificateFile;
+          FWebServer.SSLData.PrivateKeyFile    := aConfiguration^.PrivateKeyFile;
+          FWebServer.SSLData.KeyPassword       := aConfiguration^.KeyPassword;
+        end;
+
+        Self.startingWebServer();
+        FWebServer.ListeningPort := aConfiguration^.Port;
+        FWebServer.Activate();
+      end;
+
+    except
+      on E: Exception do
+        LBLogger.Write(1, 'TLBApplicationBoostrap.setUpWebServer', lmt_Error, E.Message);
+    end;
+  end;
+end;
+
+function TLBApplicationBoostrap.get_SecureConnection: Boolean;
+begin
+  Result := (FWebServer <> nil) and (FWebServer.SSLData <> nil) and FWebServer.SSLData.hasValidData;
+end;
+
+function TLBApplicationBoostrap.get_UseSecureCookie: Boolean;
+begin
+  Result := FForceSecureCookie or Self.get_SecureConnection;
+end;
+
+function TLBApplicationBoostrap.getApplicationDescription(): String;
+begin
+  Result := cBootstrapApplicationDescription;
+end;
+
+procedure TLBApplicationBoostrap.startingWebServer();
+begin
+  //
+end;
+
+{$IFDEF Linux}
+procedure IgnoreBrokenPIPE(signal: longint; info: psiginfo; context: psigcontext); cdecl;
+begin
+  LBLogger.Write(1, 'LBApplicationBoostrap.DoIgnoreBrokenPipe', lmt_Debug, 'Signal broken pipe received');
+end;
+{$ENDIF}
+
+constructor TLBApplicationBoostrap.Create;
+begin
+  inherited Create;
+  {$IFDEF Linux}
+  FSigPipeAction := BrokenPipeSignalManager(@IgnoreBrokenPipe);
+  {$ENDIF}
+end;
+
+destructor TLBApplicationBoostrap.Destroy;
+begin
+  try
+    if Assigned(FOnDestroyed) then
+      FOnDestroyed(Self);
+
+  except
+    on E: Exception do
+      LBLogger.Write(1, 'LBApplicationBoostrap.Destroy', lmt_Error, '1. %s', [E.Message]);
+  end;
+
+  FreeAndNil(FWebServer);
+
+  ReleaseLogger();
+  inherited Destroy;
+end;
+
+function TLBApplicationBoostrap.LoadConfiguration(const aFilename: String; out anErrorMsg: String): Boolean;
+var
+  _Ext : String;
+  _Filename : String;
+
+begin
+  Result := False;
+  anErrorMsg := '';
+
+  if aFilename <> '' then
+  begin
+    _Filename := ResolvePathDeterministic(aFilename);
+    if FileExists(_Filename) then
+    begin
+      _Ext := LowerCase(ExtractFileExt(_Filename));
+      case _Ext of
+        cExtension_INIFile : Result := Self.LoadConfigurationFromINIFile(_Filename, anErrorMsg);
+        cExtension_XMLFile : Result := Self.LoadConfigurationFromXMLFile(_Filename, anErrorMsg);
+
+        else  anErrorMsg := 'Unsupported file format';
+      end
+    end
+    else
+      anErrorMsg := Format('File <%s> not found!', [_Filename]);
+  end;
+end;
+
+end.
+

@@ -57,7 +57,7 @@ type
   public
     constructor Create;
     { Descrive i parametri di ogni funzione: senza questa descrizione la funzione non viene esposta. }
-    function DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+    function DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
   end;
 
   { Collega il login: qui si decide chi puo' entrare. }
@@ -101,12 +101,12 @@ begin
   Self.RegisterStandardWorker('findAsset', @Self.DoFindAsset);
 end;
 
-function TDemoFunctions.DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+function TDemoFunctions.DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
 begin
   Result := True;
-  if (aFunctionName = 'countOdL') or (aFunctionName = 'countUsers') or (aFunctionName = 'listAssets') then
+  if (anEndpointCode = 'countOdL') or (anEndpointCode = 'countUsers') or (anEndpointCode = 'listAssets') then
     aDescriptor.Effect := aeReadOnly            // nessun parametro; sola lettura
-  else if aFunctionName = 'findAsset' then
+  else if anEndpointCode = 'findAsset' then
   begin
     aDescriptor.Effect := aeReadOnly;
     aDescriptor.AddParam('code', aptString, 'Codice dell''asset, ad esempio A-001', True);

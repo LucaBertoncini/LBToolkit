@@ -5,7 +5,7 @@ unit uLBAIConnectorTypes;
 
   WHO DOES WHAT
   ----------------------------------------------------------------------
-  Routes.xml declares every endpoint ONCE, for the web application and for the AI alike (URI, OpType
+  Routes.xml declares every endpoint ONCE, for the web application and for the AI alike (URI and
   and a Description). One endpoint with Kind="AIConnector" is the entry point of the AI (MCP). Every
   authenticated Standard endpoint is a candidate tool. The class that implements the function (a
   TRouteHandlerBase descendant, registered with RegisterStandardWorker as always) may also implement
@@ -15,11 +15,11 @@ unit uLBAIConnectorTypes;
 
   Example (inside a handler class):
 
-    function TMyHandlers.DescribeAIFunction(const aFunctionName: String;
+    function TMyHandlers.DescribeAIFunction(const anEndpointCode: String;
       aDescriptor: TAIFunctionDescriptor): Boolean;
     begin
       Result := True;
-      if SameText(aFunctionName, 'SearchOrders') then
+      if SameText(anEndpointCode, 'SearchOrders') then
       begin
         aDescriptor.Effect := aeReadOnly;
         aDescriptor.AddParam('text', aptString, 'Words to look for', False);
@@ -86,7 +86,7 @@ type
 
   TAIFunctionDescriptor = class(TObject)
   strict private
-    FFunctionName : String;
+    FEndpointCode : String;
     FParams       : TAIParamList;
   public
     {:Used when Routes.xml gives no Description for the endpoint.}
@@ -100,7 +100,7 @@ type
       Routes.xml Description is all the AI knows. Describing the parameters is always better.}
     FreeForm      : Boolean;
 
-    constructor Create(const aFunctionName: String);
+    constructor Create(const anEndpointCode: String);
     destructor Destroy; override;
 
     function AddParam(const aName: String; aType: TAIParamType; const aDescription: String;
@@ -116,7 +116,7 @@ type
     {:Validates the arguments sent by the AI; the message is written for the AI, so that it can fix the call.}
     function ValidateArguments(anArguments: TJSONObject; out anError: String): Boolean;
 
-    property FunctionName : String read FFunctionName;
+    property EndpointCode : String read FEndpointCode;
     property Params       : TAIParamList read FParams;
   end;
 
@@ -124,10 +124,10 @@ type
   IAIConnectorFunctions = interface
     ['{7D0C3F4E-2A51-4B8E-9C5B-5E1D6A9F3B42}']
     {:Fills aDescriptor for the function and returns True. Returns False when the class has no
-      description for aFunctionName: the function is then exposed with free-form parameters if the
+      description for anEndpointCode: the function is then exposed with free-form parameters if the
       connector's ExposeUndescribed is True, otherwise it is not exposed. To keep a function away
       from the AI altogether set aDescriptor.Hidden := True.}
-    function DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+    function DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
   end;
 
 function AIParamTypeToJSONType(aType: TAIParamType): String;
@@ -417,10 +417,10 @@ end;
 
 { TAIFunctionDescriptor }
 
-constructor TAIFunctionDescriptor.Create(const aFunctionName: String);
+constructor TAIFunctionDescriptor.Create(const anEndpointCode: String);
 begin
   inherited Create;
-  FFunctionName := aFunctionName;
+  FEndpointCode := anEndpointCode;
   FParams := TAIParamList.Create(True);
   Effect := aeUnspecified;
 end;

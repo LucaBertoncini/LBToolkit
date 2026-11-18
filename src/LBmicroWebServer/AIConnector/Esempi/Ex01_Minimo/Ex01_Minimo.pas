@@ -42,7 +42,7 @@ type
       out aStatusCode: Integer): TJSONData;
   public
     constructor Create;
-    function DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+    function DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
   end;
 
 constructor TEx01Handler.Create;
@@ -55,17 +55,17 @@ begin
 end;
 
 // Senza questa descrizione una funzione NON diventa uno strumento (a meno di ExposeUndescribed=1 nel file INI).
-function TEx01Handler.DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+function TEx01Handler.DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
 begin
   Result := True;
-  if SameText(aFunctionName, 'Ping') then
+  if SameText(anEndpointCode, 'Ping') then
     aDescriptor.Effect := aeReadOnly                       // nessun parametro
-  else if SameText(aFunctionName, 'Saluta') then
+  else if SameText(anEndpointCode, 'Saluta') then
   begin
     aDescriptor.Effect := aeReadOnly;
     aDescriptor.AddParam('nome', aptString, 'Nome della persona da salutare', True);
   end
-  else if SameText(aFunctionName, 'Somma') then
+  else if SameText(anEndpointCode, 'Somma') then
   begin
     aDescriptor.Effect := aeReadOnly;
     aDescriptor.AddParam('a', aptInteger, 'Primo addendo', True);

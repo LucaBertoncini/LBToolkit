@@ -16,7 +16,7 @@ Sorgenti necessari: quelli di `codice-ai/` (versioni modificate) più il resto d
 | `api_listAssets` | tre asset con `code`, `name`, `state` |
 | `api_findAsset` | un asset dato `code` (esempio di funzione con un parametro) |
 
-Gli strumenti **non hanno un indirizzo `/api/...`**: non sono richieste HTTP raggiungibili dal browser, le chiama solo l'AI tramite `/mcp`. Il nome visto dall'AI è `<Code dell'area>_<Function>` (qui l'area è `api`). Se vuoi anche gli indirizzi `/api/countOdL` per il sito, vanno dichiarati a parte come endpoint Standard.
+Gli strumenti **non hanno un indirizzo `/api/...`**: non sono richieste HTTP raggiungibili dal browser, le chiama solo l'AI tramite `/mcp`. Il nome visto dall'AI è `<Code dell'area>_<Endpoint.Code>` (qui l'area è `api`). Se vuoi anche gli indirizzi `/api/countOdL` per il sito, vanno dichiarati a parte come endpoint Standard.
 
 ## Come leggere il codice
 

@@ -2,306 +2,15 @@ unit uWebRouteRegistry;
 
 {$mode objfpc}{$H+}
 
-//------------------------------------------------------------------------------
-// uWebRouteRegistry.pas
-//
-// Modulo di routing REST dichiarativo per TLBmicroWebServer.
-//
-// NOMI DEI TIPI: NESSUN RIFERIMENTO A UN APPLICATIVO SPECIFICO
-// ----------------------------------------------------------------------
-// Questo modulo non conosce alcun dominio applicativo: serve
-// indifferentemente la manutenzione, il magazzino o qualunque altro
-// applicativo venga costruito sulla stessa piattaforma. I tipi che
-// espone portano percio' nomi generici (TStandardWorker,
-// TFileDownloadWorker, TAuthWorker, TUploadWorker), non legati
-// all'applicativo per cui il modulo fu scritto la prima volta.
-//
-// TRE LIVELLI CONCETTUALI DI OGNI ENDPOINT DICHIARATO NELL'XML
-// ----------------------------------------------------------------------
-// Ogni endpoint dichiarato nel file XML delle rotte e' descritto da tre
-// informazioni concettualmente distinte:
-//   1) AREA (FunctionalArea.Code) - l'ambito funzionale a cui l'endpoint
-//      appartiene, primo termine della stringa "Area.OpType" verificata
-//      ad ogni richiesta.
-//   2) FUNCTION (Endpoint.Function) - il nome, univoco all'interno della
-//      propria area, che identifica QUALE CODICE deve rispondere.
-//   3) OPTYPE (Endpoint.OpType, facoltativo) - il TIPO di operazione
-//      autorizzativa (una parola intera arbitraria, dichiarata
-//      liberamente nell'XML). Facoltativo: un endpoint senza OpType
-//      richiede solo autenticazione (o nessuna, se RequiresAuth="false").
-//
-// APPLICAZIONI DELLA PIATTAFORMA: L'ATTRIBUTO App SULL'AREA
-// ----------------------------------------------------------------------
-// Un unico server puo' ospitare piu' applicativi distinti (es. la
-// manutenzione e il magazzino), che condividono autenticazione, utenti,
-// ruoli e matrice dei permessi, ma presentano interfacce e aree
-// funzionali proprie. Il blocco <Applications> in testa al file XML
-// dichiara quali applicazioni esistono; l'attributo App di ciascuna
-// <FunctionalArea> indica a quale di esse l'area appartiene.
-//
-// DUE DOMANDE INDIPENDENTI, DUE ATTRIBUTI DISTINTI
-// ----------------------------------------------------------------------
-// L'attributo App e l'attributo OpType rispondono a domande diverse e non
-// vanno confusi:
-//     App    -> "di quale applicazione fa parte quest'area?"
-//     OpType -> "serve un permesso specifico per usarla?"
-// Ne discendono quattro combinazioni, tutte legittime:
-//
-//   App presente, OpType presente  Area di un'applicazione, protetta da
-//                                  permesso (es. le missioni del
-//                                  magazzino).
-//   App presente, OpType assente   Area di un'applicazione, liberamente
-//                                  accessibile a chiunque usi quella
-//                                  applicazione (es. la ricerca).
-//   App assente,  OpType presente  Area TRASVERSALE, protetta da permesso
-//                                  (es. la gestione di utenti e ruoli).
-//   App assente,  OpType assente   Area trasversale e libera (es.
-//                                  l'autenticazione, i lookup generici).
-//
-// UN'AREA SENZA App E' TRASVERSALE: appartiene a tutte le applicazioni e
-// resta raggiungibile da ciascuna di esse. Questo NON ne allenta in alcun
-// modo l'autorizzazione: se dichiara un OpType, quel permesso resta
-// necessario esattamente come per qualunque altra area. L'assenza di App
-// significa soltanto che l'area non concorre a stabilire a quali
-// applicazioni un utente abbia accesso.
-//
-// COME SI DERIVANO LE APPLICAZIONI ACCESSIBILI A UN UTENTE
-// ----------------------------------------------------------------------
-// L'elenco delle applicazioni di un utente NON e' un dato memorizzato: e'
-// ricavato dai permessi che gia' possiede, cosi' che non esista un
-// secondo elenco da tenere allineato a mano (e che quindi non possa
-// divergere). La regola, applicata da GetApplicationsForPermissions, e':
-//
-//     Un utente accede a un'applicazione se esiste ALMENO UN'AREA con
-//     quell'App a cui puo' accedere: o perche' l'area non richiede alcun
-//     OpType, o perche' possiede almeno un permesso su quell'area.
-//
-// Ne discende che un'area dichiarata con App ma senza OpType e'
-// sufficiente, da sola, ad abilitare quell'applicazione a qualunque
-// utente autenticato - ed e' corretto che sia cosi': dichiarare un'area
-// come "di questa applicazione e senza permessi richiesti" significa
-// letteralmente "chiunque usi questa applicazione puo' usarla", e sarebbe
-// contraddittorio che poi non bastasse ad ESSERE un utente di quella
-// applicazione. L'OpType restringe COSA si puo' fare, non SE
-// l'applicazione riguardi o meno quell'utente.
-//
-// Un utente amministratore di sistema accede sempre a tutte le
-// applicazioni dichiarate, senza alcuna verifica.
-//
-// QUESTO CALCOLO NON E' UN CONTROLLO DI SICUREZZA: serve a decidere cosa
-// mostrare dopo l'accesso (reindirizzamento diretto se l'applicazione e'
-// una sola, selettore se sono piu' d'una). L'autorizzazione vera resta
-// interamente in hasPermission, applicata ad OGNI singola richiesta,
-// indipendentemente dalla pagina da cui proviene.
-//
-// CINQUE FAMIGLIE DI ENDPOINT
-// ----------------------------------------------------------------------
-// Quattro famiglie sono servite da un METODO di un oggetto di dominio
-// gia' esistente (una funzione "of object" - si veda la nota "PERCHE' UN
-// METODO, NON UN OGGETTO CHE IMPLEMENTA UN'INTERFACCIA" piu' sotto).
-// Ciascuna ha una propria firma di metodo, dichiarata come tipo
-// "of object":
-//   - TStandardWorker  : scambia dati in formato JSON (Kind="Standard",
-//     il default se l'attributo Kind e' assente);
-//   - TFileDownloadWorker : indica quale file del filesystem inviare
-//     (Kind="FileDownload" - si veda TWebRouteModule.StreamFileFromDisk);
-//   - TAuthWorker : ha accesso diretto alla richiesta HTTP grezza e
-//     alle intestazioni della risposta in costruzione (Kind="Auth"),
-//     riservato ai soli casi che ne hanno davvero bisogno: tipicamente
-//     l'accesso, che scrive l'intestazione di impostazione del cookie, e
-//     la disconnessione, che legge il cookie di sessione da rimuovere;
-//   - TUploadWorker : riceve un file gia' scritto su disco dal livello
-//     di trasporto (Kind="Upload"). Il corpo binario dell'upload e' gia'
-//     stato consumato e salvato in un file temporaneo dal server HTTP
-//     (THTTPRequestManager, uLBmicroWebServer.pas) PRIMA che la richiesta
-//     raggiunga il routing: l'endpoint riceve quindi la richiesta HTTP
-//     grezza (per leggere i metadati dagli header e il percorso del file
-//     temporaneo) e scrive direttamente la risposta, senza alcun corpo
-//     JSON da interpretare. Autenticazione e verifica di permesso avvengono
-//     come per ogni altra famiglia, in base a quanto dichiarato nell'XML.
-//
-// La quinta famiglia, Kind="Proxy", non ha invece alcun metodo e quindi
-// alcuna firma: si veda la nota dedicata qui sotto.
-//
-// LA FAMIGLIA Kind="Proxy": INTERAMENTE DICHIARATIVA
-// ----------------------------------------------------------------------
-// Un endpoint Kind="Proxy" non esegue alcun codice applicativo locale: la
-// richiesta viene firmata e inoltrata a un server remoto, e la sua
-// risposta restituita al chiamante. Tutto cio' che serve per farlo e'
-// gia' dichiarato altrove:
-//   - l'attributo Target dell'endpoint nomina simbolicamente il bersaglio
-//     remoto (es. Target="wms_bridge");
-//   - quel nome simbolico risolve in indirizzo e timeout leggendo il
-//     blocco <RemoteTargets> dello stesso file XML (si veda
-//     TRouteRegistry.LoadRemoteTargets), e in chiave condivisa dal file
-//     di configurazione dell'applicazione (si veda la nota "LA CHIAVE
-//     SEGRETA NON COMPARE MAI NELL'XML" piu' sotto). Entrambi i pezzi
-//     vivono nel medesimo TLBRemoteTargets (uLBSignedProxy.pas),
-//     esposto da TRouteRegistry.RemoteTargets / TWebRouteModule.RemoteTargets.
-// Non esiste quindi alcun metodo da registrare, e di conseguenza nessuna
-// classe di dominio: un'area funzionale composta da soli endpoint proxy
-// non richiede alcun codice Pascal. Le sue voci entrano nella tabella di
-// dispatch tramite RegisterProxyEndpoints, non tramite RegisterHandler.
-//
-// AUTENTICAZIONE E PERMESSI SONO APPLICATI COME PER OGNI ALTRA FAMIGLIA:
-// il fatto che l'elaborazione avvenga su un altro server non cambia in
-// alcun modo chi puo' chiamare l'endpoint. RequiresAuth e OpType
-// dichiarati nell'XML valgono esattamente come altrove, e la verifica
-// avviene PRIMA che qualunque cosa venga inoltrata.
-//
-// LA CHIAVE SEGRETA NON COMPARE MAI NELL'XML: l'XML porta solo il nome
-// simbolico del bersaglio. La chiave vive nel file di configurazione
-// dell'applicazione, gia' escluso dal controllo di versione perche'
-// contiene le credenziali del database.
-//
-// PERCHE' UN METODO, NON UN OGGETTO CHE IMPLEMENTA UN'INTERFACCIA
-// ----------------------------------------------------------------------
-// Una CLASSE invita naturalmente ad aggiungerle campi, e nulla nella
-// forma "classe che implementa un'interfaccia" segnala a chi la scrive
-// che si tratta di un singleton condiviso da richieste concorrenti (si
-// veda il capitolo sulla sicurezza a filo nel documento di
-// progettazione) - un campo aggiunto per comodita', per passarsi un dato
-// fra due metodi privati della stessa classe, introdurrebbe
-// silenziosamente un problema di concorrenza. Un METODO, al contrario,
-// guida naturalmente verso variabili locali: non esiste "un posto
-// comodo" dove infilare per errore un dato specifico di una singola
-// richiesta. Questo modulo non persegue nemmeno l'obiettivo di
-// endpoint scritti in un linguaggio diverso da Pascal, oltre il confine
-// di un processo: nessun contratto a soli PAnsiChar esiste quindi in
-// questa unit.
-//
-// COME UN METODO VIENE MEMORIZZATO IN FORMA GENERICA: TMethod
-// ----------------------------------------------------------------------
-// Un puntatore a metodo Pascal ("of object") non e' un singolo indirizzo
-// di codice: e' internamente una coppia (l'indirizzo del codice,
-// l'indirizzo dell'istanza a cui il codice si applica - il "Self" che
-// il metodo usera'). Questa coppia ha SEMPRE la stessa forma binaria,
-// qualunque sia la firma specifica del metodo (numero e tipo dei
-// parametri, tipo del risultato): il linguaggio la espone esplicitamente
-// tramite il tipo TMethod (Code: Pointer; Data: Pointer), gia' presente
-// nella libreria standard. Questo permette di convertire, con un
-// semplice cast, un valore di uno dei tipi "of object" specifici
-// sopra in un TMethod generico per la memorizzazione nella tabella di
-// dispatch, e di riconvertirlo nel tipo esatto al momento dell'esecuzione
-// - senza alcuna verifica a runtime della "forma" del metodo, perche' i
-// bit memorizzati sono letteralmente gli stessi. La sicurezza di questa
-// conversione e' garantita dalla DISCIPLINA con cui il metodo viene
-// registrato: si veda la nota su RegisterStandardWorker/
-// RegisterFileDownloadWorker/RegisterAuthWorker/RegisterUploadWorker sotto.
-//
-// REGISTRAZIONE DI UN'AREA FUNZIONALE: NESSUNA INDIRECTION A INTERFACCIA
-// ----------------------------------------------------------------------
-// Un'area funzionale (una classe che deriva da TRouteHandlerBase) si
-// registra su TWebRouteModule passando SE STESSA - un riferimento
-// diretto alla propria istanza, di tipo classe concreto - non
-// un'interfaccia: TWebRouteModule.RegisterHandler(aHandler:
-// TRouteHandlerBase) chiama direttamente TRouteRegistry.RegisterHandler
-// (aHandler.AreaCode, aHandler), senza alcun livello di indirizzamento
-// intermedio (nessun IRouteRegistrar, nessun adapter). Per questo stesso
-// motivo, TRouteHandlerBase e' oggi una classe TObject ordinaria (non
-// TInterfacedObject): nessun conteggio di riferimenti e' necessario,
-// perche' ogni istanza di area funzionale e' costruita una sola volta,
-// all'avvio, e resta viva per l'intera durata del processo tramite un
-// campo di tipo classe concreto nell'applicazione che la possiede - non
-// un'interfaccia che ne prolunghi artificialmente la vita.
-// CONSEGUENZA PRATICA: chi costruisce un'istanza di un'area funzionale
-// (l'applicazione ospitante) ne resta proprietario e deve liberarla
-// esplicitamente (FreeAndNil) quando non serve piu': nessuna
-// liberazione automatica, a differenza di quanto un conteggio di
-// riferimenti avrebbe fornito.
-//
-// CODICE DI STATO HTTP RESTITUITO DA UN ENDPOINT
-// ----------------------------------------------------------------------
-// Ogni firma di metodo espone un parametro "out aStatusCode: Integer": un
-// endpoint che non ha nulla di speciale da segnalare puo' ignorarlo (il
-// chiamante lo inizializza gia' a HTTP_STATUS_OK prima di invocare il
-// metodo).
-//
-// COSTRUZIONE DELLA TABELLA DI DISPATCH: NESSUN ENDPOINT E' MAI "FINTO"
-// ----------------------------------------------------------------------
-// Le aree funzionali sono dichiarate in un file XML esterno. Ogni
-// endpoint dichiarato deve avere un metodo REALE registrato per la
-// propria Function: TRouteRegistry.ValidateAllEndpointsRegistered
-// segnala un avviso per qualunque endpoint privo di un metodo
-// registrato, e un avviso separato se il Kind dichiarato nell'XML non
-// coincide con la famiglia con cui quella Function e' stata registrata
-// (si veda TDispatchEntry.Create). La stessa procedura verifica inoltre
-// la coerenza delle dichiarazioni di applicazione - si veda
-// ValidateApplications.
-// Gli endpoint Kind="Proxy" fanno eccezione alla regola del metodo,
-// perche' non ne hanno alcuno da registrare: entrano comunque nella
-// tabella di dispatch tramite RegisterProxyEndpoints, quindi la verifica
-// li trova gia' presenti e non segnala nulla - a condizione che
-// RegisterProxyEndpoints venga invocato PRIMA di ValidateRoutes.
-//
-// Nessun identificatore di record compare mai nell'URI di un endpoint
-// Kind="Standard": ogni URI e' fissa, un eventuale identificatore viaggia
-// dentro il corpo JSON. Per Kind="FileDownload" questo vincolo si applica
-// al PATH: un identificatore nella QUERY STRING e' ammesso.
-//
-// DUE MODI DI REGISTRARE GLI HANDLER: AUTOMATICO O ESPLICITO
-// ----------------------------------------------------------------------
-// LoadRoutesFromXML si limita a leggere e interpretare il file XML: non
-// collega piu' automaticamente ne' gli handler globali ne' effettua la
-// validazione finale - si vedano RegisterAllGlobalHandlers e
-// ValidateRoutes, entrambi da invocare ESPLICITAMENTE dall'applicazione:
-//   (a) REGISTRAZIONE GLOBALE (RegisterRouteHandler, da una sezione
-//       "initialization"): comoda quando gli handler non richiedono
-//       dipendenze esterne. Gli oggetti registrati con questo idioma
-//       sono POSSEDUTI dalla lista globale di questa unit (si veda
-//       GlobalRouteHandlers), liberati automaticamente in finalization -
-//       nessun conteggio di riferimenti a farlo, ora che TRouteHandlerBase
-//       e' un TObject ordinario.
-//   (b) REGISTRAZIONE ESPLICITA (TWebRouteModule.RegisterHandler,
-//       chiamata dopo aver costruito un handler con le proprie
-//       dipendenze, es. un accesso ai dati iniettato): necessaria
-//       quando le dipendenze vengono fornite dall'esterno invece di
-//       essere costruite dall'handler stesso. In questo caso la
-//       proprieta' dell'oggetto resta interamente dell'applicazione che
-//       lo ha costruito, mai di questo modulo.
-// ValidateRoutes va chiamato per ultimo, dopo ogni RegisterHandler e
-// dopo RegisterProxyEndpoints.
-//
-// TWebRouteModule e' un unico TRequestChainProcessor che possiede l'intera
-// tabella di dispatch: va aggiunto UNA SOLA VOLTA a TLBmicroWebServer.
-// L'autenticazione e' delegata all'applicazione ospitante tramite il
-// callback OnAuthenticateRequest. hasPermission e' protected/virtual,
-// per permettere a una sottoclasse di ridefinire la strategia di
-// autorizzazione.
-//
-// IL CATALOGO DELLE AREE FUNZIONALI: L'XML E' L'UNICA FONTE DI VERITA'
-// ----------------------------------------------------------------------
-// GetAllDeclaredAreas restituisce l'elenco COMPLETO delle aree funzionali
-// dichiarate in Routes.xml, ciascuna con il proprio codice, la propria
-// descrizione (presa dall'attributo Description di <FunctionalArea>),
-// l'applicazione di appartenenza (attributo App, stringa vuota se l'area
-// e' trasversale) e l'elenco degli OpType realmente dichiarati per
-// quell'area - tutto ricavato UNICAMENTE da FDeclaredEndpoints (la
-// struttura gia' popolata da LoadFromXMLFile), MAI da una tabella del
-// database. L'XML e' l'UNICA fonte di verita' su quali aree esistono:
-// aggiungerne, rimuoverne o rinominarne una si riflette immediatamente
-// ovunque nel sistema (incluso il catalogo restituito al client per
-// costruire la griglia dei permessi), senza alcuna tabella da tenere
-// manualmente allineata. Il campo "app" permette alla griglia di
-// raggruppare le aree per applicazione, invece di presentarle tutte in un
-// unico elenco.
-// ORDINAMENTO: sia le aree (per Description) sia gli OpType di ciascuna
-// area (alfabetico) sono restituiti gia' ordinati - decisione esplicita
-// per rendere piu' facile l'orientamento visivo per chi amministra i
-// ruoli, dato che e' la Description (non il Code tecnico) cio' che viene
-// mostrato a schermo.
-//
-// Sicurezza a filo (thread-safety): DoProcessRequest viene invocato
-// concorrentemente da un thread per ogni connessione HTTP attiva. La
-// tabella di dispatch e' costruita una sola volta all'avvio e viene
-// soltanto letta in seguito. Ogni metodo registrato appartiene sempre
-// alla STESSA istanza (creata una volta sola durante la costruzione
-// dell'oggetto di dominio): una classe di dominio non deve mai
-// mantenere, nei propri campi, alcun dato specifico di una singola
-// richiesta - solo dipendenze stabili, impostate una volta per tutte al
-// momento della costruzione. Ogni dato di una singola richiesta vive
-// esclusivamente in variabili locali del metodo che lo elabora.
-//------------------------------------------------------------------------------
+{
+  Generic transport router for LBmicroWebServer.
+
+  Responsibilities: match HTTP method + URI, authenticate the session when
+  RequiresAuth="true", and invoke the registered worker. Authorization is
+  application policy: this unit does not parse or enforce actions,
+  capabilities, roles, groups or implication rules. Child nodes of <Endpoint>
+  (including <Action>) are deliberately ignored.
+}
 
 interface
 
@@ -336,10 +45,8 @@ const
 
   cXML_ATTR_CODE         = DOMString('Code');
   cXML_ATTR_DESCRIPTION  = DOMString('Description');
-  cXML_ATTR_FUNCTION     = DOMString('Function');
   cXML_ATTR_URI          = DOMString('URI');
   cXML_ATTR_METHOD       = DOMString('Method');
-  cXML_ATTR_OPTYPE       = DOMString('OpType');
   cXML_ATTR_REQUIRESAUTH = DOMString('RequiresAuth');
   cXML_ATTR_KIND         = DOMString('Kind');
   // Nome simbolico del bersaglio remoto: significativo per i soli
@@ -361,11 +68,9 @@ const
   cDefaultHTTPMethod     = String('POST');
   cBooleanFalseStr       = String('false');
 
-  cJSONFieldPermissions  = String('Permissions');
   cEmptyJSONObjectText   = String('{}');
 
-  // Nomi dei campi JSON prodotti da GetAllDeclaredApplications e
-  // GetApplicationsForPermissions.
+  // Field names produced by GetAllDeclaredApplications.
   cJSONFieldAppCode      = String('code');
   cJSONFieldAppName      = String('name');
   cJSONFieldAppHome      = String('home');
@@ -414,16 +119,12 @@ type
     aResponseHeaders: TStringList; var aResponseData: TMemoryStream;
     out aStatusCode: Integer): Boolean of object;
 
-  // Kind="AIConnector" is the single entry point of the MCP connector (TLBAIConnector). The tools
-  // are the Standard endpoints: TLBAIConnector calls their TStandardWorker after authenticating the
-  // user and checking Area.OpType. The alias is kept for readability of the connector code.
+  // Kind="AIConnector" is the single MCP entry point. Tool authorization
+  // is delegated to the host application; the alias is only for readability.
   TAIConnectorWorker = TStandardWorker;
 
   TAuthenticateRequestEvent = function(RequestHeaders, ResponseHeaders: TStringList;
     out anUserId: Integer; out anUserConfig: TJSONObject): Boolean of object;
-
-  TRetrieveGrantedPermissionsEvent = function(aUserId: Integer;
-    aDeclaredPermissions: TJSONArray): TJSONArray of object;
 
   {------------------------------------------------------------------------
     TApplicationDescriptor
@@ -452,19 +153,21 @@ type
     // tutte le applicazioni e non concorrente al calcolo di quali siano
     // accessibili a un utente.
     AreaApp         : String;
-    FunctionName    : String;
+    EndpointCode    : String;
     // Human-readable description of the endpoint (attribute Description). Free text, usable for
     // several purposes. For a Standard endpoint exposed to an AI it is the description of the tool;
     // for the Kind="AIConnector" endpoint it describes the MCP channel itself.
     Description     : String;
     URI             : String;
     HTTPMethod      : String;
-    OpType          : String;
     RequiresAuth    : Boolean;
     Kind            : TEndpointKind;
     // Nome simbolico del bersaglio remoto, significativo per i soli
     // endpoint Kind="Proxy" (vuoto per tutte le altre famiglie).
     Target          : String;
+
+    constructor Create;
+    destructor Destroy; override;
   end;
 
   TEndpointDescriptorList = specialize TFPGObjectList<TEndpointDescriptor>;
@@ -472,16 +175,16 @@ type
   {------------------------------------------------------------------------
     TWorkerEntry
 
-    Una Function registrata da un'area funzionale: il nome, il metodo (in
+    Un endpoint registrato da un'area funzionale: il nome, il metodo (in
     forma generica TMethod) e la famiglia con cui e' stato registrato.
   ------------------------------------------------------------------------}
   TWorkerEntry = class(TObject)
   public
-    FunctionName : String;
+    EndpointCode : String;
     TheMethod    : TMethod;
     WorkerKind   : TEndpointKind;
 
-    constructor Create(const aFunctionName: String; aMethod: TMethod; aKind: TEndpointKind);
+    constructor Create(const anEndpointCode: String; aMethod: TMethod; aKind: TEndpointKind);
   end;
 
   TWorkerEntryList = specialize TFPGObjectList<TWorkerEntry>;
@@ -511,16 +214,16 @@ type
     FWorkers  : TWorkerEntryList;
 
   protected
-    procedure RegisterStandardWorker(const aFunctionName: String; aMethod: TStandardWorker);
-    procedure RegisterFileDownloadWorker(const aFunctionName: String; aMethod: TFileDownloadWorker);
-    procedure RegisterAuthWorker(const aFunctionName: String; aMethod: TAuthWorker);
-    procedure RegisterUploadWorker(const aFunctionName: String; aMethod: TUploadWorker);
+    procedure RegisterStandardWorker(const anEndpointCode: String; aMethod: TStandardWorker);
+    procedure RegisterFileDownloadWorker(const anEndpointCode: String; aMethod: TFileDownloadWorker);
+    procedure RegisterAuthWorker(const anEndpointCode: String; aMethod: TAuthWorker);
+    procedure RegisterUploadWorker(const anEndpointCode: String; aMethod: TUploadWorker);
 
   public
     constructor Create(const anAreaCode: String); reintroduce;
     destructor Destroy; override;
 
-    function GetWorkerMethod(const aFunctionName: String; out aOutKind: TEndpointKind): TMethod; virtual;
+    function GetWorkerMethod(const anEndpointCode: String; out aOutKind: TEndpointKind): TMethod; virtual;
 
     property AreaCode: String read FAreaCode;
   end;
@@ -535,21 +238,22 @@ type
   TDispatchEntry = class(TObject)
   public
     AreaCode      : String;
-    OpType        : String;
+    EndpointCode  : String;
     RequiresAuth  : Boolean;
     Kind          : TEndpointKind;
     TheMethod     : TMethod;   // valido solo se KindMatches = True; sempre nullo per ekProxy
     KindMatches   : Boolean;   // False se il Kind dichiarato nell'XML non coincide con quello di registrazione
     Target        : String;    // nome simbolico del bersaglio remoto, valorizzato solo per ekProxy
 
-    constructor Create(aHandler: TRouteHandlerBase; const anAreaCode, aFunctionName, anOpType: String;
+    constructor Create(aHandler: TRouteHandlerBase; const anAreaCode, anEndpointCode: String;
       aRequiresAuth: Boolean; aDeclaredKind: TEndpointKind);
 
     // Costruttore dedicato agli endpoint Kind="Proxy": non riceve alcun
     // handler perche' non esiste alcun metodo da risolvere. KindMatches
     // e' sempre True, dato che non c'e' alcuna registrazione con cui il
     // Kind dichiarato possa risultare discorde.
-    constructor CreateProxy(const anAreaCode, anOpType, aTarget: String; aRequiresAuth: Boolean);
+    constructor CreateProxy(const anAreaCode, anEndpointCode, aTarget: String;
+      aRequiresAuth: Boolean);
   end;
 
   TDispatchMap = specialize TFPGMap<String, TDispatchEntry>;
@@ -608,9 +312,6 @@ type
     // Il riferimento e' IN PRESTITO: resta di proprieta' di questa classe.
     function FindApplication(const aCode: String): TApplicationDescriptor;
 
-    // L'area dichiara un OpType in almeno uno dei propri endpoint?
-    function AreaRequiresPermission(const aAreaCode: String): Boolean;
-
   public
     constructor Create;
     destructor Destroy; override;
@@ -625,7 +326,7 @@ type
     function RegisterProxyEndpoints(): Integer;
 
     function Resolve(const aHTTPMethod, aURIResource: String;
-      out anAreaCode, anOpType: String; out aRequiresAuth: Boolean;
+      out anAreaCode, anEndpointCode: String; out aRequiresAuth: Boolean;
       out aKind: TEndpointKind; out aMethod: TMethod; out aKindMatches: Boolean;
       out aTarget: String): Boolean;
 
@@ -647,29 +348,12 @@ type
     // del singolo endpoint). Invocata da ValidateAllEndpointsRegistered.
     procedure ValidateApplications;
 
-    function GetAllDeclaredPermissions: TJSONArray;
-    function GetDeclaredOpTypesForArea(const aAreaCode: String): TJSONArray;
     function GetAllDeclaredAreas: TJSONArray;
 
     // Elenco completo delle applicazioni dichiarate, ciascuna come
     // oggetto {code, name, home}. Nuova istanza, di cui il chiamante
     // prende in carico la proprieta'.
     function GetAllDeclaredApplications: TJSONArray;
-
-    // Applicazioni accessibili a un utente, derivate dai suoi permessi -
-    // si veda la nota "COME SI DERIVANO LE APPLICAZIONI ACCESSIBILI A UN
-    // UTENTE" in testa alla unit.
-    //   aGrantedPermissions : le stringhe "Area.OpType" gia' concesse
-    //                         all'utente (l'array che finisce in
-    //                         UserConfig.Permissions). Puo' essere nil o
-    //                         vuoto: in quel caso restano accessibili le
-    //                         sole applicazioni che dichiarano almeno
-    //                         un'area senza OpType.
-    //   aIsAdmin            : se True, restituisce tutte le applicazioni
-    //                         dichiarate senza alcuna verifica.
-    // Nuova istanza, di cui il chiamante prende in carico la proprieta'.
-    function GetApplicationsForPermissions(aGrantedPermissions: TJSONArray;
-      aIsAdmin: Boolean): TJSONArray;
 
     // Catalogo dei bersagli remoti, popolato dal blocco <RemoteTargets>
     // dell'XML delle rotte. Il riferimento resta di proprieta' di questa
@@ -691,7 +375,6 @@ type
   strict private
     FRoutes                       : TRouteRegistry;
     FOnAuthenticateRequest        : TAuthenticateRequestEvent;
-    FOnRetrieveGrantedPermissions : TRetrieveGrantedPermissionsEvent;
 
     // Il catalogo dei bersagli remoti NON e' piu' un campo di questo
     // modulo: vive in FRoutes.RemoteTargets (popolato dal blocco
@@ -734,7 +417,10 @@ type
       out ResponseCode: Integer): Boolean; override;
 
   protected
-    function hasPermission(aUserConfig: TJSONObject; const anAreaCode, anOpType: String): Boolean; virtual;
+    // Deprecated compatibility hook. The router never calls it; application
+    // authorization must live in the registered worker/dispatcher.
+    function hasPermission(aUserConfig: TJSONObject; const anAreaCode,
+      anOperationToken: String): Boolean; virtual;
     function StreamFileFromDisk(RequestManager: THTTPRequestManager; HTTPParser: THTTPRequestParser;
       ResponseHeaders: TStringList; var ResponseData: TMemoryStream;
       const aFilePath, aSuggestedFileName: String; out ResponseCode: Integer): Boolean;
@@ -758,21 +444,10 @@ type
 
     procedure ValidateRoutes;
 
-    // Public entry to the (virtual, protected) permission strategy: used by components that apply
-    // the same authorization outside the HTTP dispatch (TLBAIConnector). An empty OpType means
-    // "no specific permission needed", exactly as in DoProcessRequest.
-    function UserHasPermission(aUserConfig: TJSONObject; const anAreaCode, anOpType: String): Boolean;
-
-    function BuildUserPermissions(aUserId: Integer; aUserConfig: TJSONObject): Boolean;
-    function GetDeclaredPermissions: TJSONArray;
-    function GetDeclaredOpTypesForArea(const aAreaCode: String): TJSONArray;
     function GetAllDeclaredAreas: TJSONArray;
 
     // Si vedano le omonime su TRouteRegistry.
     function GetAllDeclaredApplications: TJSONArray;
-    function GetApplicationsForPermissions(aGrantedPermissions: TJSONArray;
-      aIsAdmin: Boolean): TJSONArray;
-
     property Routes: TRouteRegistry read FRoutes;
 
     // Catalogo dei bersagli remoti, popolato dal blocco <RemoteTargets>
@@ -785,8 +460,6 @@ type
 
     property OnAuthenticateRequest: TAuthenticateRequestEvent
       read FOnAuthenticateRequest write FOnAuthenticateRequest;
-    property OnRetrieveGrantedPermissions: TRetrieveGrantedPermissionsEvent
-      read FOnRetrieveGrantedPermissions write FOnRetrieveGrantedPermissions;
   end;
 
 function RegisterRouteHandler(aHandler: TRouteHandlerBase): Boolean;
@@ -821,16 +494,6 @@ begin
   end
   else
     LBLogger.Write(1, 'RegisterRouteHandler', lmt_Warning, 'Handler non impostato!');
-end;
-
-function JSONObjectToString(aObject: TJSONObject): String;
-begin
-  if aObject = nil then
-    Result := ''
-  else begin
-    aObject.CompressedJSON := True;
-    Result := aObject.AsJSON;
-  end;
 end;
 
 function JSONDataToString(aData: TJSONData): String;
@@ -908,10 +571,22 @@ end;
 
 { TWorkerEntry }
 
-constructor TWorkerEntry.Create(const aFunctionName: String; aMethod: TMethod; aKind: TEndpointKind);
+{ TEndpointDescriptor }
+
+constructor TEndpointDescriptor.Create;
 begin
   inherited Create;
-  FunctionName := aFunctionName;
+end;
+
+destructor TEndpointDescriptor.Destroy;
+begin
+  inherited Destroy;
+end;
+
+constructor TWorkerEntry.Create(const anEndpointCode: String; aMethod: TMethod; aKind: TEndpointKind);
+begin
+  inherited Create;
+  EndpointCode := anEndpointCode;
   TheMethod    := aMethod;
   WorkerKind   := aKind;
 end;
@@ -932,55 +607,55 @@ begin
   inherited Destroy;
 end;
 
-procedure TRouteHandlerBase.RegisterStandardWorker(const aFunctionName: String; aMethod: TStandardWorker);
+procedure TRouteHandlerBase.RegisterStandardWorker(const anEndpointCode: String; aMethod: TStandardWorker);
 begin
   if not Assigned(aMethod) then
   begin
     LBLogger.Write(1, 'TRouteHandlerBase.RegisterStandardWorker', lmt_Warning,
-      'Metodo non impostato per la funzione <%s> nell''area <%s>', [aFunctionName, FAreaCode]);
+      'Metodo non impostato per l''endpoint <%s> nell''area <%s>', [anEndpointCode, FAreaCode]);
     Exit;
   end;
 
-  FWorkers.Add(TWorkerEntry.Create(aFunctionName, TMethod(aMethod), ekStandard));
+  FWorkers.Add(TWorkerEntry.Create(anEndpointCode, TMethod(aMethod), ekStandard));
 end;
 
-procedure TRouteHandlerBase.RegisterFileDownloadWorker(const aFunctionName: String; aMethod: TFileDownloadWorker);
+procedure TRouteHandlerBase.RegisterFileDownloadWorker(const anEndpointCode: String; aMethod: TFileDownloadWorker);
 begin
   if not Assigned(aMethod) then
   begin
     LBLogger.Write(1, 'TRouteHandlerBase.RegisterFileDownloadWorker', lmt_Warning,
-      'Metodo non impostato per la funzione <%s> nell''area <%s>', [aFunctionName, FAreaCode]);
+      'Metodo non impostato per l''endpoint <%s> nell''area <%s>', [anEndpointCode, FAreaCode]);
     Exit;
   end;
 
-  FWorkers.Add(TWorkerEntry.Create(aFunctionName, TMethod(aMethod), ekFileDownload));
+  FWorkers.Add(TWorkerEntry.Create(anEndpointCode, TMethod(aMethod), ekFileDownload));
 end;
 
-procedure TRouteHandlerBase.RegisterAuthWorker(const aFunctionName: String; aMethod: TAuthWorker);
+procedure TRouteHandlerBase.RegisterAuthWorker(const anEndpointCode: String; aMethod: TAuthWorker);
 begin
   if not Assigned(aMethod) then
   begin
     LBLogger.Write(1, 'TRouteHandlerBase.RegisterAuthWorker', lmt_Warning,
-      'Metodo non impostato per la funzione <%s> nell''area <%s>', [aFunctionName, FAreaCode]);
+      'Metodo non impostato per l''endpoint <%s> nell''area <%s>', [anEndpointCode, FAreaCode]);
     Exit;
   end;
 
-  FWorkers.Add(TWorkerEntry.Create(aFunctionName, TMethod(aMethod), ekAuth));
+  FWorkers.Add(TWorkerEntry.Create(anEndpointCode, TMethod(aMethod), ekAuth));
 end;
 
-procedure TRouteHandlerBase.RegisterUploadWorker(const aFunctionName: String; aMethod: TUploadWorker);
+procedure TRouteHandlerBase.RegisterUploadWorker(const anEndpointCode: String; aMethod: TUploadWorker);
 begin
   if not Assigned(aMethod) then
   begin
     LBLogger.Write(1, 'TRouteHandlerBase.RegisterUploadWorker', lmt_Warning,
-      'Metodo non impostato per la funzione <%s> nell''area <%s>', [aFunctionName, FAreaCode]);
+      'Metodo non impostato per l''endpoint <%s> nell''area <%s>', [anEndpointCode, FAreaCode]);
     Exit;
   end;
 
-  FWorkers.Add(TWorkerEntry.Create(aFunctionName, TMethod(aMethod), ekUpload));
+  FWorkers.Add(TWorkerEntry.Create(anEndpointCode, TMethod(aMethod), ekUpload));
 end;
 
-function TRouteHandlerBase.GetWorkerMethod(const aFunctionName: String; out aOutKind: TEndpointKind): TMethod;
+function TRouteHandlerBase.GetWorkerMethod(const anEndpointCode: String; out aOutKind: TEndpointKind): TMethod;
 var
   i: Integer;
 begin
@@ -990,7 +665,7 @@ begin
 
   for i := 0 to FWorkers.Count - 1 do
   begin
-    if SameText(FWorkers[i].FunctionName, aFunctionName) then
+    if SameText(FWorkers[i].EndpointCode, anEndpointCode) then
     begin
       Result := FWorkers[i].TheMethod;
       aOutKind := FWorkers[i].WorkerKind;
@@ -999,13 +674,13 @@ begin
   end;
 
   LBLogger.Write(1, 'TRouteHandlerBase.GetWorkerMethod', lmt_Warning,
-    'Nessun metodo registrato per la funzione <%s> nell''area <%s>', [aFunctionName, FAreaCode]);
+    'Nessun metodo registrato per l''endpoint <%s> nell''area <%s>', [anEndpointCode, FAreaCode]);
 end;
 
 
 { TDispatchEntry }
 
-constructor TDispatchEntry.Create(aHandler: TRouteHandlerBase; const anAreaCode, aFunctionName, anOpType: String;
+constructor TDispatchEntry.Create(aHandler: TRouteHandlerBase; const anAreaCode, anEndpointCode: String;
   aRequiresAuth: Boolean; aDeclaredKind: TEndpointKind);
 var
   _RegisteredKind: TEndpointKind;
@@ -1013,7 +688,7 @@ begin
   inherited Create;
 
   AreaCode     := anAreaCode;
-  OpType       := anOpType;
+  EndpointCode := anEndpointCode;
   RequiresAuth := aRequiresAuth;
   Kind         := aDeclaredKind;
   KindMatches  := False;
@@ -1025,15 +700,15 @@ begin
   if aHandler = nil then
   begin
     LBLogger.Write(1, 'TDispatchEntry.Create', lmt_Error, 'Handler non impostato per <%s.%s>!',
-      [anAreaCode, aFunctionName]);
+      [anAreaCode, anEndpointCode]);
     Exit;
   end;
 
-  TheMethod := aHandler.GetWorkerMethod(aFunctionName, _RegisteredKind);
+  TheMethod := aHandler.GetWorkerMethod(anEndpointCode, _RegisteredKind);
   if TheMethod.Code = nil then
   begin
     LBLogger.Write(1, 'TDispatchEntry.Create', lmt_Error, 'GetWorkerMethod ha restituito un metodo nullo per <%s.%s>!',
-      [anAreaCode, aFunctionName]);
+      [anAreaCode, anEndpointCode]);
     Exit;
   end;
 
@@ -1041,15 +716,16 @@ begin
   if not KindMatches then
     LBLogger.Write(1, 'TDispatchEntry.Create', lmt_Error,
       'Endpoint <%s.%s>: il Kind dichiarato nell''XML non coincide con la famiglia con cui il metodo e'' stato registrato!',
-      [anAreaCode, aFunctionName]);
+      [anAreaCode, anEndpointCode]);
 end;
 
-constructor TDispatchEntry.CreateProxy(const anAreaCode, anOpType, aTarget: String; aRequiresAuth: Boolean);
+constructor TDispatchEntry.CreateProxy(const anAreaCode, anEndpointCode, aTarget: String;
+  aRequiresAuth: Boolean);
 begin
   inherited Create;
 
   AreaCode     := anAreaCode;
-  OpType       := anOpType;
+  EndpointCode := anEndpointCode;
   RequiresAuth := aRequiresAuth;
   Kind         := ekProxy;
   Target       := aTarget;
@@ -1116,27 +792,6 @@ begin
     if SameText(FApplications[i].Code, aCode) then
     begin
       Result := FApplications[i];
-      Exit;
-    end;
-  end;
-end;
-
-function TRouteRegistry.AreaRequiresPermission(const aAreaCode: String): Boolean;
-var
-  i: Integer;
-begin
-  // Un'area richiede un permesso se ALMENO UNO dei suoi endpoint dichiara
-  // un OpType. Se nessuno lo fa, l'area e' liberamente accessibile e
-  // basta da sola ad abilitare la propria applicazione - si veda la nota
-  // "COME SI DERIVANO LE APPLICAZIONI ACCESSIBILI" in testa alla unit.
-  Result := False;
-
-  for i := 0 to FDeclaredEndpoints.Count - 1 do
-  begin
-    if SameText(FDeclaredEndpoints[i].AreaCode, aAreaCode) and
-       (FDeclaredEndpoints[i].OpType <> '') then
-    begin
-      Result := True;
       Exit;
     end;
   end;
@@ -1329,14 +984,13 @@ begin
                   _Descriptor.AreaCode := _AreaCode;
                   _Descriptor.AreaDescription := _AreaDescription;
                   _Descriptor.AreaApp := _AreaApp;
-                  _Descriptor.FunctionName := Trim(_EndpointElement.GetAttribute(cXML_ATTR_FUNCTION));
+                  _Descriptor.EndpointCode := Trim(_EndpointElement.GetAttribute(cXML_ATTR_CODE));
                   _Descriptor.Description := Trim(_EndpointElement.GetAttribute(cXML_ATTR_DESCRIPTION));
                   _Descriptor.URI := Trim(_EndpointElement.GetAttribute(cXML_ATTR_URI));
                   _Descriptor.HTTPMethod := UpperCase(Trim(_EndpointElement.GetAttribute(cXML_ATTR_METHOD)));
                   if _Descriptor.HTTPMethod = '' then
                     _Descriptor.HTTPMethod := cDefaultHTTPMethod;
 
-                  _Descriptor.OpType := Trim(_EndpointElement.GetAttribute(cXML_ATTR_OPTYPE));
                   _Descriptor.RequiresAuth :=
                     not SameText(Trim(_EndpointElement.GetAttribute(cXML_ATTR_REQUIRESAUTH)), cBooleanFalseStr);
 
@@ -1353,7 +1007,8 @@ begin
                     _Descriptor.Kind := ekUpload
                   else if SameText(_KindStr, cEndpointKind_AIConnector) then
                   begin
-                    // The MCP entry point: it has a URI and an OpType (who may use the AI channel) but no handler.
+                    // The MCP entry point has no route worker.  Authorization
+                    // of AI tools is delegated to the host application.
                     _Descriptor.Kind := ekAIConnector;
                   end
                   else if SameText(_KindStr, cEndpointKind_Proxy) then
@@ -1366,22 +1021,23 @@ begin
                     if _Descriptor.Target = '' then
                       LBLogger.Write(1, 'TRouteRegistry.LoadFromXMLFile', lmt_Error,
                         'Endpoint <%s.%s> dichiarato Kind="%s" ma privo dell''attributo %s: non sara'' raggiungibile',
-                        [_AreaCode, _Descriptor.FunctionName, cEndpointKind_Proxy, String(cXML_ATTR_TARGET)]);
+                        [_AreaCode, _Descriptor.EndpointCode, cEndpointKind_Proxy, String(cXML_ATTR_TARGET)]);
                   end
                   else begin
                     _Descriptor.Kind := ekStandard;
                     if (_KindStr <> '') and (not SameText(_KindStr, cEndpointKind_Standard)) then
                       LBLogger.Write(1, 'TRouteRegistry.LoadFromXMLFile', lmt_Warning,
                         'Endpoint <%s.%s>: valore Kind <%s> non riconosciuto, trattato come <%s>',
-                        [_AreaCode, _Descriptor.FunctionName, _KindStr, cEndpointKind_Standard]);
+                        [_AreaCode, _Descriptor.EndpointCode, _KindStr, cEndpointKind_Standard]);
                   end;
 
-                  if (_Descriptor.FunctionName <> '') and
+                  if (_Descriptor.EndpointCode <> '') and
                      (_Descriptor.URI <> '') then
                     FDeclaredEndpoints.Add(_Descriptor)
                   else begin
                     LBLogger.Write(1, 'TRouteRegistry.LoadFromXMLFile', lmt_Warning,
-                      'Definizione <Endpoint> incompleta nell''area <%s>: ignorata', [_AreaCode]);
+                      'Definizione <Endpoint> incompleta nell''area <%s>: servono gli attributi Code e URI; ignorata',
+                      [_AreaCode]);
                     _Descriptor.Free;
                   end;
                 end;
@@ -1455,8 +1111,8 @@ begin
 
       _Key := Self.buildKey(_Descriptor.HTTPMethod, _Descriptor.URI);
 
-      _Entry := TDispatchEntry.Create(aHandler, _Descriptor.AreaCode, _Descriptor.FunctionName,
-        _Descriptor.OpType, _Descriptor.RequiresAuth, _Descriptor.Kind);
+      _Entry := TDispatchEntry.Create(aHandler, _Descriptor.AreaCode, _Descriptor.EndpointCode,
+        _Descriptor.RequiresAuth, _Descriptor.Kind);
 
       if FDispatchTable.Find(_Key, _Idx) then
       begin
@@ -1477,7 +1133,7 @@ begin
         _AIEntry := TAIEndpointEntry.Create;
         _AIEntry.Descriptor := _Descriptor;
         _AIEntry.Handler := aHandler;
-        _AIEntry.TheMethod := aHandler.GetWorkerMethod(_Descriptor.FunctionName, _RegisteredKind);
+        _AIEntry.TheMethod := aHandler.GetWorkerMethod(_Descriptor.EndpointCode, _RegisteredKind);
         _AIEntry.KindMatches := (_AIEntry.TheMethod.Code <> nil) and (_RegisteredKind = ekStandard);
         for _j := FAIEndpoints.Count - 1 downto 0 do
           if FAIEndpoints[_j].Descriptor = _Descriptor then
@@ -1486,8 +1142,8 @@ begin
       end;
 
       LBLogger.Write(5, 'TRouteRegistry.RegisterHandler', lmt_Debug,
-        'Rotta <%s> collegata all''area <%s>, funzione <%s>, OpType <%s>',
-        [_Key, _Descriptor.AreaCode, _Descriptor.FunctionName, _Descriptor.OpType]);
+        'Rotta <%s> collegata all''area <%s>, endpoint <%s>',
+        [_Key, _Descriptor.AreaCode, _Descriptor.EndpointCode]);
     end;
   end;
 
@@ -1517,7 +1173,7 @@ begin
 
     _Key := Self.buildKey(_Descriptor.HTTPMethod, _Descriptor.URI);
 
-    _Entry := TDispatchEntry.CreateProxy(_Descriptor.AreaCode, _Descriptor.OpType,
+    _Entry := TDispatchEntry.CreateProxy(_Descriptor.AreaCode, _Descriptor.EndpointCode,
       _Descriptor.Target, _Descriptor.RequiresAuth);
 
     if FDispatchTable.Find(_Key, _Idx) then
@@ -1533,13 +1189,13 @@ begin
     Inc(Result);
 
     LBLogger.Write(5, 'TRouteRegistry.RegisterProxyEndpoints', lmt_Debug,
-      'Rotta <%s> inoltrata al bersaglio remoto <%s> (area <%s>, OpType <%s>)',
-      [_Key, _Descriptor.Target, _Descriptor.AreaCode, _Descriptor.OpType]);
+      'Rotta <%s> inoltrata al bersaglio remoto <%s> (area <%s>)',
+      [_Key, _Descriptor.Target, _Descriptor.AreaCode]);
   end;
 end;
 
 function TRouteRegistry.Resolve(const aHTTPMethod, aURIResource: String;
-  out anAreaCode, anOpType: String; out aRequiresAuth: Boolean;
+  out anAreaCode, anEndpointCode: String; out aRequiresAuth: Boolean;
   out aKind: TEndpointKind; out aMethod: TMethod; out aKindMatches: Boolean;
   out aTarget: String): Boolean;
 var
@@ -1548,7 +1204,7 @@ var
   _Entry: TDispatchEntry;
 begin
   anAreaCode := '';
-  anOpType := '';
+  anEndpointCode := '';
   aRequiresAuth := True;
   aKind := ekStandard;
   aMethod.Code := nil;
@@ -1563,7 +1219,7 @@ begin
   begin
     _Entry := FDispatchTable.Data[_Idx];
     anAreaCode := _Entry.AreaCode;
-    anOpType := _Entry.OpType;
+    anEndpointCode := _Entry.EndpointCode;
     aRequiresAuth := _Entry.RequiresAuth;
     aKind := _Entry.Kind;
     aMethod := _Entry.TheMethod;
@@ -1665,7 +1321,7 @@ begin
   if _Count > 1 then
   begin
     LBLogger.Write(1, 'TRouteRegistry.ValidateAIConnector', lmt_Error,
-      '%d endpoints with Kind="AIConnector": only one MCP entry point is allowed, <%s.%s> is used', [_Count, _Gate.AreaCode, _Gate.FunctionName]);
+      '%d endpoints with Kind="AIConnector": only one MCP entry point is allowed, <%s.%s> is used', [_Count, _Gate.AreaCode, _Gate.EndpointCode]);
     Result := False;
   end;
 
@@ -1681,7 +1337,7 @@ begin
     begin
       LBLogger.Write(1, 'TRouteRegistry.ValidateAIConnector', lmt_Error,
         'The MCP path <%s> is also the URI of %s.%s: the connector would shadow it', [_Gate.URI,
-        FDeclaredEndpoints[i].AreaCode, FDeclaredEndpoints[i].FunctionName]);
+        FDeclaredEndpoints[i].AreaCode, FDeclaredEndpoints[i].EndpointCode]);
       Result := False;
     end;
 end;
@@ -1719,7 +1375,7 @@ begin
       Inc(_MissingCount);
       LBLogger.Write(1, 'TRouteRegistry.ValidateAllEndpointsRegistered', lmt_Warning,
         'L''endpoint dichiarato <%s> (%s.%s) non ha alcun handler registrato!',
-        [_Key, _Descriptor.AreaCode, _Descriptor.FunctionName]);
+        [_Key, _Descriptor.AreaCode, _Descriptor.EndpointCode]);
     end;
   end;
 
@@ -1735,65 +1391,6 @@ begin
   // configurazione che altrimenti si manifesterebbero come comportamenti
   // inattesi molto piu' tardi.
   Self.ValidateApplications;
-end;
-
-function TRouteRegistry.GetAllDeclaredPermissions: TJSONArray;
-var
-  i, j: Integer;
-  _Descriptor: TEndpointDescriptor;
-  _Candidate: String;
-  _AlreadyPresent: Boolean;
-begin
-  Result := TJSONArray.Create;
-
-  for i := 0 to FDeclaredEndpoints.Count - 1 do
-  begin
-    _Descriptor := FDeclaredEndpoints[i];
-    if _Descriptor.OpType = '' then
-      Continue;
-
-    _Candidate := _Descriptor.AreaCode + '.' + _Descriptor.OpType;
-
-    _AlreadyPresent := False;
-    for j := 0 to Result.Count - 1 do
-      if Result.Strings[j] = _Candidate then
-      begin
-        _AlreadyPresent := True;
-        Break;
-      end;
-
-    if not _AlreadyPresent then
-      Result.Add(_Candidate);
-  end;
-end;
-
-function TRouteRegistry.GetDeclaredOpTypesForArea(const aAreaCode: String): TJSONArray;
-var
-  i, j: Integer;
-  _Descriptor: TEndpointDescriptor;
-  _AlreadyPresent: Boolean;
-begin
-  Result := TJSONArray.Create;
-
-  for i := 0 to FDeclaredEndpoints.Count - 1 do
-  begin
-    _Descriptor := FDeclaredEndpoints[i];
-    if _Descriptor.OpType = '' then
-      Continue;
-    if not SameText(_Descriptor.AreaCode, aAreaCode) then
-      Continue;
-
-    _AlreadyPresent := False;
-    for j := 0 to Result.Count - 1 do
-      if Result.Strings[j] = _Descriptor.OpType then
-      begin
-        _AlreadyPresent := True;
-        Break;
-      end;
-
-    if not _AlreadyPresent then
-      Result.Add(_Descriptor.OpType);
-  end;
 end;
 
 function TRouteRegistry.GetAllDeclaredApplications: TJSONArray;
@@ -1813,154 +1410,17 @@ begin
   end;
 end;
 
-function TRouteRegistry.GetApplicationsForPermissions(aGrantedPermissions: TJSONArray;
-  aIsAdmin: Boolean): TJSONArray;
-{
-  Applica la regola descritta nella nota "COME SI DERIVANO LE APPLICAZIONI
-  ACCESSIBILI A UN UTENTE" in testa alla unit:
-
-      un utente accede a un'applicazione se esiste ALMENO UN'AREA con
-      quell'App a cui puo' accedere - o perche' l'area non richiede alcun
-      OpType, o perche' possiede almeno un permesso su quell'area.
-
-  Le aree prive di App non entrano mai nel calcolo: sono trasversali, e
-  nessun permesso su di esse abilita alcuna applicazione.
-
-  L'ordine del risultato segue quello di dichiarazione in <Applications>,
-  non quello in cui le aree compaiono: cosi' l'elenco presentato
-  all'utente resta stabile e prevedibile, e l'ordine e' governato da chi
-  scrive il file XML.
-}
-var
-  i, j        : Integer;
-  _Descriptor : TEndpointDescriptor;
-  _App        : TApplicationDescriptor;
-  _Granted    : TStringList;
-  _Accessible : TStringList;
-  _AppObj     : TJSONObject;
-  _AreaPrefix : String;
-  _HasPerm    : Boolean;
-begin
-  Result := TJSONArray.Create;
-
-  // Un amministratore di sistema accede sempre a tutto, senza alcuna
-  // verifica: stessa convenzione gia' applicata ovunque nel sistema.
-  if aIsAdmin then
-  begin
-    Result.Free;
-    Result := Self.GetAllDeclaredApplications;
-    Exit;
-  end;
-
-  _Granted := TStringList.Create;
-  _Accessible := TStringList.Create;
-  try
-    _Granted.Sorted := True;
-    _Granted.Duplicates := dupIgnore;
-    _Accessible.Sorted := True;
-    _Accessible.Duplicates := dupIgnore;
-
-    // I permessi concessi vengono raccolti in forma ordinata, cosi' la
-    // verifica successiva e' una ricerca e non una scansione.
-    if aGrantedPermissions <> nil then
-    begin
-      for i := 0 to aGrantedPermissions.Count - 1 do
-        _Granted.Add(LowerCase(aGrantedPermissions.Strings[i]));
-    end;
-
-    // Un giro solo su tutti gli endpoint: per ciascuna area con App,
-    // si stabilisce se l'utente vi accede e, in caso affermativo, la
-    // propria App entra nell'insieme delle applicazioni accessibili.
-    for i := 0 to FDeclaredEndpoints.Count - 1 do
-    begin
-      _Descriptor := FDeclaredEndpoints[i];
-
-      // Area trasversale: non concorre mai al calcolo.
-      if _Descriptor.AreaApp = '' then Continue;
-
-      // App gia' risultata accessibile per un'altra area: nulla da
-      // aggiungere.
-      if _Accessible.IndexOf(LowerCase(_Descriptor.AreaApp)) >= 0 then Continue;
-
-      if not Self.AreaRequiresPermission(_Descriptor.AreaCode) then
-      begin
-        // L'area non dichiara alcun OpType in nessuno dei propri
-        // endpoint: e' liberamente accessibile a chiunque usi quella
-        // applicazione, e quindi basta da sola ad abilitarla.
-        _Accessible.Add(LowerCase(_Descriptor.AreaApp));
-        Continue;
-      end;
-
-      // L'area richiede un permesso: serve almeno uno dei permessi
-      // concessi che inizi con "<area>.".
-      _AreaPrefix := LowerCase(_Descriptor.AreaCode) + '.';
-      _HasPerm := False;
-
-      for j := 0 to _Granted.Count - 1 do
-      begin
-        if Copy(_Granted[j], 1, Length(_AreaPrefix)) = _AreaPrefix then
-        begin
-          _HasPerm := True;
-          Break;
-        end;
-      end;
-
-      if _HasPerm then
-        _Accessible.Add(LowerCase(_Descriptor.AreaApp));
-    end;
-
-    // Il risultato segue l'ordine di dichiarazione delle applicazioni.
-    for i := 0 to FApplications.Count - 1 do
-    begin
-      _App := FApplications[i];
-      if _Accessible.IndexOf(LowerCase(_App.Code)) < 0 then Continue;
-
-      _AppObj := TJSONObject.Create;
-      _AppObj.Add(cJSONFieldAppCode, _App.Code);
-      _AppObj.Add(cJSONFieldAppName, _App.Name);
-      _AppObj.Add(cJSONFieldAppHome, _App.Home);
-      Result.Add(_AppObj);
-    end;
-
-  finally
-    _Accessible.Free;
-    _Granted.Free;
-  end;
-end;
-
 function TRouteRegistry.GetAllDeclaredAreas: TJSONArray;
-{
-  Si veda la nota estesa "IL CATALOGO DELLE AREE FUNZIONALI" in testa
-  alla unit: l'XML e' l'unica fonte di verita'.
-
-  Passo 1: un giro su FDeclaredEndpoints, che costruisce un oggetto per
-  ciascuna area incontrata la PRIMA volta (code+description+app), e
-  accumula in esso l'insieme degli OpType distinti dichiarati per
-  quell'area.
-  Passo 2: gli OpType di ciascuna area vengono ordinati alfabeticamente.
-  Passo 3: l'array delle aree stesso viene ordinato per Description.
-
-  Il campo "app" permette a chi presenta la griglia dei permessi di
-  raggrupparle per applicazione; e' stringa vuota per le aree
-  trasversali.
-}
 var
-  i, j, k        : Integer;
-  _Descriptor    : TEndpointDescriptor;
-  _AreaObj       : TJSONObject;
-  _OpTypesArr    : TJSONArray;
-  _FoundIdx      : Integer;
-  _AlreadyHasOp  : Boolean;
-  _MinIdx        : Integer;
-  _MinDescr      : String;
+  i, j, _FoundIdx, _MinIdx : Integer;
+  _Descriptor : TEndpointDescriptor;
+  _AreaObj    : TJSONObject;
+  _MinDescr   : String;
 begin
   Result := TJSONArray.Create;
-
-  // ---- Passo 1: raggruppamento per area. ------------------------------
   for i := 0 to FDeclaredEndpoints.Count - 1 do
   begin
     _Descriptor := FDeclaredEndpoints[i];
-
     _FoundIdx := -1;
     for j := 0 to Result.Count - 1 do
       if SameText(TJSONObject(Result.Objects[j]).Get('code', ''), _Descriptor.AreaCode) then
@@ -1968,62 +1428,26 @@ begin
         _FoundIdx := j;
         Break;
       end;
-
-    if _FoundIdx = -1 then
+    if _FoundIdx < 0 then
     begin
       _AreaObj := TJSONObject.Create;
       _AreaObj.Add('code', _Descriptor.AreaCode);
       _AreaObj.Add('description', _Descriptor.AreaDescription);
       _AreaObj.Add('app', _Descriptor.AreaApp);
-      _OpTypesArr := TJSONArray.Create;
-      _AreaObj.Add('op_types', _OpTypesArr);
       Result.Add(_AreaObj);
-      _FoundIdx := Result.Count - 1;
-    end;
-
-    if _Descriptor.OpType <> '' then
-    begin
-      _AreaObj := TJSONObject(Result.Objects[_FoundIdx]);
-      _OpTypesArr := _AreaObj.Arrays['op_types'];
-
-      _AlreadyHasOp := False;
-      for k := 0 to _OpTypesArr.Count - 1 do
-        if _OpTypesArr.Strings[k] = _Descriptor.OpType then
-        begin
-          _AlreadyHasOp := True;
-          Break;
-        end;
-
-      if not _AlreadyHasOp then
-        _OpTypesArr.Add(_Descriptor.OpType);
     end;
   end;
-
-  // ---- Passo 2: ordinamento alfabetico degli OpType di ciascuna area. --
-  for i := 0 to Result.Count - 1 do
-  begin
-    _OpTypesArr := TJSONObject(Result.Objects[i]).Arrays['op_types'];
-    for j := 0 to _OpTypesArr.Count - 2 do
-      for k := 0 to _OpTypesArr.Count - 2 - j do
-        if _OpTypesArr.Strings[k] > _OpTypesArr.Strings[k + 1] then
-          _OpTypesArr.Exchange(k, k + 1);
-  end;
-
-  // ---- Passo 3: ordinamento delle aree per Description. ----------------
   for i := 0 to Result.Count - 2 do
   begin
     _MinIdx := i;
     _MinDescr := TJSONObject(Result.Objects[i]).Get('description', '');
-
     for j := i + 1 to Result.Count - 1 do
       if TJSONObject(Result.Objects[j]).Get('description', '') < _MinDescr then
       begin
         _MinIdx := j;
         _MinDescr := TJSONObject(Result.Objects[j]).Get('description', '');
       end;
-
-    if _MinIdx <> i then
-      Result.Exchange(i, _MinIdx);
+    if _MinIdx <> i then Result.Exchange(i, _MinIdx);
   end;
 end;
 
@@ -2101,60 +1525,12 @@ begin
   FRoutes.ValidateAllEndpointsRegistered;
 end;
 
-function TWebRouteModule.UserHasPermission(aUserConfig: TJSONObject; const anAreaCode, anOpType: String): Boolean;
+function TWebRouteModule.hasPermission(aUserConfig: TJSONObject;
+  const anAreaCode, anOperationToken: String): Boolean;
 begin
-  Result := (anOpType = '') or Self.hasPermission(aUserConfig, anAreaCode, anOpType);
-end;
-
-function TWebRouteModule.BuildUserPermissions(aUserId: Integer; aUserConfig: TJSONObject): Boolean;
-var
-  _Declared, _Granted: TJSONArray;
-  _Idx: Integer;
-begin
+  // Intentionally unused by route dispatch. Kept only so older subclasses
+  // still compile while moving their policy into application workers.
   Result := False;
-
-  if aUserConfig = nil then
-  begin
-    LBLogger.Write(1, 'TWebRouteModule.BuildUserPermissions', lmt_Warning, 'UserConfig non impostato!');
-    Exit;
-  end;
-
-  if not Assigned(FOnRetrieveGrantedPermissions) then
-  begin
-    LBLogger.Write(1, 'TWebRouteModule.BuildUserPermissions', lmt_Warning,
-      'Callback OnRetrieveGrantedPermissions non impostato!', []);
-    Exit;
-  end;
-
-  _Declared := FRoutes.GetAllDeclaredPermissions;
-  try
-    _Granted := FOnRetrieveGrantedPermissions(aUserId, _Declared);
-  finally
-    _Declared.Free;
-  end;
-
-  if _Granted <> nil then
-  begin
-    _Idx := aUserConfig.IndexOfName(cJSONFieldPermissions);
-    if _Idx >= 0 then
-      aUserConfig.Delete(_Idx);
-
-    aUserConfig.Add(cJSONFieldPermissions, _Granted);
-    Result := True;
-  end
-  else
-    LBLogger.Write(1, 'TWebRouteModule.BuildUserPermissions', lmt_Warning,
-      'OnRetrieveGrantedPermissions ha restituito nil per l''utente %d', [aUserId]);
-end;
-
-function TWebRouteModule.GetDeclaredPermissions: TJSONArray;
-begin
-  Result := FRoutes.GetAllDeclaredPermissions;
-end;
-
-function TWebRouteModule.GetDeclaredOpTypesForArea(const aAreaCode: String): TJSONArray;
-begin
-  Result := FRoutes.GetDeclaredOpTypesForArea(aAreaCode);
 end;
 
 function TWebRouteModule.GetAllDeclaredAreas: TJSONArray;
@@ -2165,44 +1541,6 @@ end;
 function TWebRouteModule.GetAllDeclaredApplications: TJSONArray;
 begin
   Result := FRoutes.GetAllDeclaredApplications;
-end;
-
-function TWebRouteModule.GetApplicationsForPermissions(aGrantedPermissions: TJSONArray;
-  aIsAdmin: Boolean): TJSONArray;
-begin
-  Result := FRoutes.GetApplicationsForPermissions(aGrantedPermissions, aIsAdmin);
-end;
-
-function TWebRouteModule.hasPermission(aUserConfig: TJSONObject; const anAreaCode, anOpType: String): Boolean;
-var
-  _Permissions: TJSONArray;
-  _Needed: String;
-  i: Integer;
-begin
-  Result := False;
-
-  if aUserConfig = nil then
-  begin
-    LBLogger.Write(1, 'TWebRouteModule.hasPermission', lmt_Warning, 'UserConfig not set!');
-    Exit;
-  end;
-
-  _Needed := anAreaCode + '.' + anOpType;
-
-  _Permissions := aUserConfig.Get(cJSONFieldPermissions, TJSONArray(nil));
-  if (_Permissions <> nil) then
-  begin
-    for i := 0 to _Permissions.Count - 1 do
-    begin
-      if _Permissions.Strings[i] = _Needed then
-      begin
-        Result := True;
-        Break;
-      end;
-    end;
-  end
-  else
-    LBLogger.Write(1, 'TWebRouteModule.hasPermission', lmt_Warning, 'No permission found <%s> in UserConfig!', [cJSONFieldPermissions]);
 end;
 
 function TWebRouteModule.StreamFileFromDisk(RequestManager: THTTPRequestManager; HTTPParser: THTTPRequestParser;
@@ -2385,7 +1723,7 @@ function TWebRouteModule.DoProcessRequest(
   var ResponseData: TMemoryStream;
   out ResponseCode: Integer): Boolean;
 var
-  _AreaCode, _OpType: String;
+  _AreaCode, _EndpointCode: String;
   _RequiresAuth: Boolean;
   _Kind: TEndpointKind;
   _Method: TMethod;
@@ -2408,14 +1746,17 @@ begin
   try
     HTTPParser.SplitURIIntoResourceAndParameters;
 
-    if not FRoutes.Resolve(HTTPParser.Method, HTTPParser.Resource, _AreaCode, _OpType, _RequiresAuth, _Kind, _Method, _KindMatches, _Target) then
+    if not FRoutes.Resolve(HTTPParser.Method, HTTPParser.Resource, _AreaCode, _EndpointCode,
+      _RequiresAuth, _Kind, _Method, _KindMatches, _Target) then
       Exit;     // -------------------->>>>
 
     Result := True;
 
     if not _KindMatches then
     begin
-      LBLogger.Write(1, 'TWebRouteModule.DoProcessRequest', lmt_Error, 'La rotta <%s.%s> ha un Kind dichiarato incoerente con la registrazione del proprio metodo!', [_AreaCode, _OpType]);
+      LBLogger.Write(1, 'TWebRouteModule.DoProcessRequest', lmt_Error,
+        'La rotta <%s.%s> ha un Kind dichiarato incoerente con la registrazione del proprio metodo!',
+        [_AreaCode, _EndpointCode]);
       ResponseCode := HTTP_STATUS_INTERNAL_ERROR;
       Self.WriteErrorResponse('Errore interno del server', ResponseHeaders, ResponseData);
       Exit;
@@ -2441,14 +1782,9 @@ begin
         Exit;
       end;
 
-      if (_OpType <> '') and (not Self.hasPermission(_UserConfig, _AreaCode, _OpType)) then
-      begin
-        LBLogger.Write(3, 'TWebRouteModule.DoProcessRequest', lmt_Warning,
-          'Utente %d non autorizzato su <%s.%s>', [_UserId, _AreaCode, _OpType]);
-        ResponseCode := HTTP_STATUS_FORBIDDEN;
-        Self.WriteErrorResponse('Operazione non consentita', ResponseHeaders, ResponseData);
-        Exit;
-      end;
+      // The transport stops here: authentication is the only policy owned
+      // by LBmicroWebServer.  Application authorization (actions,
+      // capabilities, scopes, roles) belongs to the registered worker.
     end;
 
     _WorkerStatusCode := HTTP_STATUS_OK;
@@ -2503,9 +1839,7 @@ begin
           // PRIMA del routing: il percorso e' in HTTPParser.UploadedFiles,
           // i metadati negli header della richiesta. Nessun corpo JSON da
           // leggere: si invoca direttamente il worker, che scrive la
-          // risposta. L'autenticazione e hasPermission (per l'area/OpType
-          // dichiarati nell'XML) sono gia' state applicate sopra, come
-          // per ogni altra famiglia.
+          // risposta. L'autenticazione e' gia' stata applicata sopra.
           TUploadWorker(_Method)(_UserId, _UserConfig, RequestManager, HTTPParser,
             ResponseHeaders, ResponseData, _WorkerStatusCode);
 
@@ -2526,8 +1860,7 @@ begin
         begin
           // Nessun metodo da invocare: la richiesta viene firmata e
           // inoltrata al server remoto nominato dall'attributo Target.
-          // L'autenticazione e hasPermission sono gia' state applicate
-          // sopra, esattamente come per ogni altra famiglia: il fatto che
+          // L'autenticazione e' gia' stata applicata sopra: il fatto che
           // l'elaborazione avvenga altrove non cambia in alcun modo chi
           // puo' chiamare questo endpoint.
           Self.DispatchProxyRequest(HTTPParser, ResponseHeaders, ResponseData,
@@ -2555,7 +1888,7 @@ begin
       else begin
         LBLogger.Write(1, 'TWebRouteModule.DoProcessRequest', lmt_Warning,
           'Il worker per <%s.%s> ha restituito un codice di stato non valido (%d): normalizzato a 200',
-          [_AreaCode, _OpType, _WorkerStatusCode]);
+          [_AreaCode, _EndpointCode, _WorkerStatusCode]);
         ResponseCode := HTTP_STATUS_OK;
       end;
     end;

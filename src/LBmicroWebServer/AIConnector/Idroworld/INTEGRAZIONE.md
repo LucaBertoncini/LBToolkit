@@ -78,7 +78,7 @@ Un'area `ai` con la porta MCP (il percorso `URI` è libero, non sotto `/oauth` n
 
 ```xml
 <FunctionalArea Code="ai" Description="Agente AI (MCP)" App="cmms">
-  <Endpoint Function="Mcp" URI="/mcp" Method="POST" Kind="AIConnector" OpType="Uso" RequiresAuth="true"
+  <Endpoint Code="Mcp" URI="/mcp" Method="POST" Kind="AIConnector" OpType="Uso" RequiresAuth="true"
             Description="Canale MCP per agenti AI: l'agente opera con i permessi dell'utente che lo ha autorizzato"/>
 </FunctionalArea>
 ```

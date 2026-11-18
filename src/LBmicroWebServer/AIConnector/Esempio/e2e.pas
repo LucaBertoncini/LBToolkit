@@ -21,7 +21,7 @@ type
     function DoWeb(aUserId: Integer; aUserConfig: TJSONObject; aRequestData: TJSONObject; out aStatusCode: Integer): TJSONData;
   public
     constructor Create;
-    function DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+    function DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
   end;
 
   TGlue = class
@@ -49,10 +49,10 @@ begin
   RegisterStandardWorker('Web', @DoWeb);
 end;
 
-function TDemoHandler.DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+function TDemoHandler.DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
 begin
   Result := True;
-  if aFunctionName = 'List' then
+  if anEndpointCode = 'List' then
   begin
     aDescriptor.Effect := aeReadOnly;
     aDescriptor.AddEnumParam('status', 'Stato degli elementi', 'open,closed');
@@ -61,13 +61,13 @@ begin
     aDescriptor.AddParam('at', aptDateTime, 'Istante');
     aDescriptor.AddArrayParam('ids', aptInteger, 'Elenco id');
   end
-  else if aFunctionName = 'Create' then
+  else if anEndpointCode = 'Create' then
   begin
     aDescriptor.Effect := aeModifies;
     aDescriptor.AddParam('title', aptString, 'Titolo', True);
     aDescriptor.AddParam('due', aptDate, 'Scadenza (YYYY-MM-DD)');
   end
-  else if aFunctionName = 'Kill' then
+  else if anEndpointCode = 'Kill' then
   begin
     aDescriptor.Effect := aeDestructive;
     aDescriptor.AddParam('id', aptInteger, 'Id', True);
@@ -148,7 +148,7 @@ begin
   begin
     for N := 0 to Mod_.Routes.AIEndpointCount - 1 do
       with Mod_.Routes.GetAIEndpoint(N) do
-        WriteLn('  ep ', Descriptor.FunctionName, ' kindmatches=', KindMatches, ' handler=', Handler <> nil, ' supports=', Supports(Handler, IAIConnectorFunctions));
+        WriteLn('  ep ', Descriptor.EndpointCode, ' kindmatches=', KindMatches, ' handler=', Handler <> nil, ' supports=', Supports(Handler, IAIConnectorFunctions));
   end;
   N := C.Prepare();
   WriteLn('TOOLS=', N);

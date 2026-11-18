@@ -1555,10 +1555,13 @@ begin
         on E1: Exception do
           LBLogger.Write(1, 'TLBmWsListener.Destroy', lmt_Error, '1. %s' , [E1.Message]);
       end;
+	  FCS.Release();
     end;
     FreeAndNil(FCS);
+	
     if FLastConnectionTimer <> nil then
       FreeAndNil(FLastConnectionTimer);
+	  
   except
     on E: Exception do
       LBLogger.Write(1, 'TLBmWsListener.Destroy', lmt_Error, E.Message);

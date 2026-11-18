@@ -4,7 +4,7 @@ unit uCMMS_HandlersAssets;
   ----------------------------------------------------------------------
   Questa unit è stata convertita al nuovo modulo di routing generico
   (uWebRouteRegistry.pas): la classe deriva ora da TRouteHandlerBase, e
-  ogni Function è registrata con RegisterStandardWorker invece di essere
+  ogni endpoint è registrato con RegisterStandardWorker invece di essere
   chiamata direttamente dal vecchio router con un TCMMSRequestContext.
 
   IDENTIFICAZIONE DIRETTA PER UUID: NESSUN RESOLVER, NESSUNA CONVERSIONE
@@ -89,7 +89,7 @@ type
       constructor Create(aDataAccess: IIdroWorldDataAccess);
       // Descrizione precisa dei parametri per l'AI (connettore MCP). Le funzioni non elencate qui sono
       // comunque strumenti, con parametri liberi: il ruolo dell'utente decide cosa puo' eseguire.
-      function DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+      function DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
   end;
 implementation
 uses
@@ -127,23 +127,23 @@ end;
 
 { TCMMSHandlersAssets }
 
-function TCMMSHandlersAssets.DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+function TCMMSHandlersAssets.DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
 begin
   // L'elenco degli asset visibili dipende dall'utente (visibilita' del ruolo): vale anche per l'AI.
   Result := True;
-  if aFunctionName = 'ListKinds' then
+  if anEndpointCode = 'ListKinds' then
   begin
     aDescriptor.Effect := aeReadOnly;
     aDescriptor.AddParam('all', aptBoolean, 'true per includere anche le tipologie non attive (default: solo attive)');
   end
-  else if aFunctionName = 'GetRoots' then
+  else if anEndpointCode = 'GetRoots' then
     aDescriptor.Effect := aeReadOnly     // nessun parametro
-  else if aFunctionName = 'GetTree' then
+  else if anEndpointCode = 'GetTree' then
   begin
     aDescriptor.Effect := aeReadOnly;
     aDescriptor.AddParam('uuid', aptString, 'UUID dell''asset radice del sottoalbero (si ottiene da GetRoots o da GetOne)', True);
   end
-  else if aFunctionName = 'GetOne' then
+  else if anEndpointCode = 'GetOne' then
   begin
     aDescriptor.Effect := aeReadOnly;
     aDescriptor.AddParam('uuid', aptString, 'UUID dell''asset', True);

@@ -24,14 +24,13 @@ unit uLBAIConnectorSetup;
   COSA DECIDE COSA PUO' FARE L'AGENTE
     - Routes.xml e le classi: sono candidati gli endpoint Standard autenticati; con ExposeUndescribed=0 solo
       quelli che la loro classe descrive (IAIConnectorFunctions);
-    - il ruolo dell'utente che ha autorizzato l'agente (Area.OpType), a ogni chiamata;
+    - l'autorizzazione dell'applicazione ospitante, a ogni elenco/chiamata;
     - la porta MCP: l'endpoint Kind="AIConnector" di Routes.xml. Senza, il connettore NON parte (fail-closed):
       da solo risponderebbe a qualunque utente autenticato.
 
   SEZIONE [AIConnector] (tutte le chiavi facoltative tranne Enabled)
     Enabled=0                      ; 1 = attiva il connettore (richiede [OAuth] attivo)
     ExposeUndescribed=0            ; 1 = ogni endpoint Standard autenticato diventa strumento (decide il ruolo)
-    RequireOpTypeForTools=0        ; 1 = non espone gli endpoint senza OpType
     AllowedOrigins=                ; Origin ammesse per richieste da browser (di norma vuoto)
     MaxCallsPerMinute=60           ; per utente; 0 = nessun limite
     MaxResultKB=200
@@ -56,7 +55,7 @@ type
     FEnabled           : Boolean;
     FAllowedOrigins    : TStringList;
     FExposeUndescribed : Boolean;
-    FRequireOpType     : Boolean;
+    FOnAuthorizeTool   : TAIAuthorizeToolEvent;
     FMaxCallsPerMinute : Integer;
     FMaxResultKB       : Integer;
     FServerName        : String;
@@ -83,6 +82,8 @@ type
     // Il connettore creato (in prestito: lo possiede il web server), nil finche' Attach non ha avuto successo. Serve a
     // impostare cio' che il file INI non copre, dopo Attach: Setup.Connector.OnToolCalled := @MioRegistro.
     property Connector : TLBAIConnector read FConnector;
+    // Obbligatorio: senza callback il connettore nega gate e strumenti.
+    property OnAuthorizeTool: TAIAuthorizeToolEvent read FOnAuthorizeTool write FOnAuthorizeTool;
   end;
 
 implementation
@@ -94,7 +95,6 @@ const
   cMe                    = 'TLBAIConnectorSetup';
   cKey_Enabled           = 'Enabled';
   cKey_ExposeUndescribed = 'ExposeUndescribed';
-  cKey_RequireOpType     = 'RequireOpTypeForTools';
   cKey_AllowedOrigins    = 'AllowedOrigins';
   cKey_MaxCalls          = 'MaxCallsPerMinute';
   cKey_MaxResultKB       = 'MaxResultKB';
@@ -111,6 +111,7 @@ begin
   FEnabled := False;
   FAllowedOrigins := TStringList.Create;
   FConnector := nil;
+  FOnAuthorizeTool := nil;
 end;
 
 destructor TLBAIConnectorSetup.Destroy;
@@ -158,7 +159,6 @@ begin
     if not aFile.ReadBool(cAIConnector_INI_Section, cKey_Enabled, False) then Exit;
 
     FExposeUndescribed := aFile.ReadBool(cAIConnector_INI_Section, cKey_ExposeUndescribed, False);
-    FRequireOpType := aFile.ReadBool(cAIConnector_INI_Section, cKey_RequireOpType, False);
     Self.SplitList(aFile.ReadString(cAIConnector_INI_Section, cKey_AllowedOrigins, ''), FAllowedOrigins);
 
     FMaxCallsPerMinute := aFile.ReadInteger(cAIConnector_INI_Section, cKey_MaxCalls, cDefault_MaxCalls);
@@ -219,6 +219,8 @@ begin
       if aRouteModule.Routes.AIEndpointCount = 0 then
         _Problems.Add('no handler registered yet (or no authenticated Standard endpoint): Attach must come after every RegisterHandler and after ValidateRoutes');
     end;
+    if not Assigned(FOnAuthorizeTool) then
+      _Problems.Add('the application did not provide OnAuthorizeTool: deny-by-default tool authorization is mandatory');
 
     if _Problems.Count > 0 then
     begin
@@ -241,7 +243,7 @@ begin
     _Connector.ServerName := FServerName;
     _Connector.Instructions := FInstructions;
     _Connector.ExposeUndescribed := FExposeUndescribed;
-    _Connector.RequireOpTypeForTools := FRequireOpType;
+    _Connector.OnAuthorizeTool := FOnAuthorizeTool;
     _Connector.MaxCallsPerMinute := FMaxCallsPerMinute;
     _Connector.MaxResultBytes := FMaxResultKB * 1024;
     for i := 0 to FAllowedOrigins.Count - 1 do

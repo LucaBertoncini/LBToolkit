@@ -18,28 +18,28 @@
 -->
 <WebRoutes>
   <FunctionalArea Code="ai" Description="Agente AI (MCP)">
-    <Endpoint Function="Mcp" URI="/mcp" Method="POST" Kind="AIConnector" OpType="Uso"
+    <Endpoint Code="Mcp" URI="/mcp" Method="POST" Kind="AIConnector" OpType="Uso"
               Description="Canale MCP per agenti AI: l'agente opera con i permessi dell'utente che lo ha autorizzato"/>
   </FunctionalArea>
 
   <FunctionalArea Code="demo" Description="Funzioni di esempio">
-    <Endpoint Function="Ping" URI="/api/demo/ping" Method="POST" OpType="Lettura"
+    <Endpoint Code="Ping" URI="/api/demo/ping" Method="POST" OpType="Lettura"
               Description="Restituisce identificativo, ruolo e permessi dell'utente per conto del quale lavora l'agente."/>
-    <Endpoint Function="Somma" URI="/api/demo/somma" Method="POST" OpType="Lettura"
+    <Endpoint Code="Somma" URI="/api/demo/somma" Method="POST" OpType="Lettura"
               Description="Somma due numeri interi a e b e restituisce il risultato."/>
-    <Endpoint Function="Cerca" URI="/api/demo/cerca" Method="POST" OpType="Lettura"
+    <Endpoint Code="Cerca" URI="/api/demo/cerca" Method="POST" OpType="Lettura"
               Description="Cerca nel catalogo per parole, stato, periodo e identificativi. Restituisce gli argomenti ricevuti."/>
-    <Endpoint Function="Stato" URI="/api/demo/stato" Method="POST"
+    <Endpoint Code="Stato" URI="/api/demo/stato" Method="POST"
               Description="Stato del servizio. Aperta a ogni utente autenticato, senza permesso specifico."/>
-    <Endpoint Function="CreaNota" URI="/api/demo/crea-nota" Method="POST" OpType="Modifica"
+    <Endpoint Code="CreaNota" URI="/api/demo/crea-nota" Method="POST" OpType="Modifica"
               Description="Crea una nota con un titolo e una priorita (bassa, media, alta)."/>
-    <Endpoint Function="EliminaNota" URI="/api/demo/elimina-nota" Method="POST" OpType="Modifica"
+    <Endpoint Code="EliminaNota" URI="/api/demo/elimina-nota" Method="POST" OpType="Modifica"
               Description="Elimina una nota dato il suo identificativo. Operazione distruttiva."/>
-    <Endpoint Function="Report" URI="/api/demo/report" Method="POST" OpType="Amministrazione"
+    <Endpoint Code="Report" URI="/api/demo/report" Method="POST" OpType="Amministrazione"
               Description="Report riservato all'amministratore."/>
-    <Endpoint Function="Interna" URI="/api/demo/interna" Method="POST" OpType="Lettura"
+    <Endpoint Code="Interna" URI="/api/demo/interna" Method="POST" OpType="Lettura"
               Description="Funzione interna: mai esposta all'agente."/>
-    <Endpoint Function="NonDescritta" URI="/api/demo/non-descritta" Method="POST" OpType="Lettura"
+    <Endpoint Code="NonDescritta" URI="/api/demo/non-descritta" Method="POST" OpType="Lettura"
               Description="Funzione senza descrizione dei parametri: esposta solo con ExposeUndescribed=1."/>
   </FunctionalArea>
 </WebRoutes>

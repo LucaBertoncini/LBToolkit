@@ -26,7 +26,7 @@ Nessuna di queste unit legge un file di configurazione per decidere se esistere:
 3. **La descrizione dei parametri.** Una classe può descrivere con precisione i parametri di una funzione (`IAIConnectorFunctions`). Con `ExposeUndescribed := True` (`ExposeUndescribed=1` nel file INI) anche le funzioni non descritte sono strumenti, con parametri liberi (un oggetto JSON) e solo la `Description` di `Routes.xml` come guida: è il ruolo a decidere cosa l'AI può eseguire. Con `ExposeUndescribed := False` (predefinito) restano solo le funzioni descritte. Una funzione si può escludere sempre con `aDescriptor.Hidden := True`.
 4. **Il ruolo dell'utente.** `tools/list` mostra solo gli strumenti il cui `Area.OpType` è concesso al ruolo, e `tools/call` ricontrolla con lo stesso `hasPermission` del sito (in IdroWorld: amministratore oppure cache dei permessi del ruolo).
 
-Il nome dello strumento visto dall'AI è `<area>_<Function>` (ad esempio `assets_GetOne`).
+Il nome dello strumento visto dall'AI è `<area>_<Endpoint.Code>` (ad esempio `assets_GetOne`).
 
 ## 3. Dichiarare e descrivere le funzioni
 
@@ -34,12 +34,12 @@ In `Routes.xml` gli endpoint restano quelli di sempre. Si aggiunge la porta d'in
 
 ```xml
 <FunctionalArea Code="ai" Description="Connettore AI">
-  <Endpoint Function="Mcp" URI="/mcp" Kind="AIConnector"
+  <Endpoint Code="Mcp" URI="/mcp" Kind="AIConnector"
             Description="Ingresso del connettore AI (MCP)."/>
 </FunctionalArea>
 
 <FunctionalArea Code="assets" Description="Asset">
-  <Endpoint Function="GetOne" URI="/api/assets/getOne" OpType="Lettura"
+  <Endpoint Code="GetOne" URI="/api/assets/getOne" OpType="Lettura"
             Description="Restituisce il dettaglio di un asset dato il suo uuid."/>
 </FunctionalArea>
 ```
@@ -53,7 +53,7 @@ TMyHandlers = class(TRouteHandlerBase, IAIConnectorFunctions)
       aRequestData: TJSONObject; out aStatusCode: Integer): TJSONData;
   public
     constructor Create(...);
-    function DescribeAIFunction(const aFunctionName: String;
+    function DescribeAIFunction(const anEndpointCode: String;
       aDescriptor: TAIFunctionDescriptor): Boolean;
 end;
 
@@ -63,11 +63,11 @@ begin
   Self.RegisterStandardWorker('Search', @Self.DoSearch);   // come sempre
 end;
 
-function TMyHandlers.DescribeAIFunction(const aFunctionName: String;
+function TMyHandlers.DescribeAIFunction(const anEndpointCode: String;
   aDescriptor: TAIFunctionDescriptor): Boolean;
 begin
   Result := True;
-  if aFunctionName = 'Search' then
+  if anEndpointCode = 'Search' then
   begin
     aDescriptor.Effect := aeReadOnly;                 // suggerimento per il client AI
     aDescriptor.AddParam('text', aptString, 'Testo da cercare', True);

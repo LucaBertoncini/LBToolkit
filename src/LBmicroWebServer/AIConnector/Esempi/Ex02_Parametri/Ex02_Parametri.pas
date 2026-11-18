@@ -44,7 +44,7 @@ type
       out aStatusCode: Integer): TJSONData;
   public
     constructor Create;
-    function DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+    function DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
   end;
 
 constructor TEx02Handler.Create;
@@ -57,10 +57,10 @@ begin
   Self.RegisterStandardWorker('NonDescritta', @Self.DoNonDescritta);
 end;
 
-function TEx02Handler.DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+function TEx02Handler.DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
 begin
   Result := True;
-  if SameText(aFunctionName, 'Cerca') then
+  if SameText(anEndpointCode, 'Cerca') then
   begin
     aDescriptor.Title := 'Cerca nel catalogo';
     aDescriptor.Effect := aeReadOnly;
@@ -73,20 +73,20 @@ begin
     aDescriptor.AddParam('alle', aptDateTime, 'Fino a questo istante, ISO 8601 (AAAA-MM-GGTHH:MM:SS)');
     aDescriptor.AddArrayParam('ids', aptInteger, 'Elenco di identificativi');                     // ogni elemento controllato
   end
-  else if SameText(aFunctionName, 'Crea') then
+  else if SameText(anEndpointCode, 'Crea') then
   begin
     aDescriptor.Title := 'Crea un elemento';
     aDescriptor.Effect := aeModifies;
     aDescriptor.AddParam('titolo', aptString, 'Titolo dell''elemento', True);
     aDescriptor.AddEnumParam('priorita', 'Priorita''', 'bassa,media,alta', True);
   end
-  else if SameText(aFunctionName, 'Elimina') then
+  else if SameText(anEndpointCode, 'Elimina') then
   begin
     aDescriptor.Title := 'Elimina un elemento';
     aDescriptor.Effect := aeDestructive;
     aDescriptor.AddParam('id', aptInteger, 'Identificativo dell''elemento da eliminare', True);
   end
-  else if SameText(aFunctionName, 'Interna') then
+  else if SameText(anEndpointCode, 'Interna') then
     aDescriptor.Hidden := True        // descritta, ma mai esposta
   else
     Result := False;                  // NonDescritta: nessuna descrizione precisa

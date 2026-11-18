@@ -58,7 +58,7 @@ type
     constructor Create;
 
     // IAIConnectorFunctions: i parametri delle funzioni che l'agente puo' usare.
-    function DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+    function DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
   end;
 
 implementation
@@ -83,18 +83,18 @@ end;
 
 { ---- descrizione per l'agente AI ---------------------------------------------------------------------------- }
 
-function TDemoHandlers.DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+function TDemoHandlers.DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
 begin
   Result := True;
-  if SameText(aFunctionName, 'Ping') then
+  if SameText(anEndpointCode, 'Ping') then
     aDescriptor.Effect := aeReadOnly                          // nessun parametro
-  else if SameText(aFunctionName, 'Somma') then
+  else if SameText(anEndpointCode, 'Somma') then
   begin
     aDescriptor.Effect := aeReadOnly;
     aDescriptor.AddParam('a', aptInteger, 'Primo addendo', True);
     aDescriptor.AddParam('b', aptInteger, 'Secondo addendo', True);
   end
-  else if SameText(aFunctionName, 'Cerca') then
+  else if SameText(anEndpointCode, 'Cerca') then
   begin
     aDescriptor.Title := 'Ricerca nel catalogo';
     aDescriptor.Effect := aeReadOnly;
@@ -107,24 +107,24 @@ begin
     aDescriptor.AddParam('alle', aptDateTime, 'Fino a questo istante, ISO 8601 (AAAA-MM-GGTHH:MM:SS)');
     aDescriptor.AddArrayParam('ids', aptInteger, 'Elenco di identificativi');                  // ogni elemento controllato
   end
-  else if SameText(aFunctionName, 'Stato') then
+  else if SameText(anEndpointCode, 'Stato') then
     aDescriptor.Effect := aeReadOnly
-  else if SameText(aFunctionName, 'CreaNota') then
+  else if SameText(anEndpointCode, 'CreaNota') then
   begin
     aDescriptor.Title := 'Crea una nota';
     aDescriptor.Effect := aeModifies;                          // il client puo' chiedere conferma all'utente
     aDescriptor.AddParam('titolo', aptString, 'Titolo della nota', True);
     aDescriptor.AddEnumParam('priorita', 'Priorita della nota', 'bassa,media,alta', True);
   end
-  else if SameText(aFunctionName, 'EliminaNota') then
+  else if SameText(anEndpointCode, 'EliminaNota') then
   begin
     aDescriptor.Title := 'Elimina una nota';
     aDescriptor.Effect := aeDestructive;
     aDescriptor.AddParam('id', aptInteger, 'Identificativo della nota da eliminare', True);
   end
-  else if SameText(aFunctionName, 'Report') then
+  else if SameText(anEndpointCode, 'Report') then
     aDescriptor.Effect := aeReadOnly
-  else if SameText(aFunctionName, 'Interna') then
+  else if SameText(anEndpointCode, 'Interna') then
     aDescriptor.Hidden := True                                 // descritta, ma mai esposta a nessun ruolo
   else
     Result := False;                                           // NonDescritta: nessuna descrizione precisa

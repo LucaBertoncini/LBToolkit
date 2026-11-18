@@ -10,19 +10,17 @@ unit uLBAIConnector;
   no sessions, no SSE stream). It answers on ONE path (EndpointPath, default "/mcp"); every other
   request is passed on to the next processor of the chain.
 
-  It does not duplicate any logic of the routing module. The ONE endpoint with Kind="AIConnector" is
-  the entry point (its URI is the MCP path; an optional OpType restricts the roles that may use the
-  AI at all). The tools are the authenticated Standard endpoints of the same registry, called exactly
-  like the routing module calls a Standard worker. The class that implements a function may describe
-  its parameters (IAIConnectorFunctions); see ExposeUndescribed.
+  The ONE endpoint with Kind="AIConnector" is the entry point. Tools are
+  authenticated Standard endpoints of the registry. The connector owns no
+  role or permission policy: OnAuthorizeTool is mandatory and delegates every
+  list/call/gate decision to the host application.
 
   WHAT AN AI CAN DO IS DECIDED IN THREE PLACES
   ----------------------------------------------------------------------
   1. Routes.xml and the handler classes: only authenticated Standard endpoints are candidates; with
      ExposeUndescribed=False only the functions a class describes are tools.
-  2. The role of the user who logged in: tools/list shows only the tools whose Area.OpType the
-     user's role grants (TWebRouteModule.UserHasPermission, i.e. the application's own hasPermission
-     override), and tools/call checks again.
+  2. The host application's OnAuthorizeTool callback, checked for tools/list,
+     tools/call and the connector gate.
   3. How long an access token lives: the role is read when a token is issued and renewed (not at
      every request), so a change of role or a deactivated user takes effect at the next renewal,
      i.e. within AccessTokenLifetime of the OAuth provider (15 minutes by default).
@@ -63,11 +61,11 @@ type
     Title        : String;
     Description  : String;
     AreaCode     : String;
-    FunctionName : String;
-    OpType       : String;
+    EndpointCode : String;
     Method       : TMethod;
     Descriptor   : TAIFunctionDescriptor;   // owned
 
+    constructor Create;
     destructor Destroy; override;
   end;
 
@@ -77,6 +75,14 @@ type
     aSucceeded = False for refusals, validation errors and worker errors.}
   TAIToolCalledEvent = procedure(Sender: TObject; aUserId: Integer; const aToolName: String;
     aStatusCode: Integer; aSucceeded: Boolean; anElapsedMs: Int64) of object;
+
+  { Application-owned authorization.  The connector passes opaque endpoint
+    tokens and the arguments (nil while listing tools).  The application may
+    resolve an action/capability, administrator bypass and any other policy.
+    Without this callback access is denied. }
+  TAIAuthorizeToolEvent = function(Sender: TObject; aUserId: Integer;
+    aUserConfig: TJSONObject; const anAreaCode, anEndpointCode: String;
+    aArguments: TJSONObject): Boolean of object;
 
   TAIRateEntry = record
     Minute : Int64;
@@ -95,6 +101,7 @@ type
     FInstructions          : String;
     FOnAuthenticateRequest : TAIAuthenticateEvent;
     FOnToolCalled          : TAIToolCalledEvent;
+    FOnAuthorizeTool       : TAIAuthorizeToolEvent;
     FOAuthProvider         : TLBOAuthProvider;
     FResourceMetadataURL   : String;
     FMaxResultBytes        : Integer;
@@ -105,11 +112,11 @@ type
     FToolsCS               : TCriticalSection;
     FPrepared              : Boolean;
     FExposeUndescribed     : Boolean;
-    FRequireOpType         : Boolean;
+    FRequireOpType         : Boolean; // deprecated, ignored
     FMaxBatchSize          : Integer;
     FHasGate               : Boolean;
     FGateArea              : String;
-    FGateOpType            : String;
+    FGateEndpointCode      : String;
 
     FRateCS                : TCriticalSection;
     FRate                  : TAIRateMap;
@@ -119,7 +126,7 @@ type
 
     procedure EnsurePrepared();
     function FindTool(const aName: String): TAIToolEntry;
-    function BuildToolName(const anAreaCode, aFunctionName: String): String;
+    function BuildToolName(const anAreaCode, anEndpointCode: String): String;
     function RateLimited(aUserId: Integer): Boolean;
     function OriginAllowed(aHeaders: TStringList): Boolean;
     function BuildResourceMetadataURL(aHeaders: TStringList): String;
@@ -180,13 +187,14 @@ type
       AI may run, exactly as on the web. Undescribed functions accept a free-form JSON object, so give
       them a good Description in Routes.xml. Set before Prepare.}
     property ExposeUndescribed: Boolean read FExposeUndescribed write FExposeUndescribed;
-    {:True: an endpoint without OpType is never a tool (on the web it is open to every authenticated
-      user; for an AI channel you may prefer to leave it out). Default False. Set before Prepare.}
+    {:Deprecated compatibility property. Authorization is delegated through
+      OnAuthorizeTool; this value is ignored.}
     property RequireOpTypeForTools: Boolean read FRequireOpType write FRequireOpType;
     {:Largest accepted JSON-RPC batch (default 20).}
     property MaxBatchSize: Integer read FMaxBatchSize write FMaxBatchSize;
     property OnAuthenticateRequest: TAIAuthenticateEvent read FOnAuthenticateRequest write FOnAuthenticateRequest;
     property OnToolCalled: TAIToolCalledEvent read FOnToolCalled write FOnToolCalled;
+    property OnAuthorizeTool: TAIAuthorizeToolEvent read FOnAuthorizeTool write FOnAuthorizeTool;
 
     {:Optional. When assigned, the 401 answer points to its "protected resource metadata", which lets
       Claude.ai (and other OAuth-capable clients) start the sign-in. Assigning it also aligns the
@@ -230,6 +238,11 @@ const
 
 { TAIToolEntry }
 
+constructor TAIToolEntry.Create;
+begin
+  inherited Create;
+end;
+
 destructor TAIToolEntry.Destroy;
 begin
   FreeAndNil(Descriptor);
@@ -258,6 +271,7 @@ begin
   FPrepared := False;
   FExposeUndescribed := False;
   FRequireOpType := False;
+  FOnAuthorizeTool := nil;
   FMaxBatchSize := 20;
 
   FRateCS := TCriticalSection.Create;
@@ -295,12 +309,12 @@ end;
 
 { ---- catalogue ---------------------------------------------------------- }
 
-function TLBAIConnector.BuildToolName(const anAreaCode, aFunctionName: String): String;
+function TLBAIConnector.BuildToolName(const anAreaCode, anEndpointCode: String): String;
 var
   i: Integer;
 begin
   // MCP tool names: letters, digits, "_" and "-", at most 64 characters.
-  Result := anAreaCode + '_' + aFunctionName;
+  Result := anAreaCode + '_' + anEndpointCode;
   for i := 1 to Length(Result) do
     if not (Result[i] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '-']) then
       Result[i] := '_';
@@ -340,8 +354,8 @@ begin
 
     _Registry := FRouteModule.Routes;
 
-    // The entry point is declared in Routes.xml (Kind="AIConnector"): its URI is the MCP path and its
-    // Area/OpType say which roles may use the AI channel at all.
+    // The entry point is declared in Routes.xml. Its opaque Area/EndpointCode
+    // tokens are passed to the application authorization callback.
     _Registry.ValidateAIConnector();   // logs: more than one entry point, bad path, clash with a route
     // The OAuth provider is NOT validated here any more: TLBOAuthSetup.Attach does it (once). Whoever builds the
     // provider by hand calls OAuthProvider.ValidateConfiguration() itself.
@@ -350,13 +364,13 @@ begin
     begin
       Self.SetEndpointPath(_Gate.URI);
       FGateArea := _Gate.AreaCode;
-      FGateOpType := _Gate.OpType;
+      FGateEndpointCode := _Gate.EndpointCode;
       FHasGate := True;
     end
     else begin
       FHasGate := False;
       LBLogger.Write(1, cMe + '.Prepare', lmt_Warning,
-        'No endpoint with Kind="AIConnector" in Routes.xml: path <%s> with no role gate (any authenticated user)', [FEndpointPath]);
+        'No endpoint with Kind="AIConnector" in Routes.xml: connector disabled by deny-by-default authorization', [FEndpointPath]);
     end;
 
     for i := 0 to _Registry.AIEndpointCount - 1 do
@@ -374,9 +388,9 @@ begin
       // A class may describe the parameters of a function precisely (IAIConnectorFunctions). With
       // ExposeUndescribed every authenticated Standard endpoint is a tool anyway (the role decides who
       // may use it); without it only the described functions are.
-      _Descriptor := TAIFunctionDescriptor.Create(_Entry.Descriptor.FunctionName);
+      _Descriptor := TAIFunctionDescriptor.Create(_Entry.Descriptor.EndpointCode);
       _Described := Supports(_Entry.Handler, IAIConnectorFunctions, _Describer) and
-        _Describer.DescribeAIFunction(_Entry.Descriptor.FunctionName, _Descriptor);
+        _Describer.DescribeAIFunction(_Entry.Descriptor.EndpointCode, _Descriptor);
       if _Descriptor.Hidden or ((not _Described) and (not FExposeUndescribed)) then
       begin
         Inc(_Skipped);
@@ -390,10 +404,9 @@ begin
       end;
 
       _Tool := TAIToolEntry.Create;
-      _Tool.ToolName := Self.BuildToolName(_Entry.Descriptor.AreaCode, _Entry.Descriptor.FunctionName);
+      _Tool.ToolName := Self.BuildToolName(_Entry.Descriptor.AreaCode, _Entry.Descriptor.EndpointCode);
       _Tool.AreaCode := _Entry.Descriptor.AreaCode;
-      _Tool.FunctionName := _Entry.Descriptor.FunctionName;
-      _Tool.OpType := _Entry.Descriptor.OpType;
+      _Tool.EndpointCode := _Entry.Descriptor.EndpointCode;
       _Tool.Method := _Entry.TheMethod;
       _Tool.Descriptor := _Descriptor;
       _Tool.Title := _Descriptor.Title;
@@ -403,25 +416,10 @@ begin
         _Tool.Description := _Descriptor.Description;
       if _Tool.Description = '' then
       begin
-        _Tool.Description := Trim(_Entry.Descriptor.AreaDescription + ' - ' + _Entry.Descriptor.FunctionName);
+        _Tool.Description := Trim(_Entry.Descriptor.AreaDescription + ' - ' + _Entry.Descriptor.EndpointCode);
         LBLogger.Write(1, cMe + '.Prepare', lmt_Warning,
           '%s.%s has no Description in Routes.xml: the AI will see only "%s". A good description is what lets the AI choose the right tool',
-          [_Entry.Descriptor.AreaCode, _Entry.Descriptor.FunctionName, _Tool.Description]);
-      end;
-
-      if _Tool.OpType = '' then
-      begin
-        if FRequireOpType then
-        begin
-          LBLogger.Write(1, cMe + '.Prepare', lmt_Warning,
-            '%s.%s has no OpType: NOT exposed (RequireOpTypeForTools)', [_Entry.Descriptor.AreaCode, _Entry.Descriptor.FunctionName]);
-          Inc(_Skipped);
-          _Tool.Free;
-          Continue;
-        end;
-        LBLogger.Write(3, cMe + '.Prepare', lmt_Warning,
-          '%s.%s has no OpType: any authenticated user can use it through the AI',
-          [_Entry.Descriptor.AreaCode, _Entry.Descriptor.FunctionName]);
+          [_Entry.Descriptor.AreaCode, _Entry.Descriptor.EndpointCode, _Tool.Description]);
       end;
 
       _Duplicate := False;
@@ -435,7 +433,7 @@ begin
       begin
         Inc(_Skipped);
         LBLogger.Write(1, cMe + '.Prepare', lmt_Error, 'Tool name <%s> already used: %s.%s NOT exposed (rename the function)',
-          [_Tool.ToolName, _Tool.AreaCode, _Tool.FunctionName]);
+          [_Tool.ToolName, _Tool.AreaCode, _Tool.EndpointCode]);
         _Tool.Free;
         Continue;
       end;
@@ -709,8 +707,9 @@ begin
   begin
     _Tool := FTools[i];
 
-    // The AI sees only what the user's role allows.
-    if not FRouteModule.UserHasPermission(aUserConfig, _Tool.AreaCode, _Tool.OpType) then
+    // The AI sees only what the host application explicitly authorizes.
+    if (not Assigned(FOnAuthorizeTool)) or
+       (not FOnAuthorizeTool(Self, 0, aUserConfig, _Tool.AreaCode, _Tool.EndpointCode, nil)) then
       Continue;
 
     _Item := TJSONObject.Create;
@@ -766,14 +765,6 @@ begin
     Exit(nil);   // the caller answers with a protocol error (-32602)
 
   try
-    if not FRouteModule.UserHasPermission(aUserConfig, _Tool.AreaCode, _Tool.OpType) then
-    begin
-      _Status := HTTP_STATUS_FORBIDDEN;
-      Result := Self.ToolResult('You are not authorised to use this tool: your role does not grant ' +
-        _Tool.AreaCode + '.' + _Tool.OpType + '.', True);
-      Exit;
-    end;
-
     if Self.RateLimited(aUserId) then
     begin
       _Status := HTTP_STATUS_TOO_MANY_REQUESTS;
@@ -797,6 +788,18 @@ begin
     begin
       _Status := HTTP_STATUS_BAD_REQUEST;
       Result := Self.ToolResult('Invalid arguments: ' + _Error, True);
+      Exit;
+    end;
+
+    // Authorization runs after schema validation. The application may inject
+    // an implicit internal action into this private argument copy without the
+    // connector rejecting it as an unknown user parameter.
+    if (not Assigned(FOnAuthorizeTool)) or
+       (not FOnAuthorizeTool(Self, aUserId, aUserConfig, _Tool.AreaCode,
+         _Tool.EndpointCode, _Args)) then
+    begin
+      _Status := HTTP_STATUS_FORBIDDEN;
+      Result := Self.ToolResult('You are not authorised to use this tool.', True);
       Exit;
     end;
 
@@ -1054,9 +1057,13 @@ begin
 
     // The context pins the token. UserConfig is borrowed and remains valid until the context is freed.
     try
-      if FHasGate and (not FRouteModule.UserHasPermission(_Authentication.UserConfig, FGateArea, FGateOpType)) then
+      if (not FHasGate) or (not Assigned(FOnAuthorizeTool)) or
+         (not FOnAuthorizeTool(Self, _Authentication.UserId,
+           _Authentication.UserConfig, FGateArea, FGateEndpointCode, nil)) then
       begin
-        Self.WriteHTTPError(HTTP_STATUS_FORBIDDEN, 'Your role does not allow the AI connector', ResponseHeaders, ResponseData, ResponseCode);
+        Self.WriteHTTPError(HTTP_STATUS_FORBIDDEN,
+          'The application does not allow the AI connector',
+          ResponseHeaders, ResponseData, ResponseCode);
         Exit;
       end;
 

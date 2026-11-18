@@ -45,7 +45,7 @@ type
       out aStatusCode: Integer): TJSONData;
   public
     constructor Create;
-    function DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+    function DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
   end;
 
   { Registro delle chiamate. Si chiama a ogni tools/call: se serve scrivere su file o database, qui. }
@@ -63,10 +63,10 @@ begin
   Self.RegisterStandardWorker('Stato', @Self.DoStato);
 end;
 
-function TEx03Handler.DescribeAIFunction(const aFunctionName: String; aDescriptor: TAIFunctionDescriptor): Boolean;
+function TEx03Handler.DescribeAIFunction(const anEndpointCode: String; aDescriptor: TAIFunctionDescriptor): Boolean;
 begin
   Result := True;
-  if SameText(aFunctionName, 'ListaOrdini') then
+  if SameText(anEndpointCode, 'ListaOrdini') then
   begin
     aDescriptor.Effect := aeReadOnly;
     aDescriptor.AddEnumParam('stato', 'Stato degli ordini', 'aperto,chiuso');
